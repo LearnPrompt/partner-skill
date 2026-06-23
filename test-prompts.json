@@ -1,0 +1,64 @@
+[
+  {
+    "id": "plan-first-greenfield",
+    "prompt": "用 Claude Code goal 先帮我规划一个小型前端项目，然后你 Codex 从零实现。",
+    "should_trigger": true,
+    "expected_behavior": [
+      "Enter the concrete repo or ask for one if no target exists.",
+      "Check git status before starting Claude Code.",
+      "Start Claude Code in plan mode and send /goal with a clear completion condition.",
+      "Use Claude Code for planning only, then Codex implements the code."
+    ],
+    "must_not": [
+      "Use claude -p to send /goal.",
+      "Let Claude Code do bulk implementation by default.",
+      "Commit, push, or deploy without explicit instruction."
+    ]
+  },
+  {
+    "id": "same-session-plan-polish-review",
+    "prompt": "在同一个 Claude Code 对话里先出 plan，你 Codex 实现后再让 Claude 优化 UI，最后同会话跑 /codex:review。",
+    "should_trigger": true,
+    "expected_behavior": [
+      "Prefer one Claude Code session for plan, polish, and final review when the task is small or medium.",
+      "Have Codex implement the plan outside Claude Code and run relevant checks.",
+      "Send Claude Code a bounded handoff with plan, changed files, diff stat, check output, and key file snippets.",
+      "Ask Claude Code for prioritized UI and interaction polish before running /codex:review."
+    ],
+    "must_not": [
+      "Open a fresh Claude Code session for every phase by default.",
+      "Paste the whole repo or huge diffs into Claude Code when a compact handoff is enough.",
+      "Skip the UI polish phase for frontend work unless the user asks for a minimal loop."
+    ]
+  },
+  {
+    "id": "explicit-skip-ui-polish",
+    "prompt": "让 Claude skip 做完这个 UI 交互优化，你监控它，最后把结果修到可提交。",
+    "should_trigger": true,
+    "expected_behavior": [
+      "Treat skip as explicit permission to use bypassPermissions for the Claude Code session.",
+      "State repo path, git status, scope, and stop condition before launch.",
+      "Monitor PTY output, claude agents JSON, transcript structure, task files, and repo evidence.",
+      "Have Codex inspect diffs and run the fastest relevant checks before reporting ready-to-commit status."
+    ],
+    "must_not": [
+      "Allow skip mode to commit, push, deploy, publish, send external messages, or touch secrets.",
+      "Trust Claude Code's completion text without checking repository evidence."
+    ]
+  },
+  {
+    "id": "review-only-claude-codex-review",
+    "prompt": "Claude 里跑 Codex Review 验收一下当前 diff，发现问题你来修。",
+    "should_trigger": true,
+    "expected_behavior": [
+      "Use Claude Code for the final /codex:review pass when available.",
+      "Prioritize bug, regression, risk, and missing-test findings.",
+      "Let Codex apply accepted fixes and rerun relevant checks.",
+      "Report remaining findings and whether the work is ready to commit."
+    ],
+    "must_not": [
+      "Treat style-only suggestions as blockers unless they affect user-facing quality.",
+      "Commit by default after review."
+    ]
+  }
+]
