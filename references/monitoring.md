@@ -81,3 +81,13 @@ Then run the fastest relevant verification command for the project, such as a ta
 - Active session plus no transcript/diff growth for several polls means check PTY output for prompts, permission waits, or crashes.
 - Non-Git target plus a bounded file inventory is acceptable for local skill folders, handoff packs, or scratch prototypes.
 - Any check failure becomes a Codex implementation task unless the failure is caused by missing external credentials or user-only context.
+
+## Token-Aware Recovery
+
+When Claude Code stalls, preserve continuity before opening a new session:
+
+1. Capture the current `sessionId`, `pid`, PTY state, and last useful output.
+2. If the process is waiting for approval, answer or cancel inside the same PTY when safe.
+3. If the session exits, resume it with the printed `claude --resume <name-or-id>` command when available.
+4. If resume is unavailable, start a fresh session only with a bounded handoff and state that this is a token tradeoff.
+5. Do not use `claude -p` as a replacement for final review after a rich interactive planning session unless the user explicitly asks for that cheap one-off path.

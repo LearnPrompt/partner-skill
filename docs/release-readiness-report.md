@@ -51,6 +51,7 @@ After this pass:
 - `scripts/check-skill-repo.sh` verifies package structure, prompt schema, identity, bare `搭子` trigger, showcase asset, secret scan, and high-risk command mentions.
 - `references/handoff-template.md` encodes bounded Claude Code handoff.
 - `references/darwin-ratchet.md` encodes validation-gated edits.
+- `references/monitoring.md` now prefers same-session recovery before expensive fresh Claude sessions.
 - `examples/skill-inventory-miniloop.md` documents the first real Partner run.
 - `assets/showcase.gif` gives GitHub visitors a first-screen workflow preview.
 
@@ -58,7 +59,7 @@ Estimated score:
 
 ```text
 Before: 80 / 100
-After: 94 / 100
+After: 95 / 100
 ```
 
 Remaining gap before public launch:
@@ -78,7 +79,7 @@ Validation gate:
 
 ```bash
 bash scripts/check-skill-repo.sh .
-jq -e 'type == "array" and length == 7 and all(.[]; has("id") and has("prompt") and has("expected_behavior") and has("must_not"))' test-prompts.json
+jq -e 'type == "array" and length == 8 and all(.[]; has("id") and has("prompt") and has("expected_behavior") and has("must_not"))' test-prompts.json
 bash install.sh --target codex --dry-run
 bash install.sh --target claude --dry-run
 python3 scripts/generate-showcase-gif.py

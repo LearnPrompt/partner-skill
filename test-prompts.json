@@ -16,6 +16,22 @@
     ]
   },
   {
+    "id": "avoid-fresh-claude-review",
+    "prompt": "Claude Code 已经在同一个会话里给过 plan 了，你实现后别重新开新会话，继续让它 polish 和 review。",
+    "should_trigger": true,
+    "expected_behavior": [
+      "Reuse the existing Claude Code session for polish and review when it is recoverable.",
+      "Send a bounded handoff with changed files, diff stat, checks, and open risks.",
+      "Explain if a fresh Claude session is unavoidable and why the token tradeoff is worth it.",
+      "Prefer Codex-side verification over a cold-start Claude review when the existing session is stuck and the diff is low risk."
+    ],
+    "must_not": [
+      "Start a new claude -p review-only session by default.",
+      "Make Claude rebuild project context from scratch when the same session is still available.",
+      "Keep prompting a stalled Claude session without a stop condition."
+    ]
+  },
+  {
     "id": "plan-first-greenfield",
     "prompt": "用 Claude Code goal 先帮我规划一个小型前端项目，然后你 Codex 从零实现。",
     "should_trigger": true,

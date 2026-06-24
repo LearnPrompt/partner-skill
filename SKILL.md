@@ -12,7 +12,7 @@ description: |
 
 Use this skill to run a two-agent coding workflow: Claude Code is the high-value planning, polish, and review agent; Codex is the outer orchestrator and main implementer. Keep Claude Code usage focused because it may be billed through API.
 
-Prefer a single Claude Code session for small and medium tasks: ask Claude for the plan, let Codex implement, then return the diff summary and key files to the same Claude session for UI/interaction polish and final `/codex:review`. This usually avoids paying Claude to rebuild the same project context multiple times.
+Prefer one long-lived Claude Code session for small and medium tasks: ask Claude for the plan, let Codex implement, then return the diff summary and key files to the same Claude session for UI/interaction polish and final `/codex:review`. This avoids paying Claude to rebuild the same project context and gives Claude enough continuity to improve the work.
 
 Partner is not a delegation excuse. The user remains the owner, Codex remains accountable for repository evidence, and Claude Code is treated as a high-value collaborator whose output must be verified.
 
@@ -29,6 +29,7 @@ Partner is not a delegation excuse. The user remains the owner, Codex remains ac
    - In the interactive session, send `/goal <clear completion condition>`.
    - Ask Claude Code for a concrete implementation plan, acceptance criteria, and UI/interaction guidance.
    - Keep this same session open for the later polish and review passes when the task is not too large.
+   - Do not start a separate `claude -p` review-only session just because Codex has finished implementation. That spends tokens on cold-start context and weakens Claude's continuity.
 
 3. Implement primarily with Codex.
    - Convert Claude Code's plan into a short checklist.
@@ -50,11 +51,14 @@ Partner is not a delegation excuse. The user remains the owner, Codex remains ac
 ## Session Strategy
 
 - Small or medium task: keep one Claude Code session open for `plan -> polish -> /codex:review`.
+- Treat a new Claude Code session as expensive. Open one only when there is no reusable session, the prior session is unrecoverable, or the user explicitly asks for a fresh Claude pass.
+- If the same Claude session gets stuck in a prompt, permission wait, or idle state, first try to continue or resume the same session with a bounded message. Do not cold-start a replacement review unless the value clearly beats the context cost.
 - Large task or huge diff: split sessions only after Codex produces a compact handoff containing the plan, changed files, key decisions, known risks, and check results.
-- If the same Claude session gets slow, confused, or context-heavy, close it and restart with a bounded handoff instead of pasting the whole repo state.
+- If the same Claude session gets slow, confused, or context-heavy, close it and restart with a bounded handoff only after reporting the token tradeoff.
 - Do not skip the Claude polish phase for UI/frontend work unless the user explicitly asks for a faster minimal loop.
 - If `/codex:review` hangs, times out, or gets stuck in a permission prompt, record that as a monitoring finding, stop the stuck subprocess/session, and continue with Codex-side verification.
 - If Claude Code produces no actionable polish, do not keep prompting it blindly. Capture the empty/low-signal result, run Codex verification, and report the limitation.
+- `claude -p` is not the default Partner path. Use it only for cheap one-off questions where losing prior session context is acceptable.
 
 ## Permission Policy
 

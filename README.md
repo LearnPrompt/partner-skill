@@ -8,6 +8,15 @@ Give Codex a Claude Code partner. Claude thinks, critiques, and reviews; Codex i
 
 ![Partner workflow showcase](assets/showcase.gif)
 
+## Cost Rule
+
+Partner is not "call Claude more." Partner is "keep one Claude Code session valuable."
+
+- Default to one interactive Claude Code session for `plan -> polish -> /codex:review`.
+- After Codex implements, return to the same Claude session with a bounded handoff.
+- Do not start a fresh Claude review session unless the old session is unrecoverable or the user asks for a fresh pass.
+- Use `claude -p` only for cheap one-off questions where cold-start context is acceptable.
+
 ## Why Install It
 
 Use Partner when one agent alone is the wrong shape for the job:
@@ -92,6 +101,7 @@ See [examples/skill-inventory-miniloop.md](examples/skill-inventory-miniloop.md)
 ## Safety Boundaries
 
 - Do not use `claude -p` to send `/goal`; `/goal` is an interactive Claude Code command.
+- Do not use a fresh `claude -p` review as the default final check; continue the same Claude Code session when possible.
 - Do not let skip mode commit, push, deploy, publish, send external messages, or touch secrets without a separate explicit instruction.
 - Do not make the repository public, create release tags, publish to registries, or announce externally without a separate explicit instruction.
 - Do not trust Claude Code completion text without checking repository evidence.
