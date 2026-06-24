@@ -1,10 +1,12 @@
-# Claude-Codex 双擎接力
+# 搭子.skill (Partner)
 
 > Let Claude Code spend on judgment, and let Codex spend time on implementation.
 
-English name: `Claude Codex Relay`
+Slogan: 我的 Claude Code 和 Codex 天下第一好。
 
-Skill id / repo name: `claude-codex-relay`
+English name: `Partner`
+
+Skill id / repo name: `partner-skill`
 
 This is a private Codex skill for coordinating a cost-efficient two-agent coding workflow: Claude Code plans, polishes UI/interaction details, and runs final Codex Review; Codex implements, monitors, fixes, verifies, and reports.
 

@@ -1,10 +1,12 @@
 ---
-name: claude-codex-relay
+name: partner-skill
 description: |
-  Coordinate a cost-efficient workflow where Claude Code handles planning, UI/interaction polish, and final Codex Review while Codex does most implementation, long-context edits, tests, and orchestration. Use when the user says or implies "用 Claude Code goal", "让 Claude skip 做完", "Claude 计划 Codex 实现", "Claude 优化 UI", "Claude 里跑 Codex Review", "同目录打开 Claude Code", "用 Claude Code 制定计划你来实现", or asks to split work between Claude Code and Codex to save API cost.
+  搭子.skill / Partner coordinates a cost-efficient workflow where Claude Code handles planning, UI/interaction polish, and final Codex Review while Codex does most implementation, long-context edits, tests, and orchestration. Slogan: 我的 Claude Code 和 Codex 天下第一好。Use when the user says or implies "用 Claude Code goal", "让 Claude skip 做完", "Claude 计划 Codex 实现", "Claude 优化 UI", "Claude 里跑 Codex Review", "同目录打开 Claude Code", "用 Claude Code 制定计划你来实现", "搭子.skill", "Partner", or asks to split work between Claude Code and Codex to save API cost.
 ---
 
-# Claude-Codex 双擎接力
+# 搭子.skill (Partner)
+
+> 我的 Claude Code 和 Codex 天下第一好。
 
 ## Overview
 
