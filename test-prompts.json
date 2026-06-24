@@ -60,5 +60,37 @@
       "Treat style-only suggestions as blockers unless they affect user-facing quality.",
       "Commit by default after review."
     ]
+  },
+  {
+    "id": "publish-readiness-check",
+    "prompt": "用鲁班和达尔文的方式把搭子.skill 做发布前验收，先跑本地检查，不要公开发布。",
+    "should_trigger": true,
+    "expected_behavior": [
+      "Treat this as publish readiness, not ordinary code review.",
+      "Run the repository readiness check before claiming the skill is publishable.",
+      "Apply Darwin-style validation: name the edited dimension, run tests, and keep only improvements.",
+      "Report whether the repo is ready to publish, but do not change repository visibility or create a release without explicit instruction."
+    ],
+    "must_not": [
+      "Make the private repository public without a separate explicit instruction.",
+      "Skip test prompts and rely on static README edits only.",
+      "Use git reset --hard as the default rollback path."
+    ]
+  },
+  {
+    "id": "bounded-handoff-template",
+    "prompt": "Codex 实现完后，把当前 diff 用 Partner handoff 模板交给同一个 Claude Code 对话做 UI polish。",
+    "should_trigger": true,
+    "expected_behavior": [
+      "Use references/handoff-template.md as the shape of the message back to Claude Code.",
+      "Include task, Claude plan, changed files, diff stat, check output, risks, and scope boundary.",
+      "Ask Claude Code for prioritized UI and interaction findings rather than a broad rewrite.",
+      "Have Codex apply accepted fixes and rerun relevant checks."
+    ],
+    "must_not": [
+      "Paste the whole repository when a bounded handoff is enough.",
+      "Ask Claude Code to commit, push, deploy, publish, or touch secrets.",
+      "Treat Claude polish text as verified without repo evidence."
+    ]
   }
 ]

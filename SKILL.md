@@ -1,7 +1,7 @@
 ---
 name: partner-skill
 description: |
-  搭子.skill / Partner coordinates a cost-efficient workflow where Claude Code handles planning, UI/interaction polish, and final Codex Review while Codex does most implementation, long-context edits, tests, and orchestration. Slogan: 我的 Claude Code 和 Codex 天下第一好。Use when the user says or implies "用 Claude Code goal", "让 Claude skip 做完", "Claude 计划 Codex 实现", "Claude 优化 UI", "Claude 里跑 Codex Review", "同目录打开 Claude Code", "用 Claude Code 制定计划你来实现", "搭子.skill", "Partner", or asks to split work between Claude Code and Codex to save API cost.
+  搭子.skill / Partner coordinates a cost-efficient workflow where Claude Code handles planning, UI/interaction polish, and final Codex Review while Codex does most implementation, long-context edits, tests, and orchestration. Slogan: 我的 Claude Code 和 Codex 天下第一好。Use when the user says or implies "用 Claude Code goal", "让 Claude skip 做完", "Claude 计划 Codex 实现", "Claude 优化 UI", "Claude 里跑 Codex Review", "同目录打开 Claude Code", "用 Claude Code 制定计划你来实现", "搭子.skill", "Partner", or asks to split work between Claude Code and Codex to save API cost. Do not use for ordinary code review with no Claude Code involvement.
 ---
 
 # 搭子.skill (Partner)
@@ -13,6 +13,8 @@ description: |
 Use this skill to run a two-agent coding workflow: Claude Code is the high-value planning, polish, and review agent; Codex is the outer orchestrator and main implementer. Keep Claude Code usage focused because it may be billed through API.
 
 Prefer a single Claude Code session for small and medium tasks: ask Claude for the plan, let Codex implement, then return the diff summary and key files to the same Claude session for UI/interaction polish and final `/codex:review`. This usually avoids paying Claude to rebuild the same project context multiple times.
+
+Partner is not a delegation excuse. The user remains the owner, Codex remains accountable for repository evidence, and Claude Code is treated as a high-value collaborator whose output must be verified.
 
 ## Default Flow
 
@@ -36,7 +38,7 @@ Prefer a single Claude Code session for small and medium tasks: ask Claude for t
 
 4. Send the implemented state back to the same Claude Code session for polish.
    - Use this especially for frontend UI, interaction quality, product feel, accessibility, and edge states.
-   - Send a bounded payload: the original plan, changed-file list, `git diff --stat`, test/check output, and only the key file snippets or full files Claude needs.
+   - Send a bounded payload. Use `references/handoff-template.md` when possible: the original plan, changed-file list, `git diff --stat`, test/check output, risks, open questions, and only the key file snippets or full files Claude needs.
    - Ask for prioritized findings, not broad rewrites.
    - Codex applies accepted fixes and reruns checks.
 
@@ -52,6 +54,7 @@ Prefer a single Claude Code session for small and medium tasks: ask Claude for t
 - If the same Claude session gets slow, confused, or context-heavy, close it and restart with a bounded handoff instead of pasting the whole repo state.
 - Do not skip the Claude polish phase for UI/frontend work unless the user explicitly asks for a faster minimal loop.
 - If `/codex:review` hangs, times out, or gets stuck in a permission prompt, record that as a monitoring finding, stop the stuck subprocess/session, and continue with Codex-side verification.
+- If Claude Code produces no actionable polish, do not keep prompting it blindly. Capture the empty/low-signal result, run Codex verification, and report the limitation.
 
 ## Permission Policy
 
@@ -60,6 +63,7 @@ Prefer a single Claude Code session for small and medium tasks: ask Claude for t
 - For skip mode, start Claude Code with `claude --permission-mode bypassPermissions --name <task-name>` or `claude --dangerously-skip-permissions --name <task-name>`.
 - Before any skip session, state the repo path, current git status, intended scope, and stop condition.
 - Never let skip mode commit, push, deploy, send messages, publish, or touch secrets unless the user gives a separate explicit instruction.
+- Never treat `skip` as permission to ignore repo evidence. `skip` changes Claude Code permissions, not Partner's verification duty.
 
 ## Routing Rules
 
@@ -67,6 +71,16 @@ Prefer a single Claude Code session for small and medium tasks: ask Claude for t
 - Route to Codex: scaffolding, implementation, long-context code edits, tests, build fixes, repository inspection, monitoring, summaries.
 - Route back to the same Claude Code session when UI quality matters or the first implementation passes technically but still needs product polish.
 - Keep Kimi Work/Kimi Code Goal separate from Claude Code `/goal`; prior "Goal mode" context may refer to Kimi, not Claude.
+
+## Validation Gate
+
+Use the Darwin-style ratchet in `references/darwin-ratchet.md` when improving this workflow or applying it to a substantial task:
+
+- Change one workflow dimension at a time: planning, implementation, UI polish, review, monitoring, permissions, or reporting.
+- Run test prompts or a real miniloop before calling an improvement better.
+- Do not let the same agent be the only maker and only judge for high-risk changes.
+- Keep the change only when repo evidence improves. If it regresses, use a reviewable revert, not `git reset --hard`.
+- Stop when another prompt loop produces low signal or <1 point expected improvement.
 
 ## Monitoring
 
@@ -87,3 +101,4 @@ When reporting back to the user, include:
 - Files changed and checks run.
 - Review findings fixed or still open.
 - Whether the work is ready to commit; do not commit by default.
+- Any monitoring anomaly such as idle session, permission wait, empty review output, no diff, or failed check.
