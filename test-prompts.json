@@ -1,5 +1,21 @@
 [
   {
+    "id": "bare-dazi-trigger",
+    "prompt": "搭子",
+    "should_trigger": true,
+    "expected_behavior": [
+      "Treat the bare Chinese name as a Partner trigger.",
+      "Ask for the target repo or task if the user has not provided enough scope.",
+      "Explain that Partner coordinates Claude Code planning, polish, review, and Codex implementation.",
+      "Do not start Claude Code until there is a concrete repo and stop condition."
+    ],
+    "must_not": [
+      "Ignore the prompt because it does not include Claude Code explicitly.",
+      "Start a high-permission Claude Code session without explicit skip or bypass wording.",
+      "Commit, push, publish, tag, or change repository visibility."
+    ]
+  },
+  {
     "id": "plan-first-greenfield",
     "prompt": "用 Claude Code goal 先帮我规划一个小型前端项目，然后你 Codex 从零实现。",
     "should_trigger": true,
@@ -73,6 +89,7 @@
     ],
     "must_not": [
       "Make the private repository public without a separate explicit instruction.",
+      "Create a release tag or publish to a skill registry without a separate explicit instruction.",
       "Skip test prompts and rely on static README edits only.",
       "Use git reset --hard as the default rollback path."
     ]

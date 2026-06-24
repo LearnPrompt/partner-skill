@@ -6,6 +6,8 @@ Give Codex a Claude Code partner. Claude thinks, critiques, and reviews; Codex i
 
 `partner-skill` is a workflow skill for cost-aware multi-agent coding. It keeps Claude Code focused on high-leverage judgment, UI/interaction polish, and final review while Codex carries the long-context implementation loop.
 
+![Partner workflow showcase](assets/showcase.gif)
+
 ## Why Install It
 
 Use Partner when one agent alone is the wrong shape for the job:
@@ -31,6 +33,8 @@ Install into Claude Code too:
 bash install.sh --target claude
 ```
 
+Before the repository is public, the clone URL works only for GitHub accounts with private repo access. Keep visibility changes, release tags, registry publication, and external announcements as separate explicit release actions.
+
 Validate the package:
 
 ```bash
@@ -43,6 +47,8 @@ jq -r '.[].id' test-prompts.json
 Use one of these prompts:
 
 ```text
+搭子
+搭子，帮我规划一下这个任务。
 用 Claude Code goal 先规划，你 Codex 来实现。
 同一个 Claude Code 对话里先出 plan，你实现后再让它 polish 和 /codex:review。
 让 Claude skip 做完这个 UI 交互优化，你监控它。
@@ -87,6 +93,7 @@ See [examples/skill-inventory-miniloop.md](examples/skill-inventory-miniloop.md)
 
 - Do not use `claude -p` to send `/goal`; `/goal` is an interactive Claude Code command.
 - Do not let skip mode commit, push, deploy, publish, send external messages, or touch secrets without a separate explicit instruction.
+- Do not make the repository public, create release tags, publish to registries, or announce externally without a separate explicit instruction.
 - Do not trust Claude Code completion text without checking repository evidence.
 - Keep Kimi Work / Kimi Code Goal separate from Claude Code `/goal`.
 - Do not use `git reset --hard` as the default rollback path. Prefer a reviewable diff or `git revert`.
@@ -99,9 +106,11 @@ SKILL.md                         Runtime instructions for Codex/Claude-compatibl
 README.md                        Human-facing install, value, examples, and safety boundaries
 install.sh                       Local installer for Codex, Claude Code, Agents, or all targets
 test-prompts.json                Trigger and behavior regression prompts
+assets/showcase.gif              Small public-facing workflow preview
 references/monitoring.md         How Codex monitors Claude Code progress
 references/handoff-template.md   Bounded context packet for Claude Code polish/review
 references/darwin-ratchet.md     Validation-gated improvement rules
+scripts/generate-showcase-gif.py Rebuilds the README showcase asset
 scripts/check-skill-repo.sh      Publish readiness smoke check
 examples/skill-inventory-miniloop.md
 ```
@@ -121,6 +130,7 @@ jq -r '.[].id' test-prompts.json
 - [ ] `bash scripts/check-skill-repo.sh .`
 - [ ] `jq -r '.[].id' test-prompts.json`
 - [ ] No secrets, tokens, cookies, private keys, or `.env` values in tracked files.
+- [ ] `assets/showcase.gif` renders in the README preview.
 - [ ] README explains who should install it, when to trigger it, and what output proves success.
 - [ ] `references/handoff-template.md` and `references/monitoring.md` still match the real workflow.
 - [ ] At least one real miniloop example is present under `examples/`.

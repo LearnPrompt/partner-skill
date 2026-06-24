@@ -1,7 +1,7 @@
 ---
 name: partner-skill
 description: |
-  搭子.skill / Partner coordinates a cost-efficient workflow where Claude Code handles planning, UI/interaction polish, and final Codex Review while Codex does most implementation, long-context edits, tests, and orchestration. Slogan: 我的 Claude Code 和 Codex 天下第一好。Use when the user says or implies "用 Claude Code goal", "让 Claude skip 做完", "Claude 计划 Codex 实现", "Claude 优化 UI", "Claude 里跑 Codex Review", "同目录打开 Claude Code", "用 Claude Code 制定计划你来实现", "搭子.skill", "Partner", or asks to split work between Claude Code and Codex to save API cost. Do not use for ordinary code review with no Claude Code involvement.
+  搭子.skill / Partner coordinates a cost-efficient workflow where Claude Code handles planning, UI/interaction polish, and final Codex Review while Codex does most implementation, long-context edits, tests, and orchestration. Slogan: 我的 Claude Code 和 Codex 天下第一好。Use when the user says or implies "搭子", "搭子.skill", "用 Claude Code goal", "让 Claude skip 做完", "Claude 计划 Codex 实现", "Claude 优化 UI", "Claude 里跑 Codex Review", "同目录打开 Claude Code", "用 Claude Code 制定计划你来实现", "Partner", or asks to split work between Claude Code and Codex to save API cost. Do not use for ordinary code review with no Claude Code involvement.
 ---
 
 # 搭子.skill (Partner)
@@ -64,6 +64,7 @@ Partner is not a delegation excuse. The user remains the owner, Codex remains ac
 - Before any skip session, state the repo path, current git status, intended scope, and stop condition.
 - Never let skip mode commit, push, deploy, send messages, publish, or touch secrets unless the user gives a separate explicit instruction.
 - Never treat `skip` as permission to ignore repo evidence. `skip` changes Claude Code permissions, not Partner's verification duty.
+- Keep repository visibility changes, release tags, registry publication, and external announcements private until the user gives a separate explicit publish instruction.
 
 ## Routing Rules
 

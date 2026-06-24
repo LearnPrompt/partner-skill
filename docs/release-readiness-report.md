@@ -8,7 +8,7 @@ Slogan: 我的 Claude Code 和 Codex 天下第一好。
 
 ## Verdict
 
-Partner is now release-ready as a workflow skill, with one caveat: the repository is still private and no public release/tag has been created. Publication is a separate user-authorized action.
+Partner is now a public-ready release candidate as a workflow skill, with one caveat: the repository is still private and no public release/tag has been created. Publication is a separate user-authorized action.
 
 ## Office Hours Lens
 
@@ -48,21 +48,22 @@ After this pass:
 
 - README has install, triggers, evidence, example, safety, file map, and release checklist.
 - `install.sh` supports Codex, Claude Code, Agents, and all targets.
-- `scripts/check-skill-repo.sh` verifies package structure, prompt schema, identity, secret scan, and high-risk command mentions.
+- `scripts/check-skill-repo.sh` verifies package structure, prompt schema, identity, bare `搭子` trigger, showcase asset, secret scan, and high-risk command mentions.
 - `references/handoff-template.md` encodes bounded Claude Code handoff.
 - `references/darwin-ratchet.md` encodes validation-gated edits.
 - `examples/skill-inventory-miniloop.md` documents the first real Partner run.
+- `assets/showcase.gif` gives GitHub visitors a first-screen workflow preview.
 
 Estimated score:
 
 ```text
 Before: 80 / 100
-After: 90 / 100
+After: 94 / 100
 ```
 
 Remaining gap before public launch:
 
-- Add a short GIF or screenshot after the next successful full loop includes Claude UI polish.
+- Run one more full UI-oriented loop where Claude Code performs the polish pass and `/codex:review` completes cleanly.
 - Consider a public `v0.1.0` tag only after the repository visibility decision.
 
 ## Darwin Lens
@@ -70,16 +71,18 @@ Remaining gap before public launch:
 Edited dimension:
 
 ```text
-Install and publish assets
+Release entrypoint and showcase assets
 ```
 
 Validation gate:
 
 ```bash
 bash scripts/check-skill-repo.sh .
-jq -e 'type == "array" and length == 6 and all(.[]; has("id") and has("prompt") and has("expected_behavior") and has("must_not"))' test-prompts.json
+jq -e 'type == "array" and length == 7 and all(.[]; has("id") and has("prompt") and has("expected_behavior") and has("must_not"))' test-prompts.json
 bash install.sh --target codex --dry-run
 bash install.sh --target claude --dry-run
+python3 scripts/generate-showcase-gif.py
+file assets/showcase.gif
 ```
 
 Result:
@@ -88,6 +91,7 @@ Result:
 PASS package readiness
 PASS prompt schema
 PASS installer dry runs
+PASS showcase GIF exists and is referenced
 WARN high-risk command text found only in safety warnings
 ```
 
@@ -97,7 +101,7 @@ Keep. The package gained publish-critical assets without changing the core workf
 
 ## Publish Blockers
 
-None for a private/shareable release candidate.
+None for a private/shareable release candidate. The repository should remain private until the user explicitly asks to make it public.
 
 Blocked actions without explicit user authorization:
 
@@ -108,10 +112,10 @@ Blocked actions without explicit user authorization:
 
 ## Next Loop
 
-Run Partner on one more frontend/UI task and require the missing phase:
+Run Partner on one more frontend/UI task and require the complete phase:
 
 ```text
 Claude plan -> Codex implementation -> Claude UI polish -> Codex fixes -> Claude review -> Codex verification
 ```
 
-Then add a screenshot/GIF and tag `v0.1.0`.
+Then decide whether to make the repository public and tag `v0.1.0`.

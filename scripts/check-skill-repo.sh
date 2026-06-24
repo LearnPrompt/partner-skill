@@ -35,6 +35,7 @@ check_file "LICENSE"
 check_dir "references"
 check_dir "examples"
 check_dir "scripts"
+check_dir "assets"
 
 if command -v jq >/dev/null 2>&1; then
   jq -e 'type == "array" and length >= 4 and all(.[]; has("id") and has("prompt") and has("expected_behavior") and has("must_not"))' test-prompts.json >/dev/null
@@ -51,10 +52,24 @@ else
   fail=$((fail + 1))
 fi
 
+if grep -q '"搭子"' SKILL.md; then
+  echo "PASS SKILL.md bare 搭子 trigger"
+else
+  echo "FAIL SKILL.md description must include bare \"搭子\" as a trigger"
+  fail=$((fail + 1))
+fi
+
 if grep -q '搭子.skill' README.md && grep -q '我的 Claude Code 和 Codex 天下第一好' README.md; then
   echo "PASS README identity"
 else
   echo "FAIL README must include Partner identity and slogan"
+  fail=$((fail + 1))
+fi
+
+if [ -s assets/showcase.gif ] && grep -q 'assets/showcase.gif' README.md; then
+  echo "PASS showcase asset"
+else
+  echo "FAIL assets/showcase.gif must exist and be referenced from README.md"
   fail=$((fail + 1))
 fi
 
