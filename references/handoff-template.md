@@ -37,6 +37,20 @@ Choose exactly one:
 - Do not commit, push, deploy, publish, or send external messages.
 - Do not touch secrets or `.env` files.
 - If you need more context, ask for the smallest file or snippet that unblocks the review.
+
+## Partner Session Receipt
+Fill this at the end of the loop:
+
+```text
+[Partner session receipt]
+phase: <planning | codex implementation | claude polish | review | final fix>
+claude_session: <sessionId or none>
+claude_session_reused: <yes | no | n/a>
+new_claude_p_sessions: <0 | count | unknown>
+codex_passes: <number>
+checks: <commands run or not run>
+anomalies: <none | permission wait | idle | empty review | failed check | other>
+```
 ```
 
 ## Good Handoff Rules
@@ -46,3 +60,4 @@ Choose exactly one:
 - Name the exact phase: `plan`, `polish`, `review`, or `fix`.
 - Ask for prioritized findings. Do not ask for a broad rewrite unless the user requested one.
 - If Claude Code returns style-only ideas after the app already works, Codex decides whether they are worth applying.
+- Include a Partner Session Receipt whenever Claude Code was involved.

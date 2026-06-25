@@ -16,6 +16,15 @@ Partner is not "call Claude more." Partner is "keep one Claude Code session valu
 - After Codex implements, return to the same Claude session with a bounded handoff.
 - Do not start a fresh Claude review session unless the old session is unrecoverable or the user asks for a fresh pass.
 - Use `claude -p` only for cheap one-off questions where cold-start context is acceptable.
+- End substantial runs with a Partner Session Receipt so the saving is visible.
+
+```text
+[Partner session receipt]
+claude_session_reused: yes
+new_claude_p_sessions: 0
+checks: bash scripts/check-skill-repo.sh .
+anomalies: none
+```
 
 ## Why Install It
 
@@ -42,7 +51,7 @@ Install into Claude Code too:
 bash install.sh --target claude
 ```
 
-Before the repository is public, the clone URL works only for GitHub accounts with private repo access. Keep visibility changes, release tags, registry publication, and external announcements as separate explicit release actions.
+Release tags, registry publication, and external announcements are separate explicit release actions. Installing the skill does not grant permission to commit, push, deploy, publish, or send external messages.
 
 Validate the package:
 
@@ -81,6 +90,7 @@ Codex:
 - A safer permission policy for `skip` / `bypassPermissions`.
 - A monitoring checklist for Claude Code PTY sessions, `claude agents --json`, JSONL transcripts, optional task files, and repo evidence.
 - A bounded handoff template so Claude gets the useful context, not the whole repo pasted back at it.
+- A Partner Session Receipt that proves whether the workflow reused Claude context or spawned fresh sessions.
 - A Darwin-style validation gate: one improvement dimension at a time, test prompts required, keep changes only when they improve the package.
 - A final report format with phase, session id, changed files, checks, open findings, and ready-to-commit status.
 
@@ -103,7 +113,7 @@ See [examples/skill-inventory-miniloop.md](examples/skill-inventory-miniloop.md)
 - Do not use `claude -p` to send `/goal`; `/goal` is an interactive Claude Code command.
 - Do not use a fresh `claude -p` review as the default final check; continue the same Claude Code session when possible.
 - Do not let skip mode commit, push, deploy, publish, send external messages, or touch secrets without a separate explicit instruction.
-- Do not make the repository public, create release tags, publish to registries, or announce externally without a separate explicit instruction.
+- Do not change repository visibility, create release tags, publish to registries, or announce externally without a separate explicit instruction.
 - Do not trust Claude Code completion text without checking repository evidence.
 - Keep Kimi Work / Kimi Code Goal separate from Claude Code `/goal`.
 - Do not use `git reset --hard` as the default rollback path. Prefer a reviewable diff or `git revert`.
@@ -117,6 +127,7 @@ README.md                        Human-facing install, value, examples, and safe
 install.sh                       Local installer for Codex, Claude Code, Agents, or all targets
 test-prompts.json                Trigger and behavior regression prompts
 assets/showcase.gif              Small public-facing workflow preview
+examples/session-receipt.md      Minimal visible proof of same-session reuse
 references/monitoring.md         How Codex monitors Claude Code progress
 references/handoff-template.md   Bounded context packet for Claude Code polish/review
 references/darwin-ratchet.md     Validation-gated improvement rules
@@ -141,6 +152,7 @@ jq -r '.[].id' test-prompts.json
 - [ ] `jq -r '.[].id' test-prompts.json`
 - [ ] No secrets, tokens, cookies, private keys, or `.env` values in tracked files.
 - [ ] `assets/showcase.gif` renders in the README preview.
+- [ ] Session Receipt appears in at least one tested Partner run.
 - [ ] README explains who should install it, when to trigger it, and what output proves success.
 - [ ] `references/handoff-template.md` and `references/monitoring.md` still match the real workflow.
 - [ ] At least one real miniloop example is present under `examples/`.

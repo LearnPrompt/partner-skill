@@ -47,6 +47,7 @@ Partner is not a delegation excuse. The user remains the owner, Codex remains ac
    - In Claude Code, use `/codex:review` when available.
    - Treat findings as bug/risk/test issues first, style suggestions second.
    - Codex fixes blocking findings, reruns checks, and reports final status.
+   - End with a Partner Session Receipt so the user can verify whether Claude Code context was reused.
 
 ## Session Strategy
 
@@ -68,7 +69,7 @@ Partner is not a delegation excuse. The user remains the owner, Codex remains ac
 - Before any skip session, state the repo path, current git status, intended scope, and stop condition.
 - Never let skip mode commit, push, deploy, send messages, publish, or touch secrets unless the user gives a separate explicit instruction.
 - Never treat `skip` as permission to ignore repo evidence. `skip` changes Claude Code permissions, not Partner's verification duty.
-- Keep repository visibility changes, release tags, registry publication, and external announcements private until the user gives a separate explicit publish instruction.
+- Keep repository visibility changes, release tags, registry publication, and external announcements behind a separate explicit publish instruction.
 
 ## Routing Rules
 
@@ -107,3 +108,17 @@ When reporting back to the user, include:
 - Review findings fixed or still open.
 - Whether the work is ready to commit; do not commit by default.
 - Any monitoring anomaly such as idle session, permission wait, empty review output, no diff, or failed check.
+- A Partner Session Receipt for non-trivial Claude Code workflows:
+
+```text
+[Partner session receipt]
+phase: <planning | codex implementation | claude polish | review | final fix>
+claude_session: <sessionId or none>
+claude_session_reused: <yes | no | n/a>
+new_claude_p_sessions: <0 | count | unknown>
+codex_passes: <number of implementation/fix passes>
+checks: <commands run or not run>
+anomalies: <none | permission wait | idle | empty review | failed check | other>
+```
+
+Do not fabricate token savings. When exact token telemetry is unavailable, report verifiable behavior instead: same Claude Code session reused, no fresh `claude -p` session, bounded handoff used, checks passed.

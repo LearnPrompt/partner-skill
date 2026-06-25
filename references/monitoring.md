@@ -91,3 +91,20 @@ When Claude Code stalls, preserve continuity before opening a new session:
 3. If the session exits, resume it with the printed `claude --resume <name-or-id>` command when available.
 4. If resume is unavailable, start a fresh session only with a bounded handoff and state that this is a token tradeoff.
 5. Do not use `claude -p` as a replacement for final review after a rich interactive planning session unless the user explicitly asks for that cheap one-off path.
+
+## Partner Session Receipt
+
+At the end of any non-trivial Partner run, report verifiable context-reuse facts:
+
+```text
+[Partner session receipt]
+phase: <planning | codex implementation | claude polish | review | final fix>
+claude_session: <sessionId or none>
+claude_session_reused: <yes | no | n/a>
+new_claude_p_sessions: <0 | count | unknown>
+codex_passes: <number>
+checks: <commands run or not run>
+anomalies: <none | permission wait | idle | empty review | failed check | other>
+```
+
+Use exact token counts only when telemetry is available. Otherwise, the receipt proves the cheaper behavior by showing that the same Claude Code session was reused and no fresh `claude -p` review session was spawned.

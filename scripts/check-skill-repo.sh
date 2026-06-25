@@ -73,6 +73,16 @@ else
   fail=$((fail + 1))
 fi
 
+if grep -q 'Partner Session Receipt' SKILL.md && \
+  grep -q 'new_claude_p_sessions' SKILL.md && \
+  grep -q 'Partner Session Receipt' README.md && \
+  grep -q 'session-receipt-required' test-prompts.json; then
+  echo "PASS Partner Session Receipt contract"
+else
+  echo "FAIL Partner Session Receipt contract must be present in SKILL.md, README.md, and test-prompts.json"
+  fail=$((fail + 1))
+fi
+
 if find . -path './.git' -prune -o -type f \( -name '.env' -o -name '.env.*' \) -print | grep -q .; then
   echo "FAIL .env-like files are tracked or present in the package tree"
   fail=$((fail + 1))
