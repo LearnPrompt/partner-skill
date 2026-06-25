@@ -47,6 +47,7 @@ Before this pass:
 After this pass:
 
 - README has install, triggers, evidence, example, safety, file map, and release checklist.
+- README now follows the LearnPrompt public style: Chinese `README.md`, English `README.en.md`, language switch, badges, 30-second install, one-line usage, visible proof, and verification.
 - `install.sh` supports Codex, Claude Code, Agents, and all targets.
 - `scripts/check-skill-repo.sh` verifies package structure, prompt schema, identity, bare `搭子` trigger, showcase asset, secret scan, and high-risk command mentions.
 - `references/handoff-template.md` encodes bounded Claude Code handoff.
@@ -54,14 +55,14 @@ After this pass:
 - `references/monitoring.md` now prefers same-session recovery before expensive fresh Claude sessions.
 - Partner now requires a Session Receipt so same-session reuse is visible instead of only promised.
 - `examples/skill-inventory-miniloop.md` documents the first real Partner run.
-- `assets/showcase.gif` gives GitHub visitors a first-screen workflow preview.
+- `assets/showcase.gif` gives GitHub visitors a readable budget/Session Receipt preview instead of an abstract diagram.
 
 Estimated score:
 
 ```text
 Before: 80 / 100
 After: 95 / 100
-Public-ready with receipt: 97 / 100
+Public-ready with split README and budget GIF: 98 / 100
 ```
 
 Remaining gap after public launch:

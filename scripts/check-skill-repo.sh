@@ -29,6 +29,7 @@ check_dir() {
 
 check_file "SKILL.md"
 check_file "README.md"
+check_file "README.en.md"
 check_file "test-prompts.json"
 check_file "install.sh"
 check_file "LICENSE"
@@ -63,6 +64,13 @@ if grep -q '搭子.skill' README.md && grep -q '我的 Claude Code 和 Codex 天
   echo "PASS README identity"
 else
   echo "FAIL README must include Partner identity and slogan"
+  fail=$((fail + 1))
+fi
+
+if grep -q 'README.en.md' README.md && grep -q 'README.md' README.en.md; then
+  echo "PASS README language split"
+else
+  echo "FAIL README.md and README.en.md must link to each other"
   fail=$((fail + 1))
 fi
 
