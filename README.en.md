@@ -67,7 +67,7 @@ The showcase makes the contrast obvious:
 - **Claude Code polish**: the same Claude session handles UI taste, motion direction, edge-state review, and final judgment.
 - **Partner Session Receipt**: the ending proves `new_claude_p_sessions: 0`, so savings are visible instead of hand-wavy.
 
-The visual direction borrows the mechanism of cinematic MotionSites cases such as `Velorah`: night stage, star field, blue-gold glow, and story-first contrast. It does not copy third-party assets.
+The visual direction borrows the mechanism of cinematic MotionSites template heroes: dark stage, tilted product surfaces, violet-magenta glow, and story-first contrast. It does not copy third-party assets.
 
 ## Cost Pressure Model
 

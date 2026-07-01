@@ -66,7 +66,7 @@ bash install.sh --target claude
 - **Claude Code polish**：同一个 Claude 会话负责 UI 口味、动效方向、边界审查。
 - **Partner Session Receipt**：最后证明 `new_claude_p_sessions: 0`，不把“省钱”说成玄学。
 
-视觉方向参考 MotionSites 上 `Velorah` 这类 cinematic hero 的机制：夜色舞台、星点、蓝金发光和故事感；没有复制第三方素材。
+视觉方向参考 MotionSites 模板页里常见的 cinematic hero 机制：暗色舞台、斜置产品界面、紫粉发光和故事感；没有复制第三方素材。
 
 ## 成本压力模型
 
