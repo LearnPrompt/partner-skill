@@ -72,6 +72,8 @@ bash install.sh --target claude
 
 Partner 不是“多叫一个模型”，而是**让 Claude Code 不重复冷启动**。当前 README 使用的是 showcase workload model，不是 API billing telemetry；没有精确 token 日志时，不编造“省了多少 token”。
 
+这张表由 `scripts/showcase-cost-ledger.py` 生成；源数据在 `examples/showcase-cost-ledger.json`。
+
 | 没有 Partner | 有 Partner |
 |---|---|
 | Claude 规划一次，Codex 改完后又新开 Claude review | 同一个 Claude Code 会话保留计划上下文 |
@@ -155,10 +157,13 @@ docs/claude-code-refinement-brief.md
 docs/showcase-cost-model.md      Showcase 成本压力模型与真实 token 记录字段
 docs/release-readiness-report.md 发布就绪度检查记录
 examples/session-receipt.md      Minimal visible proof of same-session reuse
+examples/showcase-cost-ledger.json
+                                  三种模式的成本压力 ledger
 references/monitoring.md         How Codex monitors Claude Code progress
 references/handoff-template.md   Bounded context packet for Claude Code polish/review
 references/darwin-ratchet.md     Validation-gated improvement rules
 scripts/generate-showcase-gif.py Rebuilds the README showcase asset
+scripts/showcase-cost-ledger.py  Rebuilds the showcase cost-pressure ledger
 scripts/check-skill-repo.sh      Publish readiness smoke check
 examples/skill-inventory-miniloop.md
 ```
@@ -178,6 +183,7 @@ examples/skill-inventory-miniloop.md
 bash scripts/check-skill-repo.sh .
 jq -r '.[].id' test-prompts.json
 python3 scripts/generate-showcase-gif.py
+SOURCE_DATE_EPOCH=1782921600 python3 scripts/showcase-cost-ledger.py
 ```
 
 合格表现：
@@ -185,6 +191,7 @@ python3 scripts/generate-showcase-gif.py
 - `SKILL.md` 里有裸词 `搭子` 触发；
 - README 能在 10 秒内讲清“少开 Claude 冷启动会话”；
 - `assets/showcase.gif` 能看懂预算差异；
+- `examples/showcase-cost-ledger.json` 能复现三种模式的成本压力表；
 - `Partner Session Receipt` 在 `SKILL.md`、README 和测试 prompt 里都有；
 - 本地检查 `fail=0`，只允许安全文档里的高风险命令 warning。
 

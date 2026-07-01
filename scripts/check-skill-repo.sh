@@ -33,6 +33,7 @@ check_file "README.en.md"
 check_file "test-prompts.json"
 check_file "install.sh"
 check_file "LICENSE"
+check_file "examples/showcase-cost-ledger.json"
 check_file "docs/current-progress.md"
 check_file "docs/claude-code-refinement-brief.md"
 check_file "docs/showcase-cost-model.md"
@@ -94,6 +95,15 @@ if [ -s assets/showcase.gif ] && grep -q 'assets/showcase.gif' README.md; then
   echo "PASS showcase asset"
 else
   echo "FAIL assets/showcase.gif must exist and be referenced from README.md"
+  fail=$((fail + 1))
+fi
+
+if [ -s examples/showcase-cost-ledger.json ] && \
+  grep -q 'examples/showcase-cost-ledger.json' README.md && \
+  grep -q 'examples/showcase-cost-ledger.json' README.en.md; then
+  echo "PASS showcase cost ledger"
+else
+  echo "FAIL showcase cost ledger must exist and be linked from both README files"
   fail=$((fail + 1))
 fi
 

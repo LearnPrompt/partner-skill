@@ -67,3 +67,37 @@ Partner saved 70% of Claude tokens.
 ```
 
 That claim requires exact Claude and Codex token telemetry from the run.
+
+## Rebuild The Ledger
+
+```bash
+SOURCE_DATE_EPOCH=1782921600 python3 scripts/showcase-cost-ledger.py --markdown
+```
+
+Default output:
+
+```text
+examples/showcase-cost-ledger.json
+```
+
+To attach measured token telemetry later:
+
+```bash
+python3 scripts/showcase-cost-ledger.py \
+  --measured-json path/to/measured-tokens.json \
+  --out examples/showcase-cost-ledger.json
+```
+
+The measured JSON is keyed by mode:
+
+```json
+{
+  "partner": {
+    "codex_input_tokens": 120000,
+    "codex_output_tokens": 8000,
+    "claude_input_tokens": 30000,
+    "claude_output_tokens": 5000,
+    "source": "provider telemetry export"
+  }
+}
+```

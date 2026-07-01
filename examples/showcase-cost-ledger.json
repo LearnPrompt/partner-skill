@@ -1,0 +1,72 @@
+{
+  "schema": "partner.showcase_cost_ledger.v1",
+  "generated_at": "2026-07-01T16:00:00+00:00",
+  "claim_boundary": "Workload units are illustrative. Exact token-savings claims require measured token telemetry.",
+  "session_receipt_fields": [
+    "claude_session",
+    "claude_session_reused",
+    "new_claude_p_sessions",
+    "codex_passes",
+    "checks",
+    "anomalies"
+  ],
+  "modes": {
+    "codex_only": {
+      "label": "Codex-only",
+      "codex_workload_units": 100,
+      "claude_code_workload_units": 0,
+      "best_for": "Low-risk tasks with no UI taste requirement",
+      "claude_pressure_vs_pure_claude": 0.0,
+      "codex_share_of_workload": 1.0,
+      "claude_code_share_of_workload": 0.0,
+      "measured_tokens": {
+        "codex_input_tokens": "unknown",
+        "codex_output_tokens": "unknown",
+        "claude_input_tokens": "unknown",
+        "claude_output_tokens": "unknown",
+        "source": "not captured"
+      }
+    },
+    "partner": {
+      "label": "Partner",
+      "codex_workload_units": 70,
+      "claude_code_workload_units": 30,
+      "best_for": "UI-heavy or feature-heavy tasks where Claude API cost matters",
+      "claude_pressure_vs_pure_claude": 0.3,
+      "codex_share_of_workload": 0.7,
+      "claude_code_share_of_workload": 0.3,
+      "measured_tokens": {
+        "codex_input_tokens": "unknown",
+        "codex_output_tokens": "unknown",
+        "claude_input_tokens": "unknown",
+        "claude_output_tokens": "unknown",
+        "source": "not captured"
+      }
+    },
+    "pure_claude_code": {
+      "label": "Pure Claude Code",
+      "codex_workload_units": 0,
+      "claude_code_workload_units": 100,
+      "best_for": "Tiny tasks or when the user explicitly wants Claude to do everything",
+      "claude_pressure_vs_pure_claude": 1.0,
+      "codex_share_of_workload": 0.0,
+      "claude_code_share_of_workload": 1.0,
+      "measured_tokens": {
+        "codex_input_tokens": "unknown",
+        "codex_output_tokens": "unknown",
+        "claude_input_tokens": "unknown",
+        "claude_output_tokens": "unknown",
+        "source": "not captured"
+      }
+    }
+  },
+  "comparison": {
+    "partner_vs_pure_claude": {
+      "claude_pressure_reduction": 0.7,
+      "plain_english": "In the showcase model, Partner shifts implementation and verification to Codex, leaving Claude Code focused on plan, polish, and review."
+    },
+    "partner_vs_codex_only": {
+      "tradeoff": "Partner spends focused Claude Code judgment to gain planning, UI polish, and review quality that Codex-only may miss."
+    }
+  }
+}
