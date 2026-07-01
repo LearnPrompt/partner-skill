@@ -162,6 +162,7 @@ references/darwin-ratchet.md            Validation-gated improvement rules
 scripts/check-skill-repo.sh             Publish readiness smoke check
 scripts/generate-showcase-gif.py        Rebuilds the README showcase asset
 scripts/showcase-cost-ledger.py         Rebuilds the showcase cost-pressure ledger
+scripts/check-readme-parity.py          Checks that Chinese and English READMEs stay aligned
 ```
 
 ## Safety
@@ -177,6 +178,7 @@ scripts/showcase-cost-ledger.py         Rebuilds the showcase cost-pressure ledg
 
 ```bash
 bash scripts/check-skill-repo.sh .
+python3 scripts/check-readme-parity.py
 jq -r '.[].id' test-prompts.json
 python3 scripts/generate-showcase-gif.py
 SOURCE_DATE_EPOCH=1782921600 python3 scripts/showcase-cost-ledger.py
@@ -185,6 +187,7 @@ SOURCE_DATE_EPOCH=1782921600 python3 scripts/showcase-cost-ledger.py
 Passing evidence:
 
 - `SKILL.md` includes the bare `搭子` trigger.
+- `README.md` and `README.en.md` keep the same 11-section order.
 - README explains "fewer Claude cold starts" within 10 seconds.
 - `assets/showcase.gif` makes the budget difference readable.
 - `examples/showcase-cost-ledger.json` reproduces the three-mode cost-pressure table.

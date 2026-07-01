@@ -164,6 +164,7 @@ references/handoff-template.md   Bounded context packet for Claude Code polish/r
 references/darwin-ratchet.md     Validation-gated improvement rules
 scripts/generate-showcase-gif.py Rebuilds the README showcase asset
 scripts/showcase-cost-ledger.py  Rebuilds the showcase cost-pressure ledger
+scripts/check-readme-parity.py   检查中英文 README 章节和关键证据是否对齐
 scripts/check-skill-repo.sh      Publish readiness smoke check
 examples/skill-inventory-miniloop.md
 ```
@@ -181,6 +182,7 @@ examples/skill-inventory-miniloop.md
 
 ```bash
 bash scripts/check-skill-repo.sh .
+python3 scripts/check-readme-parity.py
 jq -r '.[].id' test-prompts.json
 python3 scripts/generate-showcase-gif.py
 SOURCE_DATE_EPOCH=1782921600 python3 scripts/showcase-cost-ledger.py
@@ -189,6 +191,7 @@ SOURCE_DATE_EPOCH=1782921600 python3 scripts/showcase-cost-ledger.py
 合格表现：
 
 - `SKILL.md` 里有裸词 `搭子` 触发；
+- `README.md` 和 `README.en.md` 的 11 个章节顺序完全对齐；
 - README 能在 10 秒内讲清“少开 Claude 冷启动会话”；
 - `assets/showcase.gif` 能看懂预算差异；
 - `examples/showcase-cost-ledger.json` 能复现三种模式的成本压力表；

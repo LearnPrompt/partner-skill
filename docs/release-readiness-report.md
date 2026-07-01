@@ -50,6 +50,7 @@ After this pass:
 - README follows the LearnPrompt public style: Chinese `README.md`, English `README.en.md`, language switch, badges, 30-second install, one-line usage, visible proof, and verification.
 - `install.sh` supports Codex, Claude Code, Agents, and all targets.
 - `scripts/check-skill-repo.sh` verifies package structure, prompt schema, identity, bare `搭子` trigger, showcase asset, secret scan, and high-risk command mentions.
+- `scripts/check-readme-parity.py` verifies the Chinese and English READMEs keep the same section order and required proof markers.
 - `references/handoff-template.md` encodes bounded Claude Code handoff.
 - `references/darwin-ratchet.md` encodes validation-gated edits.
 - `references/monitoring.md` prefers same-session recovery before expensive fresh Claude sessions.
@@ -83,6 +84,7 @@ Validation gate:
 
 ```bash
 bash scripts/check-skill-repo.sh .
+python3 scripts/check-readme-parity.py
 jq -e 'type == "array" and length == 9 and all(.[]; has("id") and has("prompt") and has("expected_behavior") and has("must_not"))' test-prompts.json
 bash install.sh --target codex --dry-run
 bash install.sh --target claude --dry-run

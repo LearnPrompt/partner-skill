@@ -43,6 +43,9 @@ check_dir "examples"
 check_dir "scripts"
 check_dir "assets"
 
+python3 scripts/check-readme-parity.py
+echo "PASS README parity gate"
+
 if command -v jq >/dev/null 2>&1; then
   jq -e 'type == "array" and length >= 4 and all(.[]; has("id") and has("prompt") and has("expected_behavior") and has("must_not"))' test-prompts.json >/dev/null
   echo "PASS test-prompts.json schema"
