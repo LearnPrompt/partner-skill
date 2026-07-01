@@ -8,7 +8,7 @@ Slogan: 我的 Claude Code 和 Codex 天下第一好。
 
 ## Verdict
 
-Partner is now ready for a public GitHub repository as a workflow skill. Release tags, registry publication, and external announcements remain separate user-authorized actions.
+As of 2026-06-25, Partner is ready for a public GitHub repository as a workflow skill. Release tags, registry publication, and external announcements remain separate user-authorized actions.
 
 ## Office Hours Lens
 
@@ -47,22 +47,23 @@ Before this pass:
 After this pass:
 
 - README has install, triggers, evidence, example, safety, file map, and release checklist.
-- README now follows the LearnPrompt public style: Chinese `README.md`, English `README.en.md`, language switch, badges, 30-second install, one-line usage, visible proof, and verification.
+- README follows the LearnPrompt public style: Chinese `README.md`, English `README.en.md`, language switch, badges, 30-second install, one-line usage, visible proof, and verification.
 - `install.sh` supports Codex, Claude Code, Agents, and all targets.
 - `scripts/check-skill-repo.sh` verifies package structure, prompt schema, identity, bare `搭子` trigger, showcase asset, secret scan, and high-risk command mentions.
 - `references/handoff-template.md` encodes bounded Claude Code handoff.
 - `references/darwin-ratchet.md` encodes validation-gated edits.
-- `references/monitoring.md` now prefers same-session recovery before expensive fresh Claude sessions.
+- `references/monitoring.md` prefers same-session recovery before expensive fresh Claude sessions.
 - Partner now requires a Session Receipt so same-session reuse is visible instead of only promised.
 - `examples/skill-inventory-miniloop.md` documents the first real Partner run.
-- `assets/showcase.gif` gives GitHub visitors a readable budget/Session Receipt preview instead of an abstract diagram.
+- `assets/showcase.gif` gives GitHub visitors a cinematic contrast: a flat Codex-only first pass, then a Partner-driven Claude Code polish loop, then a visible cost-pressure model and Session Receipt.
+- `docs/showcase-cost-model.md` separates verified receipt facts from illustrative workload units, so public claims do not fake exact token savings.
 
 Estimated score:
 
 ```text
 Before: 80 / 100
 After: 95 / 100
-Public-ready with split README and budget GIF: 98 / 100
+Public-ready with split README and cinematic Partner showcase: 98 / 100
 ```
 
 Remaining gap after public launch:

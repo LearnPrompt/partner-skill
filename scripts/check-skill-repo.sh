@@ -33,6 +33,10 @@ check_file "README.en.md"
 check_file "test-prompts.json"
 check_file "install.sh"
 check_file "LICENSE"
+check_file "docs/current-progress.md"
+check_file "docs/claude-code-refinement-brief.md"
+check_file "docs/showcase-cost-model.md"
+check_file "docs/release-readiness-report.md"
 check_dir "references"
 check_dir "examples"
 check_dir "scripts"
@@ -74,6 +78,18 @@ else
   fail=$((fail + 1))
 fi
 
+if grep -q 'docs/current-progress.md' README.md && \
+  grep -q 'docs/claude-code-refinement-brief.md' README.md && \
+  grep -q 'docs/showcase-cost-model.md' README.md && \
+  grep -q 'docs/current-progress.md' README.en.md && \
+  grep -q 'docs/claude-code-refinement-brief.md' README.en.md && \
+  grep -q 'docs/showcase-cost-model.md' README.en.md; then
+  echo "PASS docs handoff entrypoints"
+else
+  echo "FAIL README files must link current progress, cost model, and Claude Code refinement docs"
+  fail=$((fail + 1))
+fi
+
 if [ -s assets/showcase.gif ] && grep -q 'assets/showcase.gif' README.md; then
   echo "PASS showcase asset"
 else
@@ -88,6 +104,15 @@ if grep -q 'Partner Session Receipt' SKILL.md && \
   echo "PASS Partner Session Receipt contract"
 else
   echo "FAIL Partner Session Receipt contract must be present in SKILL.md, README.md, and test-prompts.json"
+  fail=$((fail + 1))
+fi
+
+if grep -q 'partner-session.sh' docs/claude-code-refinement-brief.md && \
+  grep -q 'reusing one Claude Code conversation' docs/claude-code-refinement-brief.md && \
+  grep -q 'Claude Code Refinement Brief' docs/current-progress.md; then
+  echo "PASS Claude Code refinement brief"
+else
+  echo "FAIL Claude Code refinement brief must define same-session refinement scope"
   fail=$((fail + 1))
 fi
 

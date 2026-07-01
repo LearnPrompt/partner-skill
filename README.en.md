@@ -12,7 +12,7 @@
 
 **Let Claude Code handle high-value planning, polish, and review. Let Codex implement, monitor, and verify. End with a Session Receipt that proves whether you avoided fresh Claude cold starts.**
 
-[Install](#install) · [Use It](#use-it) · [Budget Demo](#budget-demo) · [What It Solves](#what-it-solves) · [Safety](#safety) · [Verify](#verify)
+[Install](#install) · [Use It](#use-it) · [Main Showcase](#main-showcase) · [Cost Pressure Model](#cost-pressure-model) · [What It Solves](#what-it-solves) · [Safety](#safety) · [Verify](#verify)
 
 </div>
 
@@ -56,17 +56,36 @@ Short version:
 Partner: Claude plans, Codex implements, same-session review, then receipt.
 ```
 
-## Budget Demo
+## Main Showcase
 
 ![Partner session budget demo](assets/showcase.gif)
 
-Partner is not "call Claude more." Partner is **avoid repeated Claude cold starts**.
+The showcase makes the contrast obvious:
+
+- **Codex-only first pass**: functional, but flat, motionless, and not worth sharing.
+- **Partner trigger**: one prompt turns Claude Code and Codex routing into a protocol.
+- **Claude Code polish**: the same Claude session handles UI taste, motion direction, edge-state review, and final judgment.
+- **Partner Session Receipt**: the ending proves `new_claude_p_sessions: 0`, so savings are visible instead of hand-wavy.
+
+The visual direction borrows the mechanism of cinematic MotionSites cases such as `Velorah`: night stage, star field, blue-gold glow, and story-first contrast. It does not copy third-party assets.
+
+## Cost Pressure Model
+
+Partner is not "call Claude more." Partner is **avoid repeated Claude cold starts**. This README uses a showcase workload model, not API billing telemetry; without exact token logs, Partner does not invent token-savings numbers.
 
 | Without Partner | With Partner |
 |---|---|
 | Claude plans once, then a fresh Claude review session starts after Codex edits | One Claude Code session keeps the plan context |
 | Each review re-explains the repo, goal, and diff | Codex sends a bounded handoff back to the same session |
 | Token savings stay hand-wavy | The receipt says `new_claude_p_sessions: 0` |
+
+Three operating modes:
+
+| Mode | Codex carries | Claude Code carries | Claude pressure | Best for |
+|---|---:|---:|---:|---|
+| Codex-only | 100% implementation and checks | 0% | 0.0x, but lacks Claude UI / review taste | Low-risk tasks with no UI taste requirement |
+| Partner | ~70% implementation, checks, fixes | ~30% planning, polish, review | 0.3x, while avoiding repeated cold starts | UI-heavy or feature-heavy tasks where Claude API cost matters |
+| Pure Claude Code | 0% | 100% full workflow | 1.0x, including mechanical edits | Tiny tasks or when the user explicitly wants Claude to do everything |
 
 Receipt example:
 
@@ -122,6 +141,24 @@ Chinese triggers such as `搭子` and `搭子.skill` are also first-class trigge
 - Monitoring evidence: PTY output, `claude agents --json`, transcript structure, optional task files, and repo checks.
 - A Session Receipt: proof of session reuse, fresh `claude -p` count, checks, and anomalies.
 - A Darwin-style ratchet: improve one workflow dimension at a time and keep only verified gains.
+
+## File Map
+
+```text
+SKILL.md                                Runtime instructions for Codex/Claude-compatible agents
+README.md                               Chinese entrypoint
+README.en.md                            English entrypoint
+docs/current-progress.md                Current release progress, verified checks, and next step
+docs/claude-code-refinement-brief.md    Focused Claude Code refinement handoff
+docs/showcase-cost-model.md             Showcase cost-pressure model and real token capture fields
+docs/release-readiness-report.md        Publish readiness check record
+examples/session-receipt.md             Minimal visible proof of same-session reuse
+references/monitoring.md                How Codex monitors Claude Code progress
+references/handoff-template.md          Bounded context packet for Claude Code polish/review
+references/darwin-ratchet.md            Validation-gated improvement rules
+scripts/check-skill-repo.sh             Publish readiness smoke check
+scripts/generate-showcase-gif.py        Rebuilds the README showcase asset
+```
 
 ## Safety
 

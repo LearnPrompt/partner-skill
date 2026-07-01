@@ -12,7 +12,7 @@
 
 **让 Claude Code 负责高价值判断，让 Codex 负责长上下文落地，并用一张 Session Receipt 证明没有乱开新 Claude 会话烧预算。**
 
-[30 秒装上](#30-秒装上) · [一句话用起来](#一句话用起来) · [看预算差异](#看预算差异) · [它解决什么](#它解决什么) · [安全边界](#安全边界) · [验证](#验证)
+[30 秒装上](#30-秒装上) · [一句话用起来](#一句话用起来) · [主-Showcase](#主-showcase) · [成本压力模型](#成本压力模型) · [它解决什么](#它解决什么) · [安全边界](#安全边界) · [验证](#验证)
 
 </div>
 
@@ -55,17 +55,36 @@ bash install.sh --target claude
 搭子，Claude 计划，Codex 实现，同会话 review，最后出 receipt。
 ```
 
-## 看预算差异
+## 主 Showcase
 
 ![Partner session budget demo](assets/showcase.gif)
 
-Partner 不是“多叫一个模型”，而是**让 Claude Code 不重复冷启动**：
+这个 showcase 故意把反差做大：
+
+- **纯 Codex first pass**：功能对，但界面平、没有动效、没有传播感。
+- **搭子触发**：用一句话把 Claude Code 和 Codex 的分工固定成协议。
+- **Claude Code polish**：同一个 Claude 会话负责 UI 口味、动效方向、边界审查。
+- **Partner Session Receipt**：最后证明 `new_claude_p_sessions: 0`，不把“省钱”说成玄学。
+
+视觉方向参考 MotionSites 上 `Velorah` 这类 cinematic hero 的机制：夜色舞台、星点、蓝金发光和故事感；没有复制第三方素材。
+
+## 成本压力模型
+
+Partner 不是“多叫一个模型”，而是**让 Claude Code 不重复冷启动**。当前 README 使用的是 showcase workload model，不是 API billing telemetry；没有精确 token 日志时，不编造“省了多少 token”。
 
 | 没有 Partner | 有 Partner |
 |---|---|
 | Claude 规划一次，Codex 改完后又新开 Claude review | 同一个 Claude Code 会话保留计划上下文 |
 | 每次 review 都重新解释 repo、目标、diff | Codex 只回传 bounded handoff |
 | “省 token”说不清楚 | receipt 明确写 `new_claude_p_sessions: 0` |
+
+三种模式的对比：
+
+| 模式 | Codex 承担 | Claude Code 承担 | Claude 压力 | 适合场景 |
+|---|---:|---:|---:|---|
+| 纯 Codex | 100% 实现与检查 | 0% | 0.0x，但缺少 Claude 的 UI / review 视角 | 低风险、无 UI 口味要求 |
+| 搭子 Partner | 约 70% 实现、检查、修复 | 约 30% 计划、polish、review | 0.3x，且避免重复 cold start | UI-heavy、功能多、需要省 Claude API 成本 |
+| 纯 Claude Code | 0% | 100% 全流程 | 1.0x，机械改动也由 Claude 承担 | 很短任务或用户明确要 Claude 全包 |
 
 标准收尾小票：
 
@@ -130,6 +149,11 @@ README.en.md                     English entrypoint
 install.sh                       Local installer for Codex, Claude Code, Agents, or all targets
 test-prompts.json                Trigger and behavior regression prompts
 assets/showcase.gif              Session budget / receipt showcase
+docs/current-progress.md         当前公开化进度、已验证检查与下一步
+docs/claude-code-refinement-brief.md
+                                  Claude Code 精细化调整交接包
+docs/showcase-cost-model.md      Showcase 成本压力模型与真实 token 记录字段
+docs/release-readiness-report.md 发布就绪度检查记录
 examples/session-receipt.md      Minimal visible proof of same-session reuse
 references/monitoring.md         How Codex monitors Claude Code progress
 references/handoff-template.md   Bounded context packet for Claude Code polish/review
