@@ -159,6 +159,8 @@ docs/release-readiness-report.md 发布就绪度检查记录
 examples/session-receipt.md      Minimal visible proof of same-session reuse
 examples/showcase-cost-ledger.json
                                   三种模式的成本压力 ledger
+examples/skill-inventory-miniloop.md
+                                  保留的安全 skill 小闭环示例
 references/monitoring.md         How Codex monitors Claude Code progress
 references/handoff-template.md   Bounded context packet for Claude Code polish/review
 references/darwin-ratchet.md     Validation-gated improvement rules
@@ -166,7 +168,6 @@ scripts/generate-showcase-gif.py Rebuilds the README showcase asset
 scripts/showcase-cost-ledger.py  Rebuilds the showcase cost-pressure ledger
 scripts/check-readme-parity.py   检查中英文 README 章节和关键证据是否对齐
 scripts/check-skill-repo.sh      Publish readiness smoke check
-examples/skill-inventory-miniloop.md
 ```
 
 ## 安全边界

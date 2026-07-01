@@ -1,6 +1,6 @@
 # Partner Release Readiness Report
 
-Date: 2026-06-25
+Date: 2026-07-01
 
 Skill: `partner-skill` / 搭子.skill (Partner)
 
@@ -8,7 +8,7 @@ Slogan: 我的 Claude Code 和 Codex 天下第一好。
 
 ## Verdict
 
-As of 2026-06-25, Partner is ready for a public GitHub repository as a workflow skill. Release tags, registry publication, and external announcements remain separate user-authorized actions.
+As of 2026-07-01, Partner is ready for a public GitHub repository as a workflow skill. Release tags, registry publication, pushes, and external announcements remain separate user-authorized actions.
 
 ## Office Hours Lens
 
@@ -55,9 +55,11 @@ After this pass:
 - `references/darwin-ratchet.md` encodes validation-gated edits.
 - `references/monitoring.md` prefers same-session recovery before expensive fresh Claude sessions.
 - Partner now requires a Session Receipt so same-session reuse is visible instead of only promised.
-- `examples/skill-inventory-miniloop.md` documents the first real Partner run.
-- `assets/showcase.gif` gives GitHub visitors a cinematic contrast: a flat Codex-only first pass, then a Partner-driven Claude Code polish loop, then a visible cost-pressure model and Session Receipt.
+- `examples/skill-inventory-miniloop.md` is kept only as the retained safety-skill mini-loop example.
+- `assets/showcase.gif` gives GitHub visitors a strong cinematic contrast: a flat Codex-only first pass, then a Partner-driven Claude Code polish loop, then a visible cost-pressure model and Session Receipt.
+- The showcase generator now uses a MotionSites-style visual mechanism: dark stage, tilted product surfaces, violet-magenta glow, and story-first contrast. It generates original local artwork and does not copy third-party assets.
 - `docs/showcase-cost-model.md` separates verified receipt facts from illustrative workload units, so public claims do not fake exact token savings.
+- `scripts/check-readme-parity.py` now gates the required File Map entries in both READMEs, not just top-level headings.
 
 Estimated score:
 
@@ -67,9 +69,10 @@ After: 95 / 100
 Public-ready with split README and cinematic Partner showcase: 98 / 100
 ```
 
-Remaining gap after public launch:
+Non-blocking future improvements:
 
-- Run one more full UI-oriented loop where Claude Code performs the polish pass, `/codex:review` completes cleanly, and the Session Receipt shows `new_claude_p_sessions: 0`.
+- Capture exact provider token telemetry for a future measured-cost case study. The current public claim intentionally stays at workload-unit pressure because reliable API billing telemetry was not captured.
+- Add a small `scripts/partner-session.sh` helper if same-session Claude Code reuse needs more automation.
 - Consider a public `v0.1.0` tag only after a separate release decision.
 
 ## Darwin Lens
@@ -90,6 +93,7 @@ bash install.sh --target codex --dry-run
 bash install.sh --target claude --dry-run
 python3 scripts/generate-showcase-gif.py
 file assets/showcase.gif
+SOURCE_DATE_EPOCH=1782921600 python3 scripts/showcase-cost-ledger.py
 ```
 
 Result:
@@ -99,6 +103,7 @@ PASS package readiness
 PASS prompt schema
 PASS installer dry runs
 PASS showcase GIF exists and is referenced
+PASS showcase cost ledger exists and is referenced
 PASS Session Receipt contract present
 WARN high-risk command text found only in safety warnings
 ```
@@ -117,7 +122,7 @@ Blocked actions without explicit user authorization:
 - Publish to any public skill registry.
 - Announce externally.
 
-## Next Loop
+## Next Optional Loop
 
 Run Partner on one more frontend/UI task and require the complete phase:
 

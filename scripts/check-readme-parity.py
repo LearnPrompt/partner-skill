@@ -35,6 +35,29 @@ REQUIRED_MARKERS = [
     "scripts/showcase-cost-ledger.py",
 ]
 
+FILE_MAP_ENTRIES = [
+    "SKILL.md",
+    "README.md",
+    "README.en.md",
+    "install.sh",
+    "test-prompts.json",
+    "assets/showcase.gif",
+    "docs/current-progress.md",
+    "docs/claude-code-refinement-brief.md",
+    "docs/showcase-cost-model.md",
+    "docs/release-readiness-report.md",
+    "examples/session-receipt.md",
+    "examples/showcase-cost-ledger.json",
+    "examples/skill-inventory-miniloop.md",
+    "references/monitoring.md",
+    "references/handoff-template.md",
+    "references/darwin-ratchet.md",
+    "scripts/generate-showcase-gif.py",
+    "scripts/showcase-cost-ledger.py",
+    "scripts/check-readme-parity.py",
+    "scripts/check-skill-repo.sh",
+]
+
 
 def read(path: Path) -> str:
     return path.read_text(encoding="utf-8")
@@ -46,6 +69,28 @@ def headings(markdown: str) -> list[str]:
 
 def anchors(markdown: str) -> set[str]:
     return set(re.findall(r"\]\(#([^)]+)\)", markdown))
+
+
+def section(markdown: str, heading: str) -> str:
+    start = markdown.find(heading)
+    if start < 0:
+        return ""
+    next_heading = markdown.find("\n## ", start + len(heading))
+    if next_heading < 0:
+        return markdown[start:]
+    return markdown[start:next_heading]
+
+
+def assert_order(markdown: str, entries: list[str], label: str, failures: list[str]) -> None:
+    positions = []
+    for entry in entries:
+        index = markdown.find(entry)
+        if index < 0:
+            failures.append(f"{label} File Map missing: {entry}")
+        positions.append(index)
+    present_positions = [index for index in positions if index >= 0]
+    if present_positions != sorted(present_positions):
+        failures.append(f"{label} File Map entries are not in the expected order")
 
 
 def main() -> int:
@@ -73,6 +118,9 @@ def main() -> int:
             failures.append(f"README.md missing marker: {marker}")
         if marker not in en:
             failures.append(f"README.en.md missing marker: {marker}")
+
+    assert_order(section(zh, "## 文件结构"), FILE_MAP_ENTRIES, "README.md", failures)
+    assert_order(section(en, "## File Map"), FILE_MAP_ENTRIES, "README.en.md", failures)
 
     zh_anchor_count = len(anchors(zh))
     en_anchor_count = len(anchors(en))

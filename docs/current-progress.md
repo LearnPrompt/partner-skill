@@ -15,7 +15,9 @@ Local path: `/Users/carl/projects/partner-skill`
 - The public README is Chinese-first and links to `README.en.md`.
 - The English README links back to `README.md`.
 - `assets/showcase.gif` is now the primary cinematic showcase: boring Codex-only first pass -> Partner trigger -> Claude Code polish -> cost-pressure model -> Session Receipt.
+- The showcase was rebuilt on 2026-07-01 with a MotionSites-style visual mechanism: dark stage, tilted product surfaces, violet-magenta glow, and obvious before/after contrast. It uses generated local artwork only.
 - `Partner Session Receipt` is part of the runtime contract, README proof, test prompts, example, and package check.
+- `examples/skill-inventory-miniloop.md` is the one retained previous safety-skill mini-loop example; it is not the main public showcase.
 - The Claude Code refinement task is documented but not implemented in code.
 - No `scripts/partner-session.sh` helper exists as of 2026-07-01.
 
@@ -23,6 +25,10 @@ Local path: `/Users/carl/projects/partner-skill`
 
 - `258779f` — Add Partner session receipt for public release.
 - `2eac3c1` — Split README languages and rebuild budget showcase.
+- `ad19e6c` — Upgrade Partner showcase and release docs.
+- `efed0d8` — Add reproducible Partner cost ledger.
+- `8ebb5cf` — Add README parity release gate.
+- `3418b60` — Make showcase visually obvious.
 
 ## Verification Already Passing
 
@@ -32,6 +38,7 @@ jq -e 'type == "array" and length == 9 and all(.[]; has("id") and has("prompt") 
 bash install.sh --target codex --dry-run
 bash install.sh --target claude --dry-run
 python3 scripts/generate-showcase-gif.py
+SOURCE_DATE_EPOCH=1782921600 python3 scripts/showcase-cost-ledger.py
 git diff --check
 ```
 

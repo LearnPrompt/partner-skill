@@ -150,19 +150,23 @@ Chinese triggers such as `搭子` and `搭子.skill` are also first-class trigge
 SKILL.md                                Runtime instructions for Codex/Claude-compatible agents
 README.md                               Chinese entrypoint
 README.en.md                            English entrypoint
+install.sh                              Local installer for Codex, Claude Code, Agents, or all targets
+test-prompts.json                       Trigger and behavior regression prompts
+assets/showcase.gif                     Session budget / receipt showcase
 docs/current-progress.md                Current release progress, verified checks, and next step
 docs/claude-code-refinement-brief.md    Focused Claude Code refinement handoff
 docs/showcase-cost-model.md             Showcase cost-pressure model and real token capture fields
 docs/release-readiness-report.md        Publish readiness check record
 examples/session-receipt.md             Minimal visible proof of same-session reuse
 examples/showcase-cost-ledger.json      Cost-pressure ledger for the three operating modes
+examples/skill-inventory-miniloop.md    Retained safety-skill mini-loop example
 references/monitoring.md                How Codex monitors Claude Code progress
 references/handoff-template.md          Bounded context packet for Claude Code polish/review
 references/darwin-ratchet.md            Validation-gated improvement rules
-scripts/check-skill-repo.sh             Publish readiness smoke check
 scripts/generate-showcase-gif.py        Rebuilds the README showcase asset
 scripts/showcase-cost-ledger.py         Rebuilds the showcase cost-pressure ledger
 scripts/check-readme-parity.py          Checks that Chinese and English READMEs stay aligned
+scripts/check-skill-repo.sh             Publish readiness smoke check
 ```
 
 ## Safety

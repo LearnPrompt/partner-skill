@@ -1,6 +1,6 @@
-# Skill Inventory Mini-Loop
+# Retained Safety Skill Mini-Loop
 
-This is the first real Partner run.
+This is the one retained pre-showcase example. It is not the main public showcase; the main showcase is `assets/showcase.gif`. Keep this file only as evidence that Partner can catch safety and monitoring problems during a real run.
 
 ## Prompt
 
@@ -23,7 +23,7 @@ Codex:
 
 ## Result
 
-Project: `skill-inventory`
+Project: `skill-inventory`, a local safety-audit helper for installed skills.
 
 What it does:
 
