@@ -88,8 +88,12 @@ fi
 
 if grep -q 'Showcase 正在重做' README.md && grep -q 'showcase is being redesigned' README.en.md; then
   echo "PASS showcase placeholder"
+elif [ -f assets/showcase.gif ] && grep -q 'assets/showcase.gif' README.md && grep -q 'assets/showcase.gif' README.en.md; then
+  echo "PASS showcase asset (gif)"
+elif [ -f assets/showcase.png ] && grep -q 'assets/showcase.png' README.md && grep -q 'assets/showcase.png' README.en.md; then
+  echo "PASS showcase asset"
 else
-  echo "FAIL README files must avoid publishing an unfinished showcase asset"
+  echo "FAIL README files must have a showcase placeholder or a valid showcase asset"
   fail=$((fail + 1))
 fi
 

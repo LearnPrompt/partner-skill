@@ -20,11 +20,11 @@
 
 ## Showcase
 
-Showcase 正在重做。上一版 GIF 没有把“Codex first pass 很平，Claude Code polish 后明显变好”讲清楚，所以先从公开 README 移除，避免误导第一次打开仓库的人。
+<div align=”center”>
+<img src=”assets/showcase.gif” alt=”Codex-only vs Partner: before/after UI contrast” width=”720” />
+</div>
 
-新的 showcase 会只保留一个主线：**Codex 做出能跑但平的页面 -> 搭子把同一个 Claude Code 会话接回来做 UI polish / review -> 最后用 Session Receipt 证明没有乱开新 Claude 会话**。
-
-在新图完成前，README 只保留协议、成本模型和可验证的小票，不把过程稿当成发布素材。
+左边是 Codex 单独做出来的——功能正确但视觉上没什么记忆点。右边是同一个 Claude Code 会话接回来做 UI polish 后的结果，右下角 `session: reused ✓` 说明没有新开 Claude 会话。
 
 ## 30 秒装上
 
@@ -67,7 +67,7 @@ bash install.sh --target claude
 
 Partner 的省钱逻辑不是“少用 Claude”，而是**别让 Claude 反复冷启动**。最贵的浪费通常不是那一次 polish，而是 Codex 改完之后又开一个全新的 Claude review，让它重新读项目、重新理解目标、重新建立上下文。
 
-当前 README 用的是 showcase workload model，不是 API billing telemetry。没有可靠 token 日志时，我们不编“省了多少 token”。这张表由 `scripts/showcase-cost-ledger.py` 生成，源数据在 `examples/showcase-cost-ledger.json`。
+当前 README 用的是 showcase workload model，不是 API billing telemetry。没有可靠数据支撑时，我们不声称能省多少 token。这张表由 `scripts/showcase-cost-ledger.py` 生成，源数据在 `examples/showcase-cost-ledger.json`。
 
 | 没有 Partner | 有 Partner |
 |---|---|
@@ -174,15 +174,6 @@ python3 scripts/check-readme-parity.py
 jq -r '.[].id' test-prompts.json
 SOURCE_DATE_EPOCH=1782921600 python3 scripts/showcase-cost-ledger.py
 ```
-
-合格表现：
-
-- `SKILL.md` 里有裸词 `搭子` 触发；
-- `README.md` 和 `README.en.md` 的 11 个章节顺序完全对齐；
-- README 不再展示未达标的 showcase 过程稿；
-- `examples/showcase-cost-ledger.json` 能复现三种模式的成本压力表；
-- `Partner Session Receipt` 在 `SKILL.md`、README 和测试 prompt 里都有；
-- 本地检查 `fail=0`，只允许安全文档里的高风险命令 warning。
 
 ## License
 
