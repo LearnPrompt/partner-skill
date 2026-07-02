@@ -21,7 +21,7 @@
 ## Showcase
 
 <div align=”center”>
-<img src=”assets/showcase.gif” alt=”Codex-only vs Partner: before/after UI contrast” width=”720” />
+<img src="assets/showcase.gif" alt="Codex-only vs Partner: before/after UI contrast" width="720" />
 </div>
 
 左边是 Codex 单独做出来的——功能正确但视觉上没什么记忆点。右边是同一个 Claude Code 会话接回来做 UI polish 后的结果，右下角 `session: reused ✓` 说明没有新开 Claude 会话。
