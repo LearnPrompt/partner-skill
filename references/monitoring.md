@@ -2,6 +2,34 @@
 
 Use these checks when Codex launches or supervises a Claude Code session.
 
+## Capability Probe
+
+The session-status, transcript, and task-file signals below depend on Claude
+Code CLI internals that can change between versions. Before relying on them,
+run:
+
+```bash
+bash "$PARTNER_DIR/scripts/check-claude-cli.sh"
+```
+
+(`$PARTNER_DIR` is the skill's install directory — see Tool Location in
+`SKILL.md`. The scripts do not live in the target repo.)
+
+The last output line is `MONITORING_LEVEL=full|degraded|none`. Record that
+value in the Partner Session Receipt and only claim the signals the probe
+confirmed. With `degraded`, fall back to PTY output plus repo evidence; with
+`none`, run Codex-only monitoring. Recovery paths for each anomaly are in
+`references/failure-playbook.md`.
+
+At session launch, also snapshot the transcript list so the receipt's
+new-session count is computed from evidence rather than recalled:
+
+```bash
+bash "$PARTNER_DIR/scripts/session-snapshot.sh" start --repo "$REPO"
+# ... at receipt time:
+bash "$PARTNER_DIR/scripts/session-snapshot.sh" diff --repo "$REPO"
+```
+
 ## Session Status
 
 List Claude Code sessions for the target repo:
@@ -102,9 +130,14 @@ phase: <planning | codex implementation | claude polish | review | final fix>
 claude_session: <sessionId or none>
 claude_session_reused: <yes | no | n/a>
 new_claude_p_sessions: <0 | count | unknown>
-codex_passes: <number>
+codex_passes: <number of implementation/fix passes>
 checks: <commands run or not run>
 anomalies: <none | permission wait | idle | empty review | failed check | other>
+monitoring_level: <full | degraded | none | unknown>
 ```
+
+Generate it with `python3 "$PARTNER_DIR/scripts/make-receipt.py"` (validates
+before emitting; `--save` persists it under `.partner/receipts/`). Validate a
+written receipt with `python3 "$PARTNER_DIR/scripts/validate-receipt.py" <file>`.
 
 Use exact token counts only when telemetry is available. Otherwise, the receipt proves the cheaper behavior by showing that the same Claude Code session was reused and no fresh `claude -p` review session was spawned.

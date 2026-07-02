@@ -91,6 +91,7 @@ def build_ledger(measured: dict[str, Any]) -> dict[str, Any]:
             "codex_passes",
             "checks",
             "anomalies",
+            "monitoring_level",
         ],
         "modes": modes,
         "comparison": {

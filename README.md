@@ -20,7 +20,7 @@
 
 ## Showcase
 
-<div align=”center”>
+<div align="center">
 <img src="assets/showcase.gif" alt="Codex-only vs Partner: before/after UI contrast" width="720" />
 </div>
 
@@ -94,6 +94,7 @@ new_claude_p_sessions: 0
 codex_passes: 2
 checks: bash scripts/check-skill-repo.sh .; jq schema check; git diff --check
 anomalies: none
+monitoring_level: full
 ```
 
 没有可靠 telemetry 时，Partner 只报告能验证的事实：是否复用同一个 Claude 会话，是否新开 `claude -p`，检查是否通过，有没有异常。
@@ -126,6 +127,7 @@ Codex:
 同一个 Claude Code 对话里先出 plan，你实现后再让它 polish 和 /codex:review。
 让 Claude skip 做完这个 UI 交互优化，你监控它。
 Claude 里跑 Codex Review 验收当前 diff，发现问题你来修。
+搭子，恢复上次任务，接着做。
 ```
 
 ## 它会交付什么
@@ -133,8 +135,9 @@ Claude 里跑 Codex Review 验收当前 diff，发现问题你来修。
 - 清晰分工：Claude Code 负责计划、polish、review；Codex 负责实现、监控、验证、修复。
 - 省预算默认策略：小中型任务尽量复用同一个 Claude Code 会话。
 - Bounded handoff：只把 Claude 需要的计划、diff stat、检查结果和风险交回去。
-- 监控清单：PTY、`claude agents --json`、transcript、task files、git diff/test 五层证据。
-- Session Receipt：把是否复用会话、是否新开 `claude -p`、检查和异常写清楚。
+- 监控清单：PTY、`claude agents --json`、transcript、task files、git diff/test 五层证据，配 `scripts/check-claude-cli.sh` 能力探测和降级策略。
+- Session Receipt：把是否复用会话、是否新开 `claude -p`、检查、异常和监控等级写清楚，可用 `scripts/validate-receipt.py` 机器校验。
+- 配套工具：`scripts/make-handoff.sh` 自动生成 bounded handoff 并可持久化到 `.partner/`；`references/failure-playbook.md` 给每种异常固定恢复路径；`references/scenarios.md` 覆盖 review-only、debugging、非 UI、非 git、monorepo、跨天任务。
 - Darwin-style 验证门：一次只改一个协作维度，过检查才保留。
 
 ## 文件结构
@@ -146,15 +149,24 @@ README.en.md                     English entrypoint
 install.sh                       Local installer for Codex, Claude Code, Agents, or all targets
 test-prompts.json                Trigger and behavior regression prompts
 docs/showcase-cost-model.md      Showcase 成本压力模型与真实 token 记录字段
+docs/receipt-schema.json         Partner Session Receipt 的 JSON schema (partner.receipt.v1)
 examples/session-receipt.md      Minimal visible proof of same-session reuse
 examples/showcase-cost-ledger.json
                                   三种模式的成本压力 ledger
 references/monitoring.md         How Codex monitors Claude Code progress
 references/handoff-template.md   Bounded context packet for Claude Code polish/review
+references/failure-playbook.md   每种异常的固定恢复路径与 .partner/ 状态持久化
+references/scenarios.md          Review-only、debugging、非 UI、非 git、monorepo、跨天任务的流程变体
 references/darwin-ratchet.md     Validation-gated improvement rules
 scripts/showcase-cost-ledger.py  Rebuilds the showcase cost-pressure ledger
 scripts/check-readme-parity.py   检查中英文 README 章节和关键证据是否对齐
 scripts/check-skill-repo.sh      Publish readiness smoke check
+scripts/check-claude-cli.sh      探测 Claude Code CLI 监控能力，输出 MONITORING_LEVEL
+scripts/make-handoff.sh          自动收集 repo 证据生成 bounded handoff，可存入 .partner/
+scripts/make-receipt.py          生成并预校验 receipt，自动填 monitoring_level，可存入 .partner/
+scripts/session-snapshot.sh      transcript 快照对比，让新开会话数成为可计算的事实
+scripts/validate-receipt.py      校验 Partner Session Receipt 的字段与取值
+scripts/run-test-prompts.py      行为回归 prompt 的静态检查与实验性 live 模式
 ```
 
 ## 安全边界
@@ -174,6 +186,8 @@ python3 scripts/check-readme-parity.py
 jq -r '.[].id' test-prompts.json
 SOURCE_DATE_EPOCH=1782921600 python3 scripts/showcase-cost-ledger.py
 ```
+
+以上检查也会在每次 push 和 pull request 时由 GitHub Actions 自动运行（`.github/workflows/checks.yml`）。
 
 ## License
 

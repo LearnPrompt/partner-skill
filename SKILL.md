@@ -1,7 +1,8 @@
 ---
 name: partner-skill
+version: 1.3.0
 description: |
-  搭子.skill / Partner coordinates a cost-efficient workflow where Claude Code handles planning, UI/interaction polish, and final Codex Review while Codex does most implementation, long-context edits, tests, and orchestration. Slogan: 我的 Claude Code 和 Codex 天下第一好。Use when the user says or implies "搭子", "搭子.skill", "用 Claude Code goal", "让 Claude skip 做完", "Claude 计划 Codex 实现", "Claude 优化 UI", "Claude 里跑 Codex Review", "同目录打开 Claude Code", "用 Claude Code 制定计划你来实现", "Partner", or asks to split work between Claude Code and Codex to save API cost. Do not use for ordinary code review with no Claude Code involvement.
+  搭子.skill / Partner coordinates a cost-efficient workflow where Claude Code handles planning, UI/interaction polish, and final Codex Review while Codex does most implementation, long-context edits, tests, and orchestration. Slogan: 我的 Claude Code 和 Codex 天下第一好。Use when the user says or implies "搭子", "搭子.skill", "用 Claude Code goal", "让 Claude skip 做完", "Claude 计划 Codex 实现", "Claude 优化 UI", "Claude 里跑 Codex Review", "同目录打开 Claude Code", "用 Claude Code 制定计划你来实现", "搭子，恢复" (resume the last Partner task from .partner/ state), "Partner skill", "Partner workflow", or asks to split work between Claude Code and Codex to save API cost. Do not use for ordinary code review with no Claude Code involvement, and do not trigger on the bare English word "partner" in unrelated contexts.
 ---
 
 # 搭子.skill (Partner)
@@ -16,12 +17,18 @@ Prefer one long-lived Claude Code session for small and medium tasks: ask Claude
 
 Partner is not a delegation excuse. The user remains the owner, Codex remains accountable for repository evidence, and Claude Code is treated as a high-value collaborator whose output must be verified.
 
+## Tool Location
+
+The helper scripts referenced below live in this skill's install directory (the directory containing this SKILL.md), not in the target repo. Resolve it once as `$PARTNER_DIR` — you know it from wherever this file was loaded; otherwise probe `~/.codex/skills/partner-skill`, `~/.claude/skills/partner-skill`, `~/.agents/skills/partner-skill`, or the local clone. All scripts accept running from any cwd; repo-dependent ones take `--repo`.
+
 ## Default Flow
 
 1. Ground in the target repo.
    - Enter the concrete project directory, not the `agent-workbench` root.
-   - Run `git status --short` before starting Claude Code.
-   - Identify whether the task is greenfield, feature-heavy, UI-heavy, review-only, or debugging.
+   - Run `git status --short` before starting Claude Code. For a non-git target, record a bounded file inventory instead (see `references/monitoring.md`).
+   - Run `bash "$PARTNER_DIR/scripts/check-claude-cli.sh"` once to learn the available monitoring level; report it in the final receipt.
+   - Run `bash "$PARTNER_DIR/scripts/session-snapshot.sh" start --repo <repo>` so the receipt's new-session count is computed, not guessed.
+   - Identify whether the task is greenfield, feature-heavy, UI-heavy, review-only, or debugging. When the task does not fit the default profile (review-only, debugging, non-UI, non-git, monorepo, multi-day), apply the matching profile in `references/scenarios.md`.
 
 2. Start one Claude Code session for the expensive thinking loop.
    - For planning: start Claude Code in a PTY and set a goal.
@@ -39,7 +46,7 @@ Partner is not a delegation excuse. The user remains the owner, Codex remains ac
 
 4. Send the implemented state back to the same Claude Code session for polish.
    - Use this especially for frontend UI, interaction quality, product feel, accessibility, and edge states.
-   - Send a bounded payload. Use `references/handoff-template.md` when possible: the original plan, changed-file list, `git diff --stat`, test/check output, risks, open questions, and only the key file snippets or full files Claude needs.
+   - Send a bounded payload. Use `references/handoff-template.md` when possible: the original plan, changed-file list, `git diff --stat`, test/check output, risks, open questions, and only the key file snippets or full files Claude needs. `bash "$PARTNER_DIR/scripts/make-handoff.sh"` collects the evidence half automatically.
    - Ask for prioritized findings, not broad rewrites.
    - Codex applies accepted fixes and reruns checks.
 
@@ -55,6 +62,8 @@ Partner is not a delegation excuse. The user remains the owner, Codex remains ac
 - Treat a new Claude Code session as expensive. Open one only when there is no reusable session, the prior session is unrecoverable, or the user explicitly asks for a fresh Claude pass.
 - If the same Claude session gets stuck in a prompt, permission wait, or idle state, first try to continue or resume the same session with a bounded message. Do not cold-start a replacement review unless the value clearly beats the context cost.
 - Large task or huge diff: split sessions only after Codex produces a compact handoff containing the plan, changed files, key decisions, known risks, and check results.
+- For large or multi-day tasks, persist the loop state under `.partner/` in the target repo (plan, handoffs via `make-handoff.sh --save`, receipts) so a lost session restarts from the newest handoff, not from zero. See `references/failure-playbook.md`.
+- When the user says `搭子，恢复` or asks to resume the last Partner task, load `.partner/plan.md` plus the newest file in `.partner/handoffs/` as the cold-start payload instead of rebuilding context.
 - If the same Claude session gets slow, confused, or context-heavy, close it and restart with a bounded handoff only after reporting the token tradeoff.
 - Do not skip the Claude polish phase for UI/frontend work unless the user explicitly asks for a faster minimal loop.
 - If `/codex:review` hangs, times out, or gets stuck in a permission prompt, record that as a monitoring finding, stop the stuck subprocess/session, and continue with Codex-side verification.
@@ -65,6 +74,7 @@ Partner is not a delegation excuse. The user remains the owner, Codex remains ac
 
 - Default to `--permission-mode plan` for planning and normal permissions for implementation review.
 - Use skip/bypass only when the user explicitly asks for `skip`, `最高权限`, `全部允许`, `bypass`, or when the work is inside an intentionally isolated worktree.
+- Treat `skip` as a permission escalation only when it clearly refers to Claude Code's permission mode (for example `让 Claude skip 做完`). When `skip` could mean skipping a workflow step (for example `skip the polish`, `跳过这一步`), ask one clarifying question instead of launching bypassPermissions.
 - For skip mode, start Claude Code with `claude --permission-mode bypassPermissions --name <task-name>` or `claude --dangerously-skip-permissions --name <task-name>`.
 - Before any skip session, state the repo path, current git status, intended scope, and stop condition.
 - Never let skip mode commit, push, deploy, send messages, publish, or touch secrets unless the user gives a separate explicit instruction.
@@ -98,6 +108,8 @@ For active Claude Code sessions, read `references/monitoring.md`. Prefer five si
 4. Optional task files under `~/.claude/tasks/<sessionId>/`.
 5. Repo evidence: `git status --short`, `git diff --stat`, and relevant test/build checks.
 
+Signals 2-4 depend on Claude Code CLI internals that can drift between versions. Probe them with `bash "$PARTNER_DIR/scripts/check-claude-cli.sh"` and report the resulting `monitoring_level` (`full`, `degraded`, or `none`) in the receipt. Never claim a signal the probe says is unavailable. When an anomaly occurs, follow the fixed recovery path in `references/failure-playbook.md`.
+
 ## Output Contract
 
 When reporting back to the user, include:
@@ -119,6 +131,9 @@ new_claude_p_sessions: <0 | count | unknown>
 codex_passes: <number of implementation/fix passes>
 checks: <commands run or not run>
 anomalies: <none | permission wait | idle | empty review | failed check | other>
+monitoring_level: <full | degraded | none | unknown>
 ```
+
+Generate the receipt with `python3 "$PARTNER_DIR/scripts/make-receipt.py"` — it auto-fills `monitoring_level` from the probe and refuses to emit an invalid receipt. Get `new_claude_p_sessions` from `bash "$PARTNER_DIR/scripts/session-snapshot.sh" diff` so the count is computed from transcript evidence. A written receipt can be re-checked any time with `validate-receipt.py` against `docs/receipt-schema.json`.
 
 Do not fabricate token savings. When exact token telemetry is unavailable, report verifiable behavior instead: same Claude Code session reused, no fresh `claude -p` session, bounded handoff used, checks passed.

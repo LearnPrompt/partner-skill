@@ -30,6 +30,7 @@ REQUIRED_MARKERS = [
     "docs/showcase-cost-model.md",
     "Partner Session Receipt",
     "new_claude_p_sessions",
+    "monitoring_level",
     "scripts/showcase-cost-ledger.py",
 ]
 
@@ -40,19 +41,51 @@ FILE_MAP_ENTRIES = [
     "install.sh",
     "test-prompts.json",
     "docs/showcase-cost-model.md",
+    "docs/receipt-schema.json",
     "examples/session-receipt.md",
     "examples/showcase-cost-ledger.json",
     "references/monitoring.md",
     "references/handoff-template.md",
+    "references/failure-playbook.md",
+    "references/scenarios.md",
     "references/darwin-ratchet.md",
     "scripts/showcase-cost-ledger.py",
     "scripts/check-readme-parity.py",
     "scripts/check-skill-repo.sh",
+    "scripts/check-claude-cli.sh",
+    "scripts/make-handoff.sh",
+    "scripts/make-receipt.py",
+    "scripts/session-snapshot.sh",
+    "scripts/validate-receipt.py",
+    "scripts/run-test-prompts.py",
 ]
+
+
+CURLY_QUOTES = "“”‘’"
 
 
 def read(path: Path) -> str:
     return path.read_text(encoding="utf-8")
+
+
+def slugify(heading: str) -> str:
+    text = heading.removeprefix("## ").strip().lower()
+    text = re.sub(r"[^\w\s-]", "", text)
+    return re.sub(r"\s+", "-", text).strip("-")
+
+
+def check_anchors_resolve(markdown: str, label: str, failures: list[str]) -> None:
+    slugs = {slugify(heading) for heading in headings(markdown)}
+    for anchor in sorted(anchors(markdown)):
+        if anchor not in slugs:
+            failures.append(f"{label} anchor #{anchor} does not match any heading")
+
+
+def check_html_tags_ascii_quotes(markdown: str, label: str, failures: list[str]) -> None:
+    for match in re.finditer(r"<[^<>\n]+>", markdown):
+        tag = match.group(0)
+        if any(quote in tag for quote in CURLY_QUOTES):
+            failures.append(f"{label} HTML tag contains curly quotes: {tag}")
 
 
 def headings(markdown: str) -> list[str]:
@@ -118,6 +151,11 @@ def main() -> int:
     en_anchor_count = len(anchors(en))
     if zh_anchor_count != en_anchor_count:
         failures.append(f"README anchor count differs: zh={zh_anchor_count}, en={en_anchor_count}")
+
+    check_anchors_resolve(zh, "README.md", failures)
+    check_anchors_resolve(en, "README.en.md", failures)
+    check_html_tags_ascii_quotes(zh, "README.md", failures)
+    check_html_tags_ascii_quotes(en, "README.en.md", failures)
 
     if failures:
         for failure in failures:

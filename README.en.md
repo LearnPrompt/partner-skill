@@ -95,6 +95,7 @@ new_claude_p_sessions: 0
 codex_passes: 2
 checks: bash scripts/check-skill-repo.sh .; jq schema check; git diff --check
 anomalies: none
+monitoring_level: full
 ```
 
 When exact token telemetry is unavailable, Partner reports verifiable behavior: same Claude Code session reused, no fresh `claude -p`, checks passed, anomalies captured.
@@ -121,11 +122,12 @@ Codex:
 ## Trigger Prompts
 
 ```text
-Partner
+Partner skill
 Use Claude Code goal for the plan, then Codex implements.
 Use the same Claude Code chat for plan, polish, and /codex:review.
 Let Claude skip this UI polish task, and Codex monitors it.
 Run Codex Review inside Claude Code, then Codex fixes the findings.
+Partner, resume the last task from .partner/ state.
 ```
 
 Chinese triggers such as `搭子` and `搭子.skill` are also first-class triggers.
@@ -135,8 +137,9 @@ Chinese triggers such as `搭子` and `搭子.skill` are also first-class trigge
 - Clear routing: Claude Code plans, polishes, and reviews; Codex implements, monitors, verifies, and fixes.
 - A cost-aware default: keep one Claude Code session for small and medium tasks.
 - A bounded handoff: plan, changed files, diff stat, checks, risks, and only the snippets Claude needs.
-- Monitoring evidence: PTY output, `claude agents --json`, transcript structure, optional task files, and repo checks.
-- A Session Receipt: proof of session reuse, fresh `claude -p` count, checks, and anomalies.
+- Monitoring evidence: PTY output, `claude agents --json`, transcript structure, optional task files, and repo checks — with `scripts/check-claude-cli.sh` probing what is actually available and a documented degradation path.
+- A Session Receipt: proof of session reuse, fresh `claude -p` count, checks, anomalies, and monitoring level — machine-checkable via `scripts/validate-receipt.py`.
+- Supporting tools: `scripts/make-handoff.sh` generates bounded handoffs and can persist them under `.partner/`; `references/failure-playbook.md` gives every anomaly a fixed recovery path; `references/scenarios.md` covers review-only, debugging, non-UI, non-git, monorepo, and multi-day tasks.
 - A Darwin-style ratchet: improve one workflow dimension at a time and keep only verified gains.
 
 ## File Map
@@ -148,14 +151,23 @@ README.en.md                            English entrypoint
 install.sh                              Local installer for Codex, Claude Code, Agents, or all targets
 test-prompts.json                       Trigger and behavior regression prompts
 docs/showcase-cost-model.md             Showcase cost-pressure model and real token capture fields
+docs/receipt-schema.json                JSON schema for the Partner Session Receipt (partner.receipt.v1)
 examples/session-receipt.md             Minimal visible proof of same-session reuse
 examples/showcase-cost-ledger.json      Cost-pressure ledger for the three operating modes
 references/monitoring.md                How Codex monitors Claude Code progress
 references/handoff-template.md          Bounded context packet for Claude Code polish/review
+references/failure-playbook.md          Fixed recovery path per anomaly and .partner/ state persistence
+references/scenarios.md                 Flow variants for review-only, debugging, non-UI, non-git, monorepo, multi-day
 references/darwin-ratchet.md            Validation-gated improvement rules
 scripts/showcase-cost-ledger.py         Rebuilds the showcase cost-pressure ledger
 scripts/check-readme-parity.py          Checks that Chinese and English READMEs stay aligned
 scripts/check-skill-repo.sh             Publish readiness smoke check
+scripts/check-claude-cli.sh             Probes Claude Code CLI monitoring capabilities, prints MONITORING_LEVEL
+scripts/make-handoff.sh                 Generates a bounded handoff from live repo evidence, can persist to .partner/
+scripts/make-receipt.py                 Generates a pre-validated receipt, auto-fills monitoring_level, can persist to .partner/
+scripts/session-snapshot.sh             Transcript snapshot diff so the new-session count is computed, not claimed
+scripts/validate-receipt.py             Validates Partner Session Receipt fields and values
+scripts/run-test-prompts.py             Static checks plus experimental live mode for the regression prompts
 ```
 
 ## Safety
@@ -175,6 +187,8 @@ python3 scripts/check-readme-parity.py
 jq -r '.[].id' test-prompts.json
 SOURCE_DATE_EPOCH=1782921600 python3 scripts/showcase-cost-ledger.py
 ```
+
+These checks also run automatically on every push and pull request via GitHub Actions (`.github/workflows/checks.yml`).
 
 ## License
 
