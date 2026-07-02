@@ -208,6 +208,41 @@ def hero_copy(draw: ImageDraw.ImageDraw, badge_text: str, badge_fill: str, title
     draw_wrapped(draw, (54, 156), body, "#cbd7ff", F_BODY, 790)
 
 
+def opener_frame() -> Image.Image:
+    img = stage().convert("RGBA")
+    draw = ImageDraw.Draw(img)
+    hero_copy(
+        draw,
+        "SHOWCASE",
+        "#8b5cf6",
+        "From plain Codex to Partner sparkle",
+        "A boring first pass becomes a shareable interface after Claude Code plans and polishes in the same session.",
+    )
+
+    left = boring_stage().resize((360, 204))
+    left_card = Image.new("RGBA", (388, 244), (0, 0, 0, 0))
+    ld = ImageDraw.Draw(left_card)
+    rounded(ld, (0, 0, 388, 244), "#f8fafc", "#e4e7ec", 2, 22)
+    ld.text((24, 18), "BEFORE", fill="#344054", font=font(20, True))
+    left_card.alpha_composite(left.convert("RGBA"), (14, 48))
+    img.alpha_composite(left_card, (74, 252))
+
+    right = tilted_panel(
+        (470, 332),
+        "Partner Receipt Studio",
+        "Motion, depth, glow, and a proof layer that explains the collaboration.",
+        "studio",
+        -7,
+    )
+    glow_paste(img, right, (438, 196), (255, 67, 231), 30)
+
+    rounded(draw, (424, 334, 540, 382), "#0b1020ee", "#7fffee", 2, 24)
+    draw.text((452, 348), "AFTER", fill="#7fffee", font=font(19, True))
+    draw.line((386, 370, 454, 370), fill="#7fffee", width=5)
+    draw.polygon([(454, 370), (436, 358), (436, 382)], fill="#7fffee")
+    return img.convert("RGB")
+
+
 def boring_stage() -> Image.Image:
     img = Image.new("RGB", (W, H), "#eef2f7")
     draw = ImageDraw.Draw(img)
@@ -305,8 +340,8 @@ def receipt_frame() -> Image.Image:
 def main() -> None:
     OUT.parent.mkdir(parents=True, exist_ok=True)
     frames = [
+        opener_frame(),
         boring_stage(),
-        inspiration_frame(),
         partner_transform_frame(),
         cost_frame(),
         receipt_frame(),
@@ -315,7 +350,7 @@ def main() -> None:
         OUT,
         save_all=True,
         append_images=frames[1:],
-        duration=[1250, 1450, 1750, 1750, 1850],
+        duration=[1550, 1100, 1750, 1650, 1850],
         loop=0,
         optimize=True,
     )

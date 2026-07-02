@@ -10,23 +10,38 @@
 [![GitHub stars](https://img.shields.io/github/stars/LearnPrompt/partner-skill?style=flat-square&color=f5c542)](https://github.com/LearnPrompt/partner-skill/stargazers)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-**让 Claude Code 负责高价值判断，让 Codex 负责长上下文落地，并用一张 Session Receipt 证明没有乱开新 Claude 会话烧预算。**
+**把 Claude Code 留给规划、审美和审查，把 Codex 留给实现、跑检查和收尾。最后用一张 Session Receipt 证明：没有乱开新的 Claude 会话烧钱。**
 
-[30 秒装上](#30-秒装上) · [一句话用起来](#一句话用起来) · [主-Showcase](#主-showcase) · [成本压力模型](#成本压力模型) · [它解决什么](#它解决什么) · [安全边界](#安全边界) · [验证](#验证)
+[Showcase](#showcase) · [30 秒装上](#30-秒装上) · [一句话用起来](#一句话用起来) · [成本压力模型](#成本压力模型) · [它解决什么](#它解决什么) · [安全边界](#安全边界) · [验证](#验证)
 
 </div>
 
 ---
 
+## Showcase
+
+先看效果。搭子不是又一个“多叫一个模型”的口号，它要解决的是：Codex 做得动，但界面可能平；Claude Code 有审美和判断，但不该被拿去做所有机械活。
+
+![Partner before-after showcase](assets/showcase.gif)
+
+这个 GIF 故意把对比做得很直白：
+
+- **Codex first pass**：功能能跑，但像内部工具，没有动效，也没有让人想点开的理由。
+- **搭子介入**：一句话把路线固定下来：Claude Code 先规划，Codex 实现，同一个 Claude 会话再回来 polish 和 review。
+- **Claude Code polish**：让它负责 UI 口味、动效方向、边界审查，而不是把时间花在机械改文件上。
+- **Session Receipt**：最后留下证据：有没有复用同一个 Claude 会话，有没有新开 `claude -p`，检查是否真的通过。
+
+视觉方向参考 MotionSites 模板页里常见的 cinematic hero 机制：暗色舞台、斜置产品界面、紫粉发光和故事感；素材由本地脚本生成，没有复制第三方资产。
+
 ## 30 秒装上
 
-让你的 Agent（Codex / Claude Code / Hermes 等）装上 Partner，最简单的是直接把 GitHub 链接发给它：
+最省事的方式，是直接把这个仓库链接发给你的 Agent：
 
 ```text
 请安装搭子.skill：https://github.com/LearnPrompt/partner-skill
 ```
 
-或者用 `npx` 一行：
+也可以用 `npx`：
 
 ```bash
 npx skills add LearnPrompt/partner-skill -g
@@ -49,44 +64,31 @@ bash install.sh --target claude
 最后给我 Partner Session Receipt，看有没有新开 claude -p。
 ```
 
-也可以更短：
+更短一点：
 
 ```text
 搭子，Claude 计划，Codex 实现，同会话 review，最后出 receipt。
 ```
 
-## 主 Showcase
-
-![Partner session budget demo](assets/showcase.gif)
-
-这个 showcase 故意把反差做大：
-
-- **纯 Codex first pass**：功能对，但界面平、没有动效、没有传播感。
-- **搭子触发**：用一句话把 Claude Code 和 Codex 的分工固定成协议。
-- **Claude Code polish**：同一个 Claude 会话负责 UI 口味、动效方向、边界审查。
-- **Partner Session Receipt**：最后证明 `new_claude_p_sessions: 0`，不把“省钱”说成玄学。
-
-视觉方向参考 MotionSites 模板页里常见的 cinematic hero 机制：暗色舞台、斜置产品界面、紫粉发光和故事感；没有复制第三方素材。
-
 ## 成本压力模型
 
-Partner 不是“多叫一个模型”，而是**让 Claude Code 不重复冷启动**。当前 README 使用的是 showcase workload model，不是 API billing telemetry；没有精确 token 日志时，不编造“省了多少 token”。
+Partner 的省钱逻辑不是“少用 Claude”，而是**别让 Claude 反复冷启动**。最贵的浪费通常不是那一次 polish，而是 Codex 改完之后又开一个全新的 Claude review，让它重新读项目、重新理解目标、重新建立上下文。
 
-这张表由 `scripts/showcase-cost-ledger.py` 生成；源数据在 `examples/showcase-cost-ledger.json`。
+当前 README 用的是 showcase workload model，不是 API billing telemetry。没有可靠 token 日志时，我们不编“省了多少 token”。这张表由 `scripts/showcase-cost-ledger.py` 生成，源数据在 `examples/showcase-cost-ledger.json`。
 
 | 没有 Partner | 有 Partner |
 |---|---|
 | Claude 规划一次，Codex 改完后又新开 Claude review | 同一个 Claude Code 会话保留计划上下文 |
-| 每次 review 都重新解释 repo、目标、diff | Codex 只回传 bounded handoff |
+| 每次 review 都重新解释 repo、目标和 diff | Codex 只回传 bounded handoff |
 | “省 token”说不清楚 | receipt 明确写 `new_claude_p_sessions: 0` |
 
-三种模式的对比：
+三种模式可以这样看：
 
 | 模式 | Codex 承担 | Claude Code 承担 | Claude 压力 | 适合场景 |
 |---|---:|---:|---:|---|
-| 纯 Codex | 100% 实现与检查 | 0% | 0.0x，但缺少 Claude 的 UI / review 视角 | 低风险、无 UI 口味要求 |
-| 搭子 Partner | 约 70% 实现、检查、修复 | 约 30% 计划、polish、review | 0.3x，且避免重复 cold start | UI-heavy、功能多、需要省 Claude API 成本 |
-| 纯 Claude Code | 0% | 100% 全流程 | 1.0x，机械改动也由 Claude 承担 | 很短任务或用户明确要 Claude 全包 |
+| 纯 Codex | 100% 实现与检查 | 0% | 0.0x，但少了 Claude 的 UI / review 视角 | 低风险、无 UI 口味要求 |
+| 搭子 Partner | 约 70% 实现、检查、修复 | 约 30% 计划、polish、review | 0.3x，并尽量避免重复 cold start | UI-heavy、功能多、需要省 Claude API 成本 |
+| 纯 Claude Code | 0% | 100% 全流程 | 1.0x，机械改动也由 Claude 承担 | 很短任务，或用户明确要 Claude 全包 |
 
 标准收尾小票：
 
@@ -101,16 +103,16 @@ checks: bash scripts/check-skill-repo.sh .; jq schema check; git diff --check
 anomalies: none
 ```
 
-没有可靠 telemetry 时，不编造“省了多少 token”。Partner 只报告可验证事实：有没有复用同一个 Claude 会话，有没有新开 `claude -p`，检查是否通过。
+没有可靠 telemetry 时，Partner 只报告能验证的事实：是否复用同一个 Claude 会话，是否新开 `claude -p`，检查是否通过，有没有异常。
 
 ## 它解决什么
 
-你已经在 Codex 和 Claude Code 之间来回切了。问题不是“能不能协作”，而是协作经常变成这样：
+你可能已经在 Codex 和 Claude Code 之间来回切了。真正麻烦的不是“它们能不能协作”，而是协作经常散掉：
 
-- Claude Code 适合计划、UI 口味、review，但让它做所有机械改动很贵；
-- Codex 适合长上下文实现、跑检查、修细节，但 UI polish 和最终审查需要另一个视角；
-- 最浪费的是 Codex 实现后又新开一个 Claude，会话上下文全丢，Claude 重新读项目；
-- 用户只听到“我用了 Claude”，看不到到底有没有省钱。
+- Claude Code 适合计划、UI 口味和 review，但让它包办所有机械改动很贵。
+- Codex 适合长上下文实现、跑检查、修细节，但 UI polish 和最终审查需要另一个视角。
+- 最浪费的是 Codex 实现完之后又新开 Claude，会话上下文全丢，Claude 重新读项目。
+- 用户只听到“我用了 Claude”，但看不到到底有没有省钱。
 
 Partner 把这件事变成固定协议：
 
@@ -135,12 +137,12 @@ Claude 里跑 Codex Review 验收当前 diff，发现问题你来修。
 
 ## 它会交付什么
 
-- 一条清晰分工：Claude Code 负责计划、polish、review；Codex 负责实现、监控、验证、修复。
-- 一个省预算默认策略：小中型任务尽量复用同一个 Claude Code 会话。
-- 一个 bounded handoff 模板：只把 Claude 需要的计划、diff stat、检查结果、风险交回去。
-- 一个监控清单：PTY、`claude agents --json`、transcript、task files、git diff/test 五层证据。
-- 一个 Session Receipt：把是否复用会话、是否新开 `claude -p`、检查和异常写清楚。
-- 一个 Darwin-style 验证门：一次只改一个协作维度，过检查才保留。
+- 清晰分工：Claude Code 负责计划、polish、review；Codex 负责实现、监控、验证、修复。
+- 省预算默认策略：小中型任务尽量复用同一个 Claude Code 会话。
+- Bounded handoff：只把 Claude 需要的计划、diff stat、检查结果和风险交回去。
+- 监控清单：PTY、`claude agents --json`、transcript、task files、git diff/test 五层证据。
+- Session Receipt：把是否复用会话、是否新开 `claude -p`、检查和异常写清楚。
+- Darwin-style 验证门：一次只改一个协作维度，过检查才保留。
 
 ## 文件结构
 
@@ -150,7 +152,7 @@ README.md                        中文入口
 README.en.md                     English entrypoint
 install.sh                       Local installer for Codex, Claude Code, Agents, or all targets
 test-prompts.json                Trigger and behavior regression prompts
-assets/showcase.gif              Session budget / receipt showcase
+assets/showcase.gif              Before/after showcase
 docs/current-progress.md         当前公开化进度、已验证检查与下一步
 docs/claude-code-refinement-brief.md
                                   Claude Code 精细化调整交接包
@@ -193,8 +195,8 @@ SOURCE_DATE_EPOCH=1782921600 python3 scripts/showcase-cost-ledger.py
 
 - `SKILL.md` 里有裸词 `搭子` 触发；
 - `README.md` 和 `README.en.md` 的 11 个章节顺序完全对齐；
-- README 能在 10 秒内讲清“少开 Claude 冷启动会话”；
-- `assets/showcase.gif` 能看懂预算差异；
+- README 第一屏能看到 showcase；
+- `assets/showcase.gif` 第一帧就是 before/after，不再是让人摸不着头脑的预算图；
 - `examples/showcase-cost-ledger.json` 能复现三种模式的成本压力表；
 - `Partner Session Receipt` 在 `SKILL.md`、README 和测试 prompt 里都有；
 - 本地检查 `fail=0`，只允许安全文档里的高风险命令 warning。
