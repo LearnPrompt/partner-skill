@@ -34,14 +34,10 @@ check_file "test-prompts.json"
 check_file "install.sh"
 check_file "LICENSE"
 check_file "examples/showcase-cost-ledger.json"
-check_file "docs/current-progress.md"
-check_file "docs/claude-code-refinement-brief.md"
 check_file "docs/showcase-cost-model.md"
-check_file "docs/release-readiness-report.md"
 check_dir "references"
 check_dir "examples"
 check_dir "scripts"
-check_dir "assets"
 
 python3 scripts/check-readme-parity.py
 echo "PASS README parity gate"
@@ -82,22 +78,18 @@ else
   fail=$((fail + 1))
 fi
 
-if grep -q 'docs/current-progress.md' README.md && \
-  grep -q 'docs/claude-code-refinement-brief.md' README.md && \
-  grep -q 'docs/showcase-cost-model.md' README.md && \
-  grep -q 'docs/current-progress.md' README.en.md && \
-  grep -q 'docs/claude-code-refinement-brief.md' README.en.md && \
+if grep -q 'docs/showcase-cost-model.md' README.md && \
   grep -q 'docs/showcase-cost-model.md' README.en.md; then
-  echo "PASS docs handoff entrypoints"
+  echo "PASS docs entrypoints"
 else
-  echo "FAIL README files must link current progress, cost model, and Claude Code refinement docs"
+  echo "FAIL README files must link the cost model doc"
   fail=$((fail + 1))
 fi
 
-if [ -s assets/showcase.gif ] && grep -q 'assets/showcase.gif' README.md; then
-  echo "PASS showcase asset"
+if grep -q 'Showcase 正在重做' README.md && grep -q 'showcase is being redesigned' README.en.md; then
+  echo "PASS showcase placeholder"
 else
-  echo "FAIL assets/showcase.gif must exist and be referenced from README.md"
+  echo "FAIL README files must avoid publishing an unfinished showcase asset"
   fail=$((fail + 1))
 fi
 
@@ -117,15 +109,6 @@ if grep -q 'Partner Session Receipt' SKILL.md && \
   echo "PASS Partner Session Receipt contract"
 else
   echo "FAIL Partner Session Receipt contract must be present in SKILL.md, README.md, and test-prompts.json"
-  fail=$((fail + 1))
-fi
-
-if grep -q 'partner-session.sh' docs/claude-code-refinement-brief.md && \
-  grep -q 'reusing one Claude Code conversation' docs/claude-code-refinement-brief.md && \
-  grep -q 'Claude Code Refinement Brief' docs/current-progress.md; then
-  echo "PASS Claude Code refinement brief"
-else
-  echo "FAIL Claude Code refinement brief must define same-session refinement scope"
   fail=$((fail + 1))
 fi
 

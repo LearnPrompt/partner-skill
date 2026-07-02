@@ -20,18 +20,11 @@
 
 ## Showcase
 
-Partner is not a vague "use two models" slogan. It is for the moment where Codex can build the thing, but the interface still feels flat; Claude Code has taste and judgment, but should not spend paid context on every mechanical edit.
+The showcase is being redesigned. The previous GIF did not clearly communicate the intended contrast: a flat Codex first pass, then a visibly better Claude Code polish pass through Partner. It has been removed from the public README so first-time readers do not see process material as the final asset.
 
-![Partner before-after showcase](assets/showcase.gif)
+The next showcase will keep one storyline: **Codex builds a working but plain page -> Partner returns to the same Claude Code session for UI polish and review -> a Session Receipt proves no wasted fresh Claude session**.
 
-The GIF makes the contrast explicit:
-
-- **Codex-only first pass**: functional, but flat, motionless, and not worth sharing.
-- **Partner trigger**: one prompt fixes the route: Claude Code plans, Codex implements, the same Claude session polishes and reviews.
-- **Claude Code polish**: Claude handles UI taste, motion direction, and edge-case review instead of doing every file edit.
-- **Session Receipt**: the ending shows whether the same Claude session was reused, whether a fresh `claude -p` was opened, and whether checks passed.
-
-The visual direction borrows the mechanism of cinematic MotionSites template heroes: dark stage, tilted product surfaces, violet-magenta glow, and story-first contrast. The asset is generated locally and does not copy third-party assets.
+Until that asset is ready, the README keeps the protocol, cost model, and receipt evidence instead of publishing a weak draft.
 
 ## Install
 
@@ -154,18 +147,12 @@ README.md                               Chinese entrypoint
 README.en.md                            English entrypoint
 install.sh                              Local installer for Codex, Claude Code, Agents, or all targets
 test-prompts.json                       Trigger and behavior regression prompts
-assets/showcase.gif                     Before/after showcase
-docs/current-progress.md                Current release progress, verified checks, and next step
-docs/claude-code-refinement-brief.md    Focused Claude Code refinement handoff
 docs/showcase-cost-model.md             Showcase cost-pressure model and real token capture fields
-docs/release-readiness-report.md        Publish readiness check record
 examples/session-receipt.md             Minimal visible proof of same-session reuse
 examples/showcase-cost-ledger.json      Cost-pressure ledger for the three operating modes
-examples/skill-inventory-miniloop.md    Retained safety-skill mini-loop example
 references/monitoring.md                How Codex monitors Claude Code progress
 references/handoff-template.md          Bounded context packet for Claude Code polish/review
 references/darwin-ratchet.md            Validation-gated improvement rules
-scripts/generate-showcase-gif.py        Rebuilds the README showcase asset
 scripts/showcase-cost-ledger.py         Rebuilds the showcase cost-pressure ledger
 scripts/check-readme-parity.py          Checks that Chinese and English READMEs stay aligned
 scripts/check-skill-repo.sh             Publish readiness smoke check
@@ -186,7 +173,6 @@ scripts/check-skill-repo.sh             Publish readiness smoke check
 bash scripts/check-skill-repo.sh .
 python3 scripts/check-readme-parity.py
 jq -r '.[].id' test-prompts.json
-python3 scripts/generate-showcase-gif.py
 SOURCE_DATE_EPOCH=1782921600 python3 scripts/showcase-cost-ledger.py
 ```
 
@@ -194,8 +180,7 @@ Passing evidence:
 
 - `SKILL.md` includes the bare `搭子` trigger.
 - `README.md` and `README.en.md` keep the same 11-section order.
-- README shows the showcase in the first screen.
-- `assets/showcase.gif` opens with a before/after frame instead of a confusing budget chart.
+- README no longer publishes unfinished showcase process material.
 - `examples/showcase-cost-ledger.json` reproduces the three-mode cost-pressure table.
 - `Partner Session Receipt` appears in `SKILL.md`, README, and test prompts.
 - Local check returns `fail=0`; the only allowed warning is the safety text that explicitly forbids high-risk commands.

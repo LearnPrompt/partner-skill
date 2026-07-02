@@ -26,12 +26,10 @@ EXPECTED_HEADINGS = [
 ]
 
 REQUIRED_MARKERS = [
-    "assets/showcase.gif",
     "examples/showcase-cost-ledger.json",
     "docs/showcase-cost-model.md",
     "Partner Session Receipt",
     "new_claude_p_sessions",
-    "scripts/generate-showcase-gif.py",
     "scripts/showcase-cost-ledger.py",
 ]
 
@@ -41,18 +39,12 @@ FILE_MAP_ENTRIES = [
     "README.en.md",
     "install.sh",
     "test-prompts.json",
-    "assets/showcase.gif",
-    "docs/current-progress.md",
-    "docs/claude-code-refinement-brief.md",
     "docs/showcase-cost-model.md",
-    "docs/release-readiness-report.md",
     "examples/session-receipt.md",
     "examples/showcase-cost-ledger.json",
-    "examples/skill-inventory-miniloop.md",
     "references/monitoring.md",
     "references/handoff-template.md",
     "references/darwin-ratchet.md",
-    "scripts/generate-showcase-gif.py",
     "scripts/showcase-cost-ledger.py",
     "scripts/check-readme-parity.py",
     "scripts/check-skill-repo.sh",

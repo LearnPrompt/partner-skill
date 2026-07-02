@@ -20,18 +20,11 @@
 
 ## Showcase
 
-先看效果。搭子不是又一个“多叫一个模型”的口号，它要解决的是：Codex 做得动，但界面可能平；Claude Code 有审美和判断，但不该被拿去做所有机械活。
+Showcase 正在重做。上一版 GIF 没有把“Codex first pass 很平，Claude Code polish 后明显变好”讲清楚，所以先从公开 README 移除，避免误导第一次打开仓库的人。
 
-![Partner before-after showcase](assets/showcase.gif)
+新的 showcase 会只保留一个主线：**Codex 做出能跑但平的页面 -> 搭子把同一个 Claude Code 会话接回来做 UI polish / review -> 最后用 Session Receipt 证明没有乱开新 Claude 会话**。
 
-这个 GIF 故意把对比做得很直白：
-
-- **Codex first pass**：功能能跑，但像内部工具，没有动效，也没有让人想点开的理由。
-- **搭子介入**：一句话把路线固定下来：Claude Code 先规划，Codex 实现，同一个 Claude 会话再回来 polish 和 review。
-- **Claude Code polish**：让它负责 UI 口味、动效方向、边界审查，而不是把时间花在机械改文件上。
-- **Session Receipt**：最后留下证据：有没有复用同一个 Claude 会话，有没有新开 `claude -p`，检查是否真的通过。
-
-视觉方向参考 MotionSites 模板页里常见的 cinematic hero 机制：暗色舞台、斜置产品界面、紫粉发光和故事感；素材由本地脚本生成，没有复制第三方资产。
+在新图完成前，README 只保留协议、成本模型和可验证的小票，不把过程稿当成发布素材。
 
 ## 30 秒装上
 
@@ -152,21 +145,13 @@ README.md                        中文入口
 README.en.md                     English entrypoint
 install.sh                       Local installer for Codex, Claude Code, Agents, or all targets
 test-prompts.json                Trigger and behavior regression prompts
-assets/showcase.gif              Before/after showcase
-docs/current-progress.md         当前公开化进度、已验证检查与下一步
-docs/claude-code-refinement-brief.md
-                                  Claude Code 精细化调整交接包
 docs/showcase-cost-model.md      Showcase 成本压力模型与真实 token 记录字段
-docs/release-readiness-report.md 发布就绪度检查记录
 examples/session-receipt.md      Minimal visible proof of same-session reuse
 examples/showcase-cost-ledger.json
                                   三种模式的成本压力 ledger
-examples/skill-inventory-miniloop.md
-                                  保留的安全 skill 小闭环示例
 references/monitoring.md         How Codex monitors Claude Code progress
 references/handoff-template.md   Bounded context packet for Claude Code polish/review
 references/darwin-ratchet.md     Validation-gated improvement rules
-scripts/generate-showcase-gif.py Rebuilds the README showcase asset
 scripts/showcase-cost-ledger.py  Rebuilds the showcase cost-pressure ledger
 scripts/check-readme-parity.py   检查中英文 README 章节和关键证据是否对齐
 scripts/check-skill-repo.sh      Publish readiness smoke check
@@ -187,7 +172,6 @@ scripts/check-skill-repo.sh      Publish readiness smoke check
 bash scripts/check-skill-repo.sh .
 python3 scripts/check-readme-parity.py
 jq -r '.[].id' test-prompts.json
-python3 scripts/generate-showcase-gif.py
 SOURCE_DATE_EPOCH=1782921600 python3 scripts/showcase-cost-ledger.py
 ```
 
@@ -195,8 +179,7 @@ SOURCE_DATE_EPOCH=1782921600 python3 scripts/showcase-cost-ledger.py
 
 - `SKILL.md` 里有裸词 `搭子` 触发；
 - `README.md` 和 `README.en.md` 的 11 个章节顺序完全对齐；
-- README 第一屏能看到 showcase；
-- `assets/showcase.gif` 第一帧就是 before/after，不再是让人摸不着头脑的预算图；
+- README 不再展示未达标的 showcase 过程稿；
 - `examples/showcase-cost-ledger.json` 能复现三种模式的成本压力表；
 - `Partner Session Receipt` 在 `SKILL.md`、README 和测试 prompt 里都有；
 - 本地检查 `fail=0`，只允许安全文档里的高风险命令 warning。
