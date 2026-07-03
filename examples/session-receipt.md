@@ -11,6 +11,9 @@ new_claude_p_sessions: 0
 codex_passes: 2
 checks: bash scripts/check-skill-repo.sh .; jq schema check; git diff --check
 anomalies: none
+monitoring_level: full
 ```
+
+This example is validated in CI: `python3 scripts/validate-receipt.py examples/session-receipt.md`.
 
 Use exact token counts only when reliable telemetry is available. Without telemetry, report behavior that can be verified from PTY output, `claude agents --json`, transcripts, and repo evidence.

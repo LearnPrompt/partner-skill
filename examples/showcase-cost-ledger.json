@@ -8,7 +8,8 @@
     "new_claude_p_sessions",
     "codex_passes",
     "checks",
-    "anomalies"
+    "anomalies",
+    "monitoring_level"
   ],
   "modes": {
     "codex_only": {

@@ -2,6 +2,8 @@
 
 Use this packet when Codex sends the implemented state back to the same Claude Code session for polish or final review. Keep it bounded. Do not paste the whole repo unless the repo is tiny.
 
+`bash "$PARTNER_DIR/scripts/make-handoff.sh"` fills the evidence sections (changed files, git status, diff stat, check output) automatically and leaves the judgment sections as TODO markers; `--save` also persists the handoff under `.partner/handoffs/` for recovery. (`$PARTNER_DIR` is the skill's install directory, not the target repo.)
+
 ```markdown
 # Partner Handoff
 
@@ -47,9 +49,10 @@ phase: <planning | codex implementation | claude polish | review | final fix>
 claude_session: <sessionId or none>
 claude_session_reused: <yes | no | n/a>
 new_claude_p_sessions: <0 | count | unknown>
-codex_passes: <number>
+codex_passes: <number of implementation/fix passes>
 checks: <commands run or not run>
 anomalies: <none | permission wait | idle | empty review | failed check | other>
+monitoring_level: <full | degraded | none | unknown>
 ```
 ```
 

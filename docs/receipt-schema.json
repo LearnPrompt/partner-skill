@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "partner.receipt.v1",
+  "title": "Partner Session Receipt",
+  "description": "Machine-readable form of the [Partner session receipt] text block. Field names and allowed values match SKILL.md.",
+  "type": "object",
+  "required": [
+    "phase",
+    "claude_session",
+    "claude_session_reused",
+    "new_claude_p_sessions",
+    "codex_passes",
+    "checks",
+    "anomalies",
+    "monitoring_level"
+  ],
+  "properties": {
+    "phase": {
+      "enum": ["planning", "codex implementation", "claude polish", "review", "final fix"]
+    },
+    "claude_session": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Claude Code session id, or the literal string 'none'."
+    },
+    "claude_session_reused": {
+      "enum": ["yes", "no", "n/a"]
+    },
+    "new_claude_p_sessions": {
+      "oneOf": [
+        {"type": "integer", "minimum": 0},
+        {"const": "unknown"}
+      ]
+    },
+    "codex_passes": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "checks": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Commands run, or an explicit statement that none were run."
+    },
+    "anomalies": {
+      "type": "string",
+      "minLength": 1,
+      "description": "'none' or a short description: permission wait, idle, empty review, failed check, other."
+    },
+    "monitoring_level": {
+      "enum": ["full", "degraded", "none", "unknown"],
+      "description": "Result of scripts/check-claude-cli.sh for this run."
+    }
+  },
+  "additionalProperties": false
+}

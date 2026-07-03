@@ -1,0 +1,49 @@
+name: checks
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Publish readiness smoke check
+        run: bash scripts/check-skill-repo.sh .
+
+      - name: README parity and lint
+        run: python3 scripts/check-readme-parity.py
+
+      - name: Script syntax
+        run: |
+          bash -n install.sh
+          bash -n scripts/check-skill-repo.sh
+          bash -n scripts/check-claude-cli.sh
+          bash -n scripts/make-handoff.sh
+          bash -n scripts/session-snapshot.sh
+          python3 -m py_compile scripts/check-readme-parity.py scripts/showcase-cost-ledger.py scripts/validate-receipt.py scripts/run-test-prompts.py scripts/make-receipt.py
+
+      - name: Receipt contract
+        run: |
+          python3 scripts/validate-receipt.py examples/session-receipt.md
+          python3 scripts/run-test-prompts.py
+          python3 scripts/make-receipt.py --phase review --claude-session ci-test \
+            --reused yes --new-claude-p 0 --codex-passes 1 \
+            --checks "ci roundtrip" --monitoring-level none \
+            | python3 scripts/validate-receipt.py -
+
+      - name: Monitoring probe degrades cleanly without claude CLI
+        run: |
+          out="$(bash scripts/check-claude-cli.sh)"
+          echo "$out"
+          echo "$out" | grep -q '^MONITORING_LEVEL='
+
+      - name: Ledger reproducibility
+        run: |
+          SOURCE_DATE_EPOCH=1782921600 python3 scripts/showcase-cost-ledger.py --markdown
+          git diff --exit-code -- examples/showcase-cost-ledger.json
+
+      - name: Install dry run
+        run: bash install.sh --target all --dry-run
