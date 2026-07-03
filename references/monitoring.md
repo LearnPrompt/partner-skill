@@ -134,6 +134,8 @@ codex_passes: <number of implementation/fix passes>
 checks: <commands run or not run>
 anomalies: <none | permission wait | idle | empty review | failed check | other>
 monitoring_level: <full | degraded | none | unknown>
+direction: <codex-driven | claude-driven>
+codex_jobs: <0 | count>
 ```
 
 Generate it with `python3 "$PARTNER_DIR/scripts/make-receipt.py"` (validates

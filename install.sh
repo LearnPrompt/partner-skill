@@ -10,10 +10,14 @@ Usage:
   bash install.sh --status
 
 Targets:
-  codex   -> ~/.codex/skills/partner-skill
-  claude  -> ~/.claude/skills/partner-skill
-  agents  -> ~/.agents/skills/partner-skill
+  codex   -> ~/.codex/skills/partner-skill  (+ ~/.codex/prompts/idea-king.md)
+  claude  -> ~/.claude/skills/partner-skill (+ ~/.claude/skills/idea-king)
+  agents  -> ~/.agents/skills/partner-skill (+ ~/.agents/skills/idea-king)
   all     -> all of the above
+
+The idea-king (点子王) companion skill ships with Partner: first-principles
+decomposition plus adversarial review, used by Direction B on every work
+split. It installs as its own skill directory so both agents can call it.
 
 --status compares every installed copy's .install-meta commit against this
 repository's HEAD so stale copies are visible before they cause confusion.
@@ -145,4 +149,46 @@ for dest in "${DESTS[@]}"; do
   copy_payload "$dest"
 done
 
-echo "Done. Try: 用 Claude Code goal 先规划，你 Codex 来实现。"
+install_idea_king_skill() {
+  # Installs idea-king as a sibling skill directory (Claude Code and agents
+  # discover skills at <root>/<name>/SKILL.md, so it cannot stay nested
+  # inside the partner-skill copy).
+  local dest="$1"
+  echo "Install idea-king -> $dest"
+  if [ "$DRY_RUN" = "true" ]; then
+    return 0
+  fi
+  mkdir -p "$(dirname "$dest")"
+  if [ -e "$dest" ]; then
+    local backup="$dest.backup.$(date +%Y%m%d%H%M%S)"
+    echo "Existing idea-king install found. Moving it to $backup"
+    mv "$dest" "$backup"
+    ls -dt "$dest".backup.* 2>/dev/null | tail -n +"$((BACKUP_KEEP + 1))" \
+      | while IFS= read -r old_backup; do
+          rm -rf "$old_backup" # risk-ok: prunes only our own timestamped backups beyond BACKUP_KEEP
+        done
+  fi
+  mkdir -p "$dest"
+  (cd "$ROOT/idea-king" && find . -type f ! -name '.DS_Store' ! -name 'codex-prompt.md' -print0 \
+    | tar -cf - --null -T -) | tar -xf - -C "$dest"
+}
+
+install_idea_king_codex_prompt() {
+  local dest="$HOME/.codex/prompts/idea-king.md"
+  echo "Install idea-king codex prompt -> $dest"
+  if [ "$DRY_RUN" = "true" ]; then
+    return 0
+  fi
+  mkdir -p "$HOME/.codex/prompts"
+  cp "$ROOT/idea-king/codex-prompt.md" "$dest"
+}
+
+for dest in "${DESTS[@]}"; do
+  case "$dest" in
+    "$HOME/.claude/skills/partner-skill") install_idea_king_skill "$HOME/.claude/skills/idea-king" ;;
+    "$HOME/.agents/skills/partner-skill") install_idea_king_skill "$HOME/.agents/skills/idea-king" ;;
+    "$HOME/.codex/skills/partner-skill") install_idea_king_codex_prompt ;;
+  esac
+done
+
+echo "Done. Try: 用 Claude Code goal 先规划，你 Codex 来实现。或在 Claude Code 里说：搭子，分工给 codex。"

@@ -59,6 +59,8 @@ def main() -> int:
     parser.add_argument("--checks", required=True)
     parser.add_argument("--anomalies", default="none")
     parser.add_argument("--monitoring-level", default="", help="Override; default runs check-claude-cli.sh.")
+    parser.add_argument("--direction", default="codex-driven", help="codex-driven | claude-driven")
+    parser.add_argument("--codex-jobs", default="0", help="Number of delegate-codex.sh jobs including fix rounds.")
     parser.add_argument("--save", action="store_true", help="Also write to <repo>/.partner/receipts/.")
     parser.add_argument("--repo", default=".", help="Target repo for --save (default: current directory).")
     args = parser.parse_args()
@@ -72,6 +74,8 @@ def main() -> int:
         "checks": args.checks,
         "anomalies": args.anomalies,
         "monitoring_level": args.monitoring_level or probe_monitoring_level(),
+        "direction": args.direction,
+        "codex_jobs": args.codex_jobs,
     }
 
     validator = load_validator()

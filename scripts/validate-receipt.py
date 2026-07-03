@@ -32,6 +32,7 @@ RECEIPT_HEADER = "[Partner session receipt]"
 PHASES = {"planning", "codex implementation", "claude polish", "review", "final fix"}
 REUSED_VALUES = {"yes", "no", "n/a"}
 MONITORING_LEVELS = {"full", "degraded", "none", "unknown"}
+DIRECTIONS = {"codex-driven", "claude-driven"}
 
 REQUIRED_FIELDS = [
     "phase",
@@ -42,6 +43,8 @@ REQUIRED_FIELDS = [
     "checks",
     "anomalies",
     "monitoring_level",
+    "direction",
+    "codex_jobs",
 ]
 
 
@@ -95,6 +98,12 @@ def validate(fields: dict[str, object]) -> list[str]:
 
     if not re.fullmatch(r"\d+", as_text("codex_passes")):
         failures.append(f"codex_passes must be an integer, got {as_text('codex_passes')!r}")
+
+    if as_text("direction") not in DIRECTIONS:
+        failures.append(f"direction must be one of {sorted(DIRECTIONS)}, got {as_text('direction')!r}")
+
+    if not re.fullmatch(r"\d+", as_text("codex_jobs")):
+        failures.append(f"codex_jobs must be an integer, got {as_text('codex_jobs')!r}")
 
     for placeholder_field in ("phase", "claude_session", "checks", "anomalies"):
         value = as_text(placeholder_field)

@@ -118,6 +118,16 @@ Codex:
   implement -> verify -> monitor -> fix -> receipt
 ```
 
+v1.4 起是双向搭子：反过来 Claude Code 主驾时，把机械、额度压力型任务分工给 Codex 后台跑，Claude 用 loop 盯进度、逐个全量验收，分工方案先过点子王（idea-king）的对抗式审查：
+
+```text
+Claude Code (driver):
+  plan -> split (idea-king gate) -> delegate -> monitor loop -> full review -> receipt
+
+Codex (background jobs):
+  implement -> report -> bounded fix rounds on the same session
+```
+
 ## 触发方式
 
 ```text
@@ -128,6 +138,8 @@ Codex:
 让 Claude skip 做完这个 UI 交互优化，你监控它。
 Claude 里跑 Codex Review 验收当前 diff，发现问题你来修。
 搭子，恢复上次任务，接着做。
+搭子，分工给 codex 后台跑，做完你全量验收。
+点子王，对抗式审查一下这个方案。
 ```
 
 ## 它会交付什么
@@ -158,6 +170,10 @@ references/handoff-template.md   Bounded context packet for Claude Code polish/r
 references/failure-playbook.md   每种异常的固定恢复路径与 .partner/ 状态持久化
 references/scenarios.md          Review-only、debugging、非 UI、非 git、monorepo、跨天任务的流程变体
 references/darwin-ratchet.md     Validation-gated improvement rules
+references/claude-driven.md      Direction B：Claude 主驾的五阶段委派流程
+references/goal-template.md      .partner/goal.md 目标文件模板（任务表 + checkpoint 规则）
+references/fable5-principles.md  前沿模型提示词共同准则（why-forward、effort、checkpoint、resume）
+references/memory-protocol.md    收尾记忆协议（claude-mem / mem0 / auto-memory / rollout）
 scripts/showcase-cost-ledger.py  Rebuilds the showcase cost-pressure ledger
 scripts/check-readme-parity.py   检查中英文 README 章节和关键证据是否对齐
 scripts/check-skill-repo.sh      Publish readiness smoke check
@@ -167,6 +183,8 @@ scripts/make-receipt.py          生成并预校验 receipt，自动填 monitori
 scripts/session-snapshot.sh      transcript 快照对比，让新开会话数成为可计算的事实
 scripts/validate-receipt.py      校验 Partner Session Receipt 的字段与取值
 scripts/run-test-prompts.py      行为回归 prompt 的静态检查与实验性 live 模式
+scripts/delegate-codex.sh        Codex 后台任务原语：submit / status / result / resume / cancel
+idea-king/SKILL.md               点子王：第一性原理拆解 + 对抗式审查（随 Partner 一起安装）
 ```
 
 ## 安全边界
