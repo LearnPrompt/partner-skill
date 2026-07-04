@@ -65,26 +65,53 @@ if [ ! -f "$ROOT/SKILL.md" ]; then
   exit 1
 fi
 
-if [ "$STATUS" = "true" ]; then
-  head_commit="(not a git repository)"
+source_commit() {
   if git -C "$ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-    head_commit="$(git -C "$ROOT" rev-parse HEAD)"
+    git -C "$ROOT" rev-parse HEAD
+  else
+    echo "unknown"
   fi
+}
+
+write_install_meta() {
+  local meta_path="$1"
+  {
+    printf 'source_commit=%s\n' "$(source_commit)"
+    printf 'installed_at=%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+  } >"$meta_path"
+}
+
+print_status() {
+  local kind="$1" path="$2" meta_path="$3" head_commit="$4"
+  local exists="false"
+  case "$kind" in
+    dir) [ -d "$path" ] && exists="true" ;;
+    file) [ -f "$path" ] && exists="true" ;;
+  esac
+
+  if [ "$exists" != "true" ]; then
+    echo "MISSING  $path"
+  elif [ ! -f "$meta_path" ]; then
+    echo "UNKNOWN  $path (no install meta)"
+  else
+    installed_commit="$(sed -n 's/^source_commit=//p' "$meta_path")"
+    if [ "$installed_commit" = "$head_commit" ]; then
+      echo "CURRENT  $path ($installed_commit)"
+    else
+      echo "STALE    $path (installed $installed_commit, repo at $head_commit)"
+    fi
+  fi
+}
+
+if [ "$STATUS" = "true" ]; then
+  head_commit="$(source_commit)"
   echo "repo HEAD: $head_commit"
   for dest in "$HOME/.codex/skills/partner-skill" "$HOME/.claude/skills/partner-skill" "$HOME/.agents/skills/partner-skill"; do
-    if [ ! -d "$dest" ]; then
-      echo "MISSING  $dest"
-    elif [ ! -f "$dest/.install-meta" ]; then
-      echo "UNKNOWN  $dest (no .install-meta; installed before v1.1.0?)"
-    else
-      installed_commit="$(sed -n 's/^source_commit=//p' "$dest/.install-meta")"
-      if [ "$installed_commit" = "$head_commit" ]; then
-        echo "CURRENT  $dest ($installed_commit)"
-      else
-        echo "STALE    $dest (installed $installed_commit, repo at $head_commit)"
-      fi
-    fi
+    print_status dir "$dest" "$dest/.install-meta" "$head_commit"
   done
+  print_status dir "$HOME/.claude/skills/idea-king" "$HOME/.claude/skills/idea-king/.install-meta" "$head_commit"
+  print_status dir "$HOME/.agents/skills/idea-king" "$HOME/.agents/skills/idea-king/.install-meta" "$head_commit"
+  print_status file "$HOME/.codex/prompts/idea-king.md" "$HOME/.codex/prompts/idea-king.md.install-meta" "$head_commit"
   exit 0
 fi
 
@@ -108,10 +135,6 @@ copy_payload() {
     git -C "$ROOT" ls-files -z -- . ':!:.github' ':!:docs/TEST.md' \
       | (cd "$ROOT" && tar -cf - --null -T -) \
       | tar -xf - -C "$dest"
-    {
-      printf 'source_commit=%s\n' "$(git -C "$ROOT" rev-parse HEAD)"
-      printf 'installed_at=%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-    } >"$dest/.install-meta"
   else
     (cd "$ROOT" && find . -type f \
       ! -path './.git/*' \
@@ -121,6 +144,7 @@ copy_payload() {
       -print0 | tar -cf - --null -T -) \
       | tar -xf - -C "$dest"
   fi
+  write_install_meta "$dest/.install-meta"
 }
 
 for dest in "${DESTS[@]}"; do
@@ -171,6 +195,7 @@ install_idea_king_skill() {
   mkdir -p "$dest"
   (cd "$ROOT/idea-king" && find . -type f ! -name '.DS_Store' ! -name 'codex-prompt.md' -print0 \
     | tar -cf - --null -T -) | tar -xf - -C "$dest"
+  write_install_meta "$dest/.install-meta"
 }
 
 install_idea_king_codex_prompt() {
@@ -181,6 +206,7 @@ install_idea_king_codex_prompt() {
   fi
   mkdir -p "$HOME/.codex/prompts"
   cp "$ROOT/idea-king/codex-prompt.md" "$dest"
+  write_install_meta "$dest.install-meta"
 }
 
 for dest in "${DESTS[@]}"; do

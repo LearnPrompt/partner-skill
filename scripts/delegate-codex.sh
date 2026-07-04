@@ -67,6 +67,26 @@ now_utc() {
   date -u +%Y-%m-%dT%H:%M:%SZ
 }
 
+make_job_id() {
+  local label="$1"
+  printf 'job-%s-%s-%s-%s\n' "$(date +%Y%m%d%H%M%S)" "$$" "$RANDOM" "${label:-task}"
+}
+
+kill_tree() {
+  local pid="$1"
+  local child
+  local children
+  if command -v pgrep >/dev/null 2>&1; then
+    children="$(pgrep -P "$pid" 2>/dev/null || true)"
+  else
+    children="$(ps -o pid= -P "$pid" 2>/dev/null || true)"
+  fi
+  for child in $children; do
+    kill_tree "$child"
+  done
+  kill "$pid" 2>/dev/null || true
+}
+
 job_state() {
   # Prints RUNNING | DONE | FAILED | CANCELLED for $JOB.
   if [ -f "$JOB/cancelled" ]; then
@@ -131,7 +151,8 @@ cmd_submit() {
   case "$EFFORT" in minimal|low|medium|high|xhigh) ;; *) die "invalid --effort: $EFFORT" ;; esac
 
   LABEL="$(echo "$LABEL" | tr -cs 'A-Za-z0-9_-' '-' | sed 's/^-//;s/-$//')"
-  local JOB_ID="job-$(date +%Y%m%d%H%M%S)-${LABEL:-task}"
+  local JOB_ID
+  JOB_ID="$(make_job_id "$LABEL")"
   JOB="$(job_dir "$JOB_ID")"
   [ -e "$JOB" ] && die "job dir already exists: $JOB"
   mkdir -p "$JOB"
@@ -346,7 +367,7 @@ cmd_cancel() {
   require_repo
   require_job "$JOB_ID"
   if [ -f "$JOB/pid" ]; then
-    kill "$(cat "$JOB/pid")" 2>/dev/null || true
+    kill_tree "$(cat "$JOB/pid")"
   fi
   touch "$JOB/cancelled"
   echo "cancelled: $JOB_ID"

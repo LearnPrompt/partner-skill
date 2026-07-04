@@ -66,7 +66,11 @@ def extract_block(text: str) -> dict[str, str] | None:
     return fields
 
 
-def validate(fields: dict[str, object]) -> list[str]:
+def is_non_bool_int(value: object) -> bool:
+    return isinstance(value, int) and not isinstance(value, bool)
+
+
+def validate(fields: dict[str, object], *, strict_json_types: bool = False) -> list[str]:
     failures: list[str] = []
 
     for field in REQUIRED_FIELDS:
@@ -92,18 +96,35 @@ def validate(fields: dict[str, object]) -> list[str]:
             f"monitoring_level must be one of {sorted(MONITORING_LEVELS)}, got {as_text('monitoring_level')!r}"
         )
 
-    new_sessions = as_text("new_claude_p_sessions")
-    if new_sessions != "unknown" and not re.fullmatch(r"\d+", new_sessions):
-        failures.append(f"new_claude_p_sessions must be a count or 'unknown', got {new_sessions!r}")
+    if strict_json_types:
+        new_sessions_value = fields["new_claude_p_sessions"]
+        if new_sessions_value != "unknown" and not is_non_bool_int(new_sessions_value):
+            failures.append(
+                "new_claude_p_sessions must be an integer or 'unknown', "
+                f"got {new_sessions_value!r}"
+            )
+        if is_non_bool_int(new_sessions_value) and new_sessions_value < 0:
+            failures.append(f"new_claude_p_sessions must be >= 0, got {new_sessions_value!r}")
 
-    if not re.fullmatch(r"\d+", as_text("codex_passes")):
-        failures.append(f"codex_passes must be an integer, got {as_text('codex_passes')!r}")
+        for int_field in ("codex_passes", "codex_jobs"):
+            value = fields[int_field]
+            if not is_non_bool_int(value):
+                failures.append(f"{int_field} must be an integer, got {value!r}")
+            elif value < 0:
+                failures.append(f"{int_field} must be >= 0, got {value!r}")
+    else:
+        new_sessions = as_text("new_claude_p_sessions")
+        if new_sessions != "unknown" and not re.fullmatch(r"\d+", new_sessions):
+            failures.append(f"new_claude_p_sessions must be a count or 'unknown', got {new_sessions!r}")
+
+        if not re.fullmatch(r"\d+", as_text("codex_passes")):
+            failures.append(f"codex_passes must be an integer, got {as_text('codex_passes')!r}")
+
+        if not re.fullmatch(r"\d+", as_text("codex_jobs")):
+            failures.append(f"codex_jobs must be an integer, got {as_text('codex_jobs')!r}")
 
     if as_text("direction") not in DIRECTIONS:
         failures.append(f"direction must be one of {sorted(DIRECTIONS)}, got {as_text('direction')!r}")
-
-    if not re.fullmatch(r"\d+", as_text("codex_jobs")):
-        failures.append(f"codex_jobs must be an integer, got {as_text('codex_jobs')!r}")
 
     for placeholder_field in ("phase", "claude_session", "checks", "anomalies"):
         value = as_text(placeholder_field)
@@ -138,7 +159,7 @@ def main() -> int:
             return 1
         fields = dict(extracted)
 
-    failures = validate(fields)
+    failures = validate(fields, strict_json_types=args.json)
     if failures:
         for failure in failures:
             print(f"FAIL {failure}")
