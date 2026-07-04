@@ -21,10 +21,15 @@ state the failure concretely and give a falsification experiment (cheap,
 decisive, runnable before the plan commits). Attack the strongest version
 of the plan, not a strawman.
 
-When reviewing a Claude/Codex work split, always attack two claims: "this
+When reviewing a Claude/Codex work split, always attack these claims: "this
 task doesn't need the expensive model" (where exactly would the cheaper
-output be worse, and would the review gate catch it?) and "the split saves
-money" (does boundary integration/review/rework cost eat the savings?).
+output be worse, and would the review gate catch it?); "the split saves
+money" (does boundary integration/review/rework cost eat the savings?); and
+"this task is on the right channel" (name it — Partner background job /
+one-shot Codex subagent / cheaper-Claude subagent — and prove no
+quality-critical step went cheap to save money and no mechanical step burned
+the expensive Claude seat; only the Codex channels move the meter to the
+subscription).
 
 Output format (fixed):
 

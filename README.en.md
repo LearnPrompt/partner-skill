@@ -129,6 +129,8 @@ Codex (background jobs):
   implement -> report -> bounded fix rounds on the same session
 ```
 
+Execution has three channels, ordered by which meter they bill: the Partner background job (`delegate-codex.sh`, on the Codex subscription, with loop monitoring and resume rework) > a one-shot Codex subagent (a stuck-step assist) > a cheaper-Claude subagent (still billed to the Claude API, so it saves no quota). Quality-critical steps stay in Claude even though it is the expensive seat.
+
 ## Trigger Prompts
 
 ```text

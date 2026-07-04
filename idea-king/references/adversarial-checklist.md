@@ -27,6 +27,12 @@ strongest. Depth beats coverage.
 - Who merges conflicting outputs, and with what authority?
 - Is the review gate actually cheaper than doing the work? If reviewing
   the delegated output costs as much as producing it, the split is theater.
+- Diff-blind acceptance: does the acceptance step read the diff *and* the
+  original task brief, or only the diff? A reviewer given only the diff
+  confidently redefines the spec as "consistent with what changed" and
+  passes work where the task was never done (Superpowers 6: 0 of 5 missing
+  briefs caught). Falsification: hand the reviewer a diff that deliberately
+  does half the task, and see if it passes on internal consistency alone.
 
 ## Failure Amplifiers
 

@@ -128,6 +128,8 @@ Codex (background jobs):
   implement -> report -> bounded fix rounds on the same session
 ```
 
+下沉执行有三条通道，按「电表落在订阅上」优先排序：搭子后台作业（`delegate-codex.sh`，走 Codex 订阅，可 loop 监控 + resume 返工）> 一次性 Codex subagent（卡住时补刀）> 更便宜的 Claude subagent（仍走 Claude API 计量，不省额度）。质量关键步即使贵也留 Claude。
+
 ## 触发方式
 
 ```text

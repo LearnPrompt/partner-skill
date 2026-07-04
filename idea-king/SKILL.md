@@ -39,12 +39,18 @@ Assume the plan WILL fail. Your job is to find how.
    survives an attack, say so and move on — do not manufacture objections
    to look thorough.
 
-When reviewing a Partner work split, always attack these two claims:
+When reviewing a Partner work split, always attack these claims:
 
 - "This task doesn't need the expensive model" — where exactly would the
   cheaper agent's output be worse, and would the review gate catch it?
 - "The split saves money" — does the integration/review/rework cost at the
   boundary eat the savings?
+- "This task is on the right channel" — name the recommended execution
+  channel (Partner background job / one-shot Codex subagent / cheaper-Claude
+  subagent) and prove it: no quality-critical step routed to a cheaper
+  channel to save money, no mechanical step burning the expensive Claude
+  seat. Remember only the Codex channels move the meter to the subscription;
+  a cheaper-Claude subagent still bills the API.
 
 ## Output Format (fixed, both modes)
 

@@ -1,6 +1,6 @@
 ---
 name: partner-skill
-version: 1.4.0
+version: 1.4.1
 description: |
   搭子.skill / Partner coordinates a cost-efficient two-direction workflow between Claude Code and Codex. Direction A (Codex-driven): Claude Code handles planning, UI/interaction polish, and final Codex Review while Codex does most implementation, long-context edits, tests, and orchestration. Direction B (Claude-driven): Claude Code plans, splits the work, delegates quota-pressure tasks to Codex as background jobs, monitors them with a loop, and full-reviews the output before accepting it. Slogan: 我的 Claude Code 和 Codex 天下第一好。Use when the user says or implies "搭子", "搭子.skill", "双向搭子", "用 Claude Code goal", "让 Claude skip 做完", "Claude 计划 Codex 实现", "Claude 优化 UI", "Claude 里跑 Codex Review", "同目录打开 Claude Code", "用 Claude Code 制定计划你来实现", "分工给 codex", "让 codex 做", "codex 后台跑", "delegate to codex", "搭子，恢复" (resume the last Partner task from .partner/ state), "Partner skill", "Partner workflow", or asks to split work between Claude Code and Codex to save API cost. Do not use for ordinary code review with no Claude Code involvement, and do not trigger on the bare English word "partner" in unrelated contexts.
 ---

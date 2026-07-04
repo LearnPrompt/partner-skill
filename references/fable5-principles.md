@@ -66,3 +66,37 @@ packet ends with:
 > DO NOT send optional commentary. Answer only what was asked — no
 > preamble, no unsolicited suggestions, no closing remarks. End with at
 > most 3 lines of lessons learned.
+
+This is measured, not folklore: a terse reviewer contract cut reviewer
+output by 41% with no loss in judgment quality (Superpowers 6
+autoresearch, 25+ controlled experiments).
+
+## Delegate Execution, Don't Downshift the Planner
+
+Saving planner spend means moving execution onto the subscription meter
+(Codex), not making the planner do quality-critical work with a cheaper
+model. Right-sizing is the default lean, never a hard rule: architecture,
+the split decision itself, cross-module integration, security/correctness
+paths, and final acceptance stay with the planner even though it is the
+expensive seat.
+
+Three execution channels, in order of preference for delegable work:
+
+| Channel | Billing | Shape | Use when |
+|---|---|---|---|
+| Partner `delegate-codex.sh` | Codex subscription | out-of-process background job, durable state, loop monitoring, resume rework, receipt | a real unit of delegated work: runs while you continue, gets full-reviewed, may need fix rounds |
+| Codex subagent (one-shot, e.g. a rescue/second-opinion agent) | Codex subscription | in-process, blocking, no durable state | stuck and want a second diagnosis, or a throwaway assist |
+| Claude subagent (Task tool, cheaper Claude tier) | Claude API metered | in-process, isolated context, returns a summary | the step genuinely needs Claude-grade reasoning at a lower tier and the metered spend is acceptable |
+
+Only the Codex channels move the whole meter to the subscription; a
+cheaper-Claude subagent still bills the API. A subagent is a single-call
+primitive; the Partner job is an orchestration layer (submit → monitor →
+review → rework → receipt → memory) — pick by whether the work needs that
+lifecycle, not by habit.
+
+## Don't Throttle the Planner's Thinking
+
+Restricting the orchestrator's thinking backfires: in controlled runs it
+raised turns from 92 to 138 and doubled output — thinking buys turn
+efficiency (Superpowers 6 autoresearch). Economize on the execution axis
+(delegate downward), never on the planner's reasoning budget.

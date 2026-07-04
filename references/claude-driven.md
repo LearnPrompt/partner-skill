@@ -35,11 +35,24 @@ Job state lives under `<repo>/.partner/jobs/`.
   - Keep in Claude (API, quality-critical): architecture, the split decision
     itself, cross-module integration, security/correctness-critical paths,
     final acceptance.
+- Pick the execution channel per task (full table and billing in
+  `references/fable5-principles.md`). Default lean, cheapest meter first:
+  - **Partner background job** (`delegate-codex.sh`) — the default for any
+    real unit of delegated work; runs on the Codex subscription while Claude
+    continues, and is full-reviewed in Phase 4.
+  - **One-shot Codex subagent** (e.g. a rescue agent) — only for a stuck
+    step needing a second diagnosis; no durable state, no rework chain.
+  - **Cheaper-Claude subagent** (Task tool) — only when the step needs
+    Claude-grade reasoning at a lower tier; note that it still bills the API,
+    so it does not save quota the way the Codex channels do.
+  Never route a quality-critical step to a cheaper channel just to save
+  money, and never spend the expensive Claude seat on mechanical work.
 - Adversarial gate: run the idea-king adversarial review (the `idea-king`
   skill, or `references/../idea-king/SKILL.md` content inline) against the
-  split. Two questions it must answer: does each Codex task really not need
-  the expensive model, and does the integration cost of the split boundary
-  eat the savings? Fix the split before delegating.
+  split. It must answer three questions: does each Codex task really not
+  need the expensive model, does the integration cost of the split boundary
+  eat the savings, and is each task on the right execution channel (with a
+  reason it is not a more expensive one). Fix the split before delegating.
 
 ## Phase 2 — Delegate
 
@@ -82,6 +95,12 @@ bash "$PARTNER_DIR/scripts/delegate-codex.sh" submit \
 - Claude reviews the complete diff itself — `git diff` (scoped to the files
   the job touched), plus the fastest relevant check. This is a full review
   by default, not a sample. Do not accept work you have not read.
+- Review against the acceptance criteria in `.partner/goal.md`, not against
+  the diff alone. A reviewer given only the diff confidently redefines the
+  spec as "internally consistent with what changed" and misses tasks that
+  were never done — in Superpowers 6, diff-only reviewers caught 0 of 5
+  missing task briefs. Re-read each task's brief, then ask "does this diff
+  satisfy that brief," not just "is this diff self-consistent."
 - Findings? Send one bounded fix round back to the same Codex session:
 
 ```bash

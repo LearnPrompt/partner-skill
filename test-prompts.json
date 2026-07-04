@@ -210,5 +210,21 @@
       "Fabricate token savings or hide rework rounds from the receipt.",
       "Exceed two fix rounds without taking the task back."
     ]
+  },
+  {
+    "id": "execution-channel-routing",
+    "prompt": "搭子，这个需求拆成几块，能省额度的都下沉，帮我安排好谁来干。",
+    "should_trigger": true,
+    "expected_behavior": [
+      "Name an execution channel per delegated task in the goal file: Partner background job, one-shot Codex subagent, or cheaper-Claude subagent.",
+      "Default delegable work to the Partner background job so it bills the Codex subscription, not the Claude API.",
+      "Keep quality-critical steps (architecture, split decision, integration, security/correctness, final acceptance) in Claude even though it is the expensive seat.",
+      "Have the idea-king adversarial gate confirm each task is on the right channel before delegating."
+    ],
+    "must_not": [
+      "Route a quality-critical step to a cheaper channel just to save money.",
+      "Claim a cheaper-Claude subagent saves quota the way the Codex channels do — it still bills the API.",
+      "Burn the expensive Claude seat on mechanical work that fits a Codex channel."
+    ]
   }
 ]
