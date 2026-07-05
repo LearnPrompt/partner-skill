@@ -130,6 +130,12 @@ Codex (background jobs):
 
 下沉执行有三条通道，按「电表落在订阅上」优先排序：搭子后台作业（`delegate-codex.sh`，走 Codex 订阅，可 loop 监控 + resume 返工）> 一次性 Codex subagent（卡住时补刀）> 更便宜的 Claude subagent（仍走 Claude API 计量，不省额度）。质量关键步即使贵也留 Claude。
 
+<div align="center">
+<img src="assets/showcase-idea-king.gif" alt="点子王对抗式审查:verdict 先行、攻击点带 evidence/inference 标签、证伪实验" width="720" />
+</div>
+
+分工方案先过点子王：结论先行（ship / needs-attention / no-go），每条攻击标注 evidence 或 inference，并附上最便宜的证伪实验。
+
 ## 触发方式
 
 ```text

@@ -131,6 +131,12 @@ Codex (background jobs):
 
 Execution has three channels, ordered by which meter they bill: the Partner background job (`delegate-codex.sh`, on the Codex subscription, with loop monitoring and resume rework) > a one-shot Codex subagent (a stuck-step assist) > a cheaper-Claude subagent (still billed to the Claude API, so it saves no quota). Quality-critical steps stay in Claude even though it is the expensive seat.
 
+<div align="center">
+<img src="assets/showcase-idea-king.gif" alt="Idea King adversarial review: verdict first, attacks tagged evidence/inference, falsification experiments" width="720" />
+</div>
+
+Every split passes through Idea King first: verdict up front (ship / needs-attention / no-go), each attack tagged evidence or inference, each with the cheapest falsification experiment.
+
 ## Trigger Prompts
 
 ```text
