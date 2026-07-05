@@ -48,6 +48,38 @@ strongest. Depth beats coverage.
   there?
 - Where can scope quietly grow ("while I'm here...") and who stops it?
 
+## Delegation Prompt Quality
+
+When the plan includes handing work to another agent, attack the packet
+itself before attacking the split:
+
+- Vague goal: "make it better" instead of a measurable outcome with a
+  check command.
+- Bundled tasks: several jobs welded into one prompt that should be
+  sequenced as separate rounds with a status check between them.
+- Over-constrained toolchain: dictating exact commands instead of stating
+  the outcome — you are constraining a model that would have picked a
+  better route.
+- Review asked to also fix: a review job is read-only; folding "and fix
+  everything you find" into it produces neither a good review nor a good
+  fix.
+- Resume aimed at the wrong session: "continue" without a verified session
+  id restarts context from zero while claiming continuity.
+
+## Code-Level Attack Surfaces
+
+When the target is a concrete change (a diff, a migration, a deploy), not
+just a plan, prioritize the failures that are expensive, dangerous, or hard
+to detect:
+
+- auth, permissions, tenant isolation, and trust boundaries
+- data loss, corruption, duplication, and irreversible state changes
+- rollback safety, retries, partial failure, and idempotency gaps
+- race conditions, ordering assumptions, stale state, and re-entrancy
+- empty-state, null, timeout, and degraded-dependency behavior
+- version skew, schema drift, migration hazards, compatibility regressions
+- observability gaps that would hide the failure or make recovery harder
+
 ## Falsification Experiment Quality
 
 A good experiment is: cheap (minutes, not hours), decisive (a clear

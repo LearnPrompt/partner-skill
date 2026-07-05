@@ -142,6 +142,7 @@ Run Codex Review inside Claude Code, then Codex fixes the findings.
 Partner, resume the last task from .partner/ state.
 Partner, delegate the mechanical parts to Codex in the background, then full-review.
 Idea King, run an adversarial review on this plan.
+Idea King, grill me on this plan, one question at a time.
 ```
 
 Chinese triggers such as `搭子` and `搭子.skill` are also first-class triggers.

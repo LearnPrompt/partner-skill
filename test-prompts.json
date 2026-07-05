@@ -226,5 +226,21 @@
       "Claim a cheaper-Claude subagent saves quota the way the Codex channels do — it still bills the API.",
       "Burn the expensive Claude seat on mechanical work that fits a Codex channel."
     ]
+  },
+  {
+    "id": "idea-king-grill-verdict",
+    "prompt": "点子王，盘问我这个重构方案，别一次全抛出来。",
+    "should_trigger": true,
+    "expected_behavior": [
+      "Run grill mode as a dialog: one question at a time, each shipped with a recommended answer.",
+      "Explore the repo instead of asking when a question is answerable from files.",
+      "Settle load-bearing decisions before dependent ones and withhold blessing until shared understanding.",
+      "Close with the fixed output format opening on a verdict line (ship | needs-attention | no-go), attacks tagged evidence or inference."
+    ],
+    "must_not": [
+      "Dump all questions in one message or degrade into a static report when grilling was requested.",
+      "Dress an inference up as verified evidence or inflate severity.",
+      "Pad the output with weak filler findings instead of one strong attack."
+    ]
   }
 ]

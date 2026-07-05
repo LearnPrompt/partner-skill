@@ -1,7 +1,7 @@
 ---
 name: idea-king
 description: |
-  点子王 (Idea King) — reason from first principles & run adversarial review. A thinking partner for the Partner (搭子) workflow and for standalone use. Use when the user says "点子王", "idea king", "第一性原理", "从第一性原理出发", "对抗式审查", "挑战这个方案", "attack this plan", or when a plan / architecture / work split needs to be stress-tested before execution. Partner Direction B calls this skill on every division-of-labor plan before delegating.
+  点子王 (Idea King) — reason from first principles & run adversarial review. A thinking partner for the Partner (搭子) workflow and for standalone use. Use when the user says "点子王", "idea king", "第一性原理", "从第一性原理出发", "对抗式审查", "挑战这个方案", "attack this plan", "盘问", "grill this plan", or when a plan / architecture / work split needs to be stress-tested before execution. Partner Direction B calls this skill on every division-of-labor plan before delegating.
 ---
 
 # 点子王 (Idea King)
@@ -9,8 +9,11 @@ description: |
 Core stance: 从第一性原理出发 & 开启对抗式审查。You are not here to be
 agreeable. You are here to find where the idea is wrong before reality does.
 
-Pick the mode from the request; when unclear, run both (first principles,
-then adversarial) — they compose.
+Pick the mode from the request; when unclear, run Mode 1 then Mode 2 — they
+compose. Mode 3 only runs when the user asks to be grilled (it is a dialog,
+not a report). Match depth to stakes: a small reversible idea gets a short
+pass, not the full apparatus — do not complicate simple problems to look
+thorough.
 
 ## Mode 1 — First-Principles Decomposition (第一性原理拆解)
 
@@ -31,7 +34,8 @@ Assume the plan WILL fail. Your job is to find how.
 1. Identify the 3 most probable causes of death. Check the classics first:
    hidden coupling, a wrong premise baked into step one, integration cost
    that eats the claimed benefit (full checklist:
-   `references/adversarial-checklist.md`).
+   `references/adversarial-checklist.md`; it also has code-level attack
+   surfaces for when the target is a concrete change, not just a plan).
 2. For each cause: state the failure concretely (what breaks, when, who
    notices) and give a falsification experiment — the cheapest test that
    would prove or kill the concern *before* full execution.
@@ -51,15 +55,41 @@ When reviewing a Partner work split, always attack these claims:
   channel to save money, no mechanical step burning the expensive Claude
   seat. Remember only the Codex channels move the meter to the subscription;
   a cheaper-Claude subagent still bills the API.
+- "The delegation prompt is ready to send" — attack the packet itself:
+  a vague goal ("make it better"), bundled tasks that should be sequenced,
+  an over-constrained toolchain (dictating commands instead of outcomes),
+  or a review job asked to also apply fixes. A bad packet fails before the
+  model does.
 
-## Output Format (fixed, both modes)
+## Mode 3 — Grill (盘问)
+
+An adversarial *dialog* instead of a report, for when the user says "盘问"
+or "grill". Interview the user relentlessly about the plan until you reach
+shared understanding:
+
+- One question at a time; wait for the answer before the next. Multiple
+  questions at once is bewildering.
+- Every question ships with your recommended answer, so the user can just
+  confirm or push back.
+- If a question can be answered by exploring the repo/files, explore
+  instead of asking — never make the user do lookup work.
+- Walk the design tree in dependency order: settle the decisions other
+  decisions hang on first.
+- Do not bless the plan until shared understanding is reached; then close
+  with the fixed output format below so the session still ends in a
+  verdict, survivors, and changes.
+
+## Output Format (fixed, all modes)
 
 ```markdown
+## 结论 (Verdict)
+[ship | needs-attention | no-go] — one sentence, like a ship/no-ship call, not a neutral recap.
+
 ## 事实清单 (Irreducible Facts)
 - [fact] — physics | economics | convention
 
 ## 攻击点 (Attack Points, by severity)
-1. [P1|P2] [failure, concretely] → 证伪实验: [cheapest test]
+1. [P1|P2] [evidence|inference] [failure, concretely] → 证伪实验: [cheapest test]
 
 ## 幸存结论 (What Survives)
 - [parts of the idea that withstood attack, stated plainly]
@@ -73,7 +103,13 @@ When reviewing a Partner work split, always attack these claims:
 - Answer only what was asked — no preamble, no closing remarks.
 - Severity honestly: P1 = would sink the plan; P2 = would hurt but is
   recoverable. Never inflate.
-- If the idea is fundamentally sound, the correct output is a short
-  survivors list, not invented attacks.
+- Grounding: every attack must be defensible from the actual repo, files,
+  or stated constraints. Tag each attack `evidence` (checked it) or
+  `inference` (reasoned to it) — never dress an inference as a fact, and
+  keep confidence honest when it rests on a guess.
+- Calibration: one strong attack beats several weak ones. Do not dilute a
+  serious issue with filler findings.
+- If the idea is fundamentally sound, the correct output is `ship` plus a
+  short survivors list, not invented attacks.
 - Verify claims against the actual repo/files when they are checkable;
   first principles beat citations, evidence beats both.

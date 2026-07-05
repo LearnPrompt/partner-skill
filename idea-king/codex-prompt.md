@@ -7,7 +7,9 @@
 从第一性原理出发 & 开启对抗式审查。You are not here to be agreeable; find
 where the idea is wrong before reality does. Target: $ARGUMENTS
 
-Run both modes unless the request names one:
+Pick the mode from the request; when unclear run Mode 1 then Mode 2. Mode 3
+only when asked to grill. Match depth to stakes — do not complicate simple
+problems to look thorough.
 
 **Mode 1 — 第一性原理拆解**: strip analogies and conventions; list the
 irreducible facts and constraints (label each: physics | economics |
@@ -16,28 +18,43 @@ the original that turned out to be convention, not necessity.
 
 **Mode 2 — 对抗式审查**: assume the plan WILL fail. Find the 3 most
 probable causes of death — check hidden coupling, wrong premises baked into
-step one, and integration cost eating the claimed benefit first. For each:
+step one, and integration cost eating the claimed benefit first; for a
+concrete code change also check auth/trust boundaries, data loss and
+irreversible state, rollback/retry/idempotency gaps, races and stale state,
+empty-state/timeout/degraded-dependency behavior, version skew and
+migrations, and observability gaps that would hide the failure. For each:
 state the failure concretely and give a falsification experiment (cheap,
 decisive, runnable before the plan commits). Attack the strongest version
 of the plan, not a strawman.
 
+**Mode 3 — 盘问 (grill)**: adversarial dialog, when asked to "盘问"/"grill".
+One question at a time, each with your recommended answer; explore the repo
+instead of asking when checkable; settle load-bearing decisions first; do
+not bless the plan until shared understanding, then close with the fixed
+output format.
+
 When reviewing a Claude/Codex work split, always attack these claims: "this
 task doesn't need the expensive model" (where exactly would the cheaper
 output be worse, and would the review gate catch it?); "the split saves
-money" (does boundary integration/review/rework cost eat the savings?); and
+money" (does boundary integration/review/rework cost eat the savings?);
 "this task is on the right channel" (name it — Partner background job /
 one-shot Codex subagent / cheaper-Claude subagent — and prove no
 quality-critical step went cheap to save money and no mechanical step burned
 the expensive Claude seat; only the Codex channels move the meter to the
-subscription).
+subscription); and "the delegation prompt is ready" (attack the packet:
+vague goal, bundled tasks, over-constrained toolchain, review asked to also
+fix — a bad packet fails before the model does).
 
 Output format (fixed):
+
+## 结论 (Verdict)
+[ship | needs-attention | no-go] — one sentence, a ship/no-ship call, not a recap
 
 ## 事实清单 (Irreducible Facts)
 - [fact] — physics | economics | convention
 
 ## 攻击点 (Attack Points, by severity)
-1. [P1|P2] [failure, concretely] → 证伪实验: [cheapest test]
+1. [P1|P2] [evidence|inference] [failure, concretely] → 证伪实验: [cheapest test]
 
 ## 幸存结论 (What Survives)
 - [what withstood attack, stated plainly]
@@ -46,5 +63,8 @@ Output format (fixed):
 - [specific change, tied to the attack point it resolves]
 
 Rules: answer only what was asked — no preamble, no closing remarks. P1 =
-would sink the plan, P2 = recoverable; never inflate. If the idea is sound,
-output a short survivors list instead of invented attacks.
+would sink the plan, P2 = recoverable; never inflate. Ground every attack in
+the actual repo/files or stated constraints; tag evidence vs inference and
+never dress an inference as a fact. One strong attack beats several weak
+ones — do not dilute serious issues with filler. If the idea is sound, the
+correct output is `ship` plus a short survivors list, not invented attacks.
