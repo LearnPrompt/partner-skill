@@ -1,8 +1,8 @@
 ---
 name: partner-skill
-version: 1.3.0
+version: 1.4.2
 description: |
-  搭子.skill / Partner coordinates a cost-efficient workflow where Claude Code handles planning, UI/interaction polish, and final Codex Review while Codex does most implementation, long-context edits, tests, and orchestration. Slogan: 我的 Claude Code 和 Codex 天下第一好。Use when the user says or implies "搭子", "搭子.skill", "用 Claude Code goal", "让 Claude skip 做完", "Claude 计划 Codex 实现", "Claude 优化 UI", "Claude 里跑 Codex Review", "同目录打开 Claude Code", "用 Claude Code 制定计划你来实现", "搭子，恢复" (resume the last Partner task from .partner/ state), "Partner skill", "Partner workflow", or asks to split work between Claude Code and Codex to save API cost. Do not use for ordinary code review with no Claude Code involvement, and do not trigger on the bare English word "partner" in unrelated contexts.
+  搭子.skill / Partner coordinates a cost-efficient two-direction workflow between Claude Code and Codex. Direction A (Codex-driven): Claude Code handles planning, UI/interaction polish, and final Codex Review while Codex does most implementation, long-context edits, tests, and orchestration. Direction B (Claude-driven): Claude Code plans, splits the work, delegates quota-pressure tasks to Codex as background jobs, monitors them with a loop, and full-reviews the output before accepting it. Slogan: 我的 Claude Code 和 Codex 天下第一好。Use when the user says or implies "搭子", "搭子.skill", "双向搭子", "用 Claude Code goal", "让 Claude skip 做完", "Claude 计划 Codex 实现", "Claude 优化 UI", "Claude 里跑 Codex Review", "同目录打开 Claude Code", "用 Claude Code 制定计划你来实现", "分工给 codex", "让 codex 做", "codex 后台跑", "delegate to codex", "搭子，恢复" (resume the last Partner task from .partner/ state), "Partner skill", "Partner workflow", or asks to split work between Claude Code and Codex to save API cost. Do not use for ordinary code review with no Claude Code involvement, and do not trigger on the bare English word "partner" in unrelated contexts.
 ---
 
 # 搭子.skill (Partner)
@@ -16,6 +16,15 @@ Use this skill to run a two-agent coding workflow: Claude Code is the high-value
 Prefer one long-lived Claude Code session for small and medium tasks: ask Claude for the plan, let Codex implement, then return the diff summary and key files to the same Claude session for UI/interaction polish and final `/codex:review`. This avoids paying Claude to rebuild the same project context and gives Claude enough continuity to improve the work.
 
 Partner is not a delegation excuse. The user remains the owner, Codex remains accountable for repository evidence, and Claude Code is treated as a high-value collaborator whose output must be verified.
+
+## Direction Detection
+
+Partner runs in two directions. Decide once at the start and say which one you are in:
+
+- **Direction A — Codex-driven (default here)**: this file is loaded by Codex; Codex orchestrates and Claude Code is the high-value planning/polish/review agent. Follow the Default Flow below.
+- **Direction B — Claude-driven**: this file is loaded inside Claude Code and the user asks to delegate work to Codex ("双向搭子", "分工给 codex", "让 codex 做", "codex 后台跑"). Claude plans and splits the work, delegates to Codex via `bash "$PARTNER_DIR/scripts/delegate-codex.sh"` background jobs, monitors with a loop, and full-reviews the result before accepting. Read `references/claude-driven.md` and follow its five phases; the shared prompting rules live in `references/fable5-principles.md` and the wrap-up memory rules in `references/memory-protocol.md`.
+
+Both directions end with the same Partner Session Receipt; `direction` records which flow ran.
 
 ## Tool Location
 
@@ -132,8 +141,10 @@ codex_passes: <number of implementation/fix passes>
 checks: <commands run or not run>
 anomalies: <none | permission wait | idle | empty review | failed check | other>
 monitoring_level: <full | degraded | none | unknown>
+direction: <codex-driven | claude-driven>
+codex_jobs: <0 | count>
 ```
 
-Generate the receipt with `python3 "$PARTNER_DIR/scripts/make-receipt.py"` — it auto-fills `monitoring_level` from the probe and refuses to emit an invalid receipt. Get `new_claude_p_sessions` from `bash "$PARTNER_DIR/scripts/session-snapshot.sh" diff` so the count is computed from transcript evidence. A written receipt can be re-checked any time with `validate-receipt.py` against `docs/receipt-schema.json`.
+Generate the receipt with `python3 "$PARTNER_DIR/scripts/make-receipt.py"` — it auto-fills `monitoring_level` from the probe and refuses to emit an invalid receipt. Get `new_claude_p_sessions` from `bash "$PARTNER_DIR/scripts/session-snapshot.sh" diff` so the count is computed from transcript evidence. In Direction B, set `direction: claude-driven` and `codex_jobs` to the number of `delegate-codex.sh` jobs (including fix rounds); in Direction A they are `codex-driven` and `0` unless background jobs were used. A written receipt can be re-checked any time with `validate-receipt.py` against `docs/receipt-schema.json`.
 
 Do not fabricate token savings. When exact token telemetry is unavailable, report verifiable behavior instead: same Claude Code session reused, no fresh `claude -p` session, bounded handoff used, checks passed.

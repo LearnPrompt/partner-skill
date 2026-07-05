@@ -12,6 +12,8 @@ codex_passes: 2
 checks: bash scripts/check-skill-repo.sh .; jq schema check; git diff --check
 anomalies: none
 monitoring_level: full
+direction: codex-driven
+codex_jobs: 0
 ```
 
 This example is validated in CI: `python3 scripts/validate-receipt.py examples/session-receipt.md`.

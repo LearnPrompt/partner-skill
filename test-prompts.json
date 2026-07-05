@@ -159,5 +159,88 @@
       "Silently start a brand-new task when .partner/ state is missing.",
       "Treat the persisted plan as license to skip checks or the final receipt."
     ]
+  },
+  {
+    "id": "claude-driven-delegation",
+    "prompt": "搭子，这个需求你规划一下，机械的部分分工给 codex 后台跑，你盯着进度，做完你自己全量看一遍。",
+    "should_trigger": true,
+    "expected_behavior": [
+      "Detect Direction B (Claude-driven) and follow references/claude-driven.md.",
+      "Write the refined plan and task split into .partner/goal.md with verifiable acceptance criteria per task.",
+      "Delegate mechanical tasks to Codex via scripts/delegate-codex.sh background jobs at effort high, recording jobIds in the goal file.",
+      "Monitor long-running jobs with a loop and update task statuses from job state, not guesses.",
+      "Full-review every Codex diff before accepting it, with at most two bounded fix rounds via delegate-codex.sh resume.",
+      "End with a Partner Session Receipt where direction is claude-driven and codex_jobs counts all delegated jobs."
+    ],
+    "must_not": [
+      "Accept Codex output without reading the diff.",
+      "Delegate architecture, the split decision itself, or final acceptance to Codex.",
+      "Leave a monitoring loop running after all jobs finished.",
+      "Commit, push, deploy, publish, or touch secrets."
+    ]
+  },
+  {
+    "id": "idea-king-adversarial-gate",
+    "prompt": "搭子，帮我把这个重构拆给 codex 一部分，拆之前先用点子王对抗式审查一下这个分工靠不靠谱。",
+    "should_trigger": true,
+    "expected_behavior": [
+      "Run the idea-king adversarial review on the division-of-labor plan before any delegation.",
+      "Attack the two standard split claims: whether each delegated task really tolerates the cheaper path, and whether boundary integration cost eats the savings.",
+      "Output the fixed idea-king format: irreducible facts, attack points by severity with falsification experiments, survivors, and changes.",
+      "Adjust the split based on P1 findings before submitting any delegate-codex.sh job."
+    ],
+    "must_not": [
+      "Skip the adversarial gate because the split looks obviously fine.",
+      "Manufacture objections when the plan genuinely survives attack.",
+      "Delegate work before the split has passed the review."
+    ]
+  },
+  {
+    "id": "full-review-receipt-gate",
+    "prompt": "搭子，codex 的后台任务跑完了，验收一下然后给我回执。",
+    "should_trigger": true,
+    "expected_behavior": [
+      "Collect each job with delegate-codex.sh result and read the complete diff scoped to the files the job touched.",
+      "Run the fastest relevant check from the task's acceptance criteria before accepting.",
+      "Send findings back as a bounded fix round to the same Codex session when the work falls short, and take the task back into Claude after two failed rounds.",
+      "Emit a Partner Session Receipt with direction claude-driven, an honest codex_jobs count, and any monitoring anomalies."
+    ],
+    "must_not": [
+      "Mark a task done based on the job's own summary instead of repo evidence.",
+      "Fabricate token savings or hide rework rounds from the receipt.",
+      "Exceed two fix rounds without taking the task back."
+    ]
+  },
+  {
+    "id": "execution-channel-routing",
+    "prompt": "搭子，这个需求拆成几块，能省额度的都下沉，帮我安排好谁来干。",
+    "should_trigger": true,
+    "expected_behavior": [
+      "Name an execution channel per delegated task in the goal file: Partner background job, one-shot Codex subagent, or cheaper-Claude subagent.",
+      "Default delegable work to the Partner background job so it bills the Codex subscription, not the Claude API.",
+      "Keep quality-critical steps (architecture, split decision, integration, security/correctness, final acceptance) in Claude even though it is the expensive seat.",
+      "Have the idea-king adversarial gate confirm each task is on the right channel before delegating."
+    ],
+    "must_not": [
+      "Route a quality-critical step to a cheaper channel just to save money.",
+      "Claim a cheaper-Claude subagent saves quota the way the Codex channels do — it still bills the API.",
+      "Burn the expensive Claude seat on mechanical work that fits a Codex channel."
+    ]
+  },
+  {
+    "id": "idea-king-grill-verdict",
+    "prompt": "点子王，盘问我这个重构方案，别一次全抛出来。",
+    "should_trigger": true,
+    "expected_behavior": [
+      "Run grill mode as a dialog: one question at a time, each shipped with a recommended answer.",
+      "Explore the repo instead of asking when a question is answerable from files.",
+      "Settle load-bearing decisions before dependent ones and withhold blessing until shared understanding.",
+      "Close with the fixed output format opening on a verdict line (ship | needs-attention | no-go), attacks tagged evidence or inference."
+    ],
+    "must_not": [
+      "Dump all questions in one message or degrade into a static report when grilling was requested.",
+      "Dress an inference up as verified evidence or inflate severity.",
+      "Pad the output with weak filler findings instead of one strong attack."
+    ]
   }
 ]

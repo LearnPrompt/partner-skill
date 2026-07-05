@@ -119,6 +119,24 @@ Codex:
   implement -> verify -> monitor -> fix -> receipt
 ```
 
+Since v1.4 Partner is bidirectional: with Claude Code as the driver, mechanical and quota-pressure tasks are delegated to Codex as background jobs while Claude monitors with a loop and full-reviews every result; the split itself must first pass the idea-king adversarial gate:
+
+```text
+Claude Code (driver):
+  plan -> split (idea-king gate) -> delegate -> monitor loop -> full review -> receipt
+
+Codex (background jobs):
+  implement -> report -> bounded fix rounds on the same session
+```
+
+Execution has three channels, ordered by which meter they bill: the Partner background job (`delegate-codex.sh`, on the Codex subscription, with loop monitoring and resume rework) > a one-shot Codex subagent (a stuck-step assist) > a cheaper-Claude subagent (still billed to the Claude API, so it saves no quota). Quality-critical steps stay in Claude even though it is the expensive seat.
+
+<div align="center">
+<img src="assets/showcase-idea-king.gif" alt="Idea King adversarial review: verdict first, attacks tagged evidence/inference, falsification experiments" width="720" />
+</div>
+
+Every split passes through Idea King first: verdict up front (ship / needs-attention / no-go), each attack tagged evidence or inference, each with the cheapest falsification experiment.
+
 ## Trigger Prompts
 
 ```text
@@ -128,6 +146,9 @@ Use the same Claude Code chat for plan, polish, and /codex:review.
 Let Claude skip this UI polish task, and Codex monitors it.
 Run Codex Review inside Claude Code, then Codex fixes the findings.
 Partner, resume the last task from .partner/ state.
+Partner, delegate the mechanical parts to Codex in the background, then full-review.
+Idea King, run an adversarial review on this plan.
+Idea King, grill me on this plan, one question at a time.
 ```
 
 Chinese triggers such as `搭子` and `搭子.skill` are also first-class triggers.
@@ -159,6 +180,10 @@ references/handoff-template.md          Bounded context packet for Claude Code p
 references/failure-playbook.md          Fixed recovery path per anomaly and .partner/ state persistence
 references/scenarios.md                 Flow variants for review-only, debugging, non-UI, non-git, monorepo, multi-day
 references/darwin-ratchet.md            Validation-gated improvement rules
+references/claude-driven.md             Direction B: five-phase Claude-driven delegation flow
+references/goal-template.md             Template for .partner/goal.md (task table + checkpoint rule)
+references/fable5-principles.md         Shared frontier-model prompting rules (why-forward, effort, checkpoint, resume)
+references/memory-protocol.md           Wrap-up memory protocol (claude-mem / mem0 / auto-memory / rollout)
 scripts/showcase-cost-ledger.py         Rebuilds the showcase cost-pressure ledger
 scripts/check-readme-parity.py          Checks that Chinese and English READMEs stay aligned
 scripts/check-skill-repo.sh             Publish readiness smoke check
@@ -168,6 +193,8 @@ scripts/make-receipt.py                 Generates a pre-validated receipt, auto-
 scripts/session-snapshot.sh             Transcript snapshot diff so the new-session count is computed, not claimed
 scripts/validate-receipt.py             Validates Partner Session Receipt fields and values
 scripts/run-test-prompts.py             Static checks plus experimental live mode for the regression prompts
+scripts/delegate-codex.sh               Codex background-job primitive: submit / status / result / resume / cancel
+idea-king/SKILL.md                      Idea King: first-principles decomposition + adversarial review (installs with Partner)
 ```
 
 ## Safety

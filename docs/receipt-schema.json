@@ -12,11 +12,19 @@
     "codex_passes",
     "checks",
     "anomalies",
-    "monitoring_level"
+    "monitoring_level",
+    "direction",
+    "codex_jobs"
   ],
   "properties": {
     "phase": {
-      "enum": ["planning", "codex implementation", "claude polish", "review", "final fix"]
+      "enum": [
+        "planning",
+        "codex implementation",
+        "claude polish",
+        "review",
+        "final fix"
+      ]
     },
     "claude_session": {
       "type": "string",
@@ -24,12 +32,21 @@
       "description": "Claude Code session id, or the literal string 'none'."
     },
     "claude_session_reused": {
-      "enum": ["yes", "no", "n/a"]
+      "enum": [
+        "yes",
+        "no",
+        "n/a"
+      ]
     },
     "new_claude_p_sessions": {
       "oneOf": [
-        {"type": "integer", "minimum": 0},
-        {"const": "unknown"}
+        {
+          "type": "integer",
+          "minimum": 0
+        },
+        {
+          "const": "unknown"
+        }
       ]
     },
     "codex_passes": {
@@ -47,8 +64,25 @@
       "description": "'none' or a short description: permission wait, idle, empty review, failed check, other."
     },
     "monitoring_level": {
-      "enum": ["full", "degraded", "none", "unknown"],
+      "enum": [
+        "full",
+        "degraded",
+        "none",
+        "unknown"
+      ],
       "description": "Result of scripts/check-claude-cli.sh for this run."
+    },
+    "direction": {
+      "enum": [
+        "codex-driven",
+        "claude-driven"
+      ],
+      "description": "Which Partner flow ran: Codex orchestrating (A) or Claude delegating to Codex (B)."
+    },
+    "codex_jobs": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Number of delegate-codex.sh background jobs, including fix rounds. 0 when none were used."
     }
   },
   "additionalProperties": false

@@ -49,6 +49,10 @@ FILE_MAP_ENTRIES = [
     "references/failure-playbook.md",
     "references/scenarios.md",
     "references/darwin-ratchet.md",
+    "references/claude-driven.md",
+    "references/goal-template.md",
+    "references/fable5-principles.md",
+    "references/memory-protocol.md",
     "scripts/showcase-cost-ledger.py",
     "scripts/check-readme-parity.py",
     "scripts/check-skill-repo.sh",
@@ -58,6 +62,8 @@ FILE_MAP_ENTRIES = [
     "scripts/session-snapshot.sh",
     "scripts/validate-receipt.py",
     "scripts/run-test-prompts.py",
+    "scripts/delegate-codex.sh",
+    "idea-king/SKILL.md",
 ]
 
 

@@ -53,8 +53,54 @@ codex_passes: <number of implementation/fix passes>
 checks: <commands run or not run>
 anomalies: <none | permission wait | idle | empty review | failed check | other>
 monitoring_level: <full | degraded | none | unknown>
+direction: <codex-driven | claude-driven>
+codex_jobs: <0 | count>
 ```
 ```
+
+## Claude → Codex Delegation Packet (Direction B)
+
+Use this packet when Claude Code delegates a task to Codex via
+`delegate-codex.sh submit`. It follows `references/fable5-principles.md`:
+why-forward opening, one-sentence task, verifiable acceptance, only genuine
+constraints, fixed output discipline.
+
+```markdown
+# Partner Delegation
+
+## Context
+I'm working on [the larger task] for [who it's for]. They need
+[what the output enables]. With that in mind:
+
+## Task
+[One clear sentence. What to produce or change.]
+
+## Acceptance
+- [Verifiable condition, e.g. `npm test` passes, all call sites migrated]
+- [Check command Codex must run before finishing]
+
+## Constraints
+- Only touch: [paths in scope]. Do not touch: [paths out of scope].
+- Do not commit, push, deploy, publish, or touch secrets or `.env` files.
+- Pause only for a destructive or irreversible action, a real scope
+  change, or something only the user can provide. Otherwise continue
+  end-to-end and report when done.
+
+## Output
+- DO NOT send optional commentary. Answer only what was asked — no
+  preamble, no unsolicited suggestions, no closing remarks.
+- End with at most 3 lines of lessons learned (for rollout memory).
+```
+
+Delegation packet rules:
+
+- Acceptance criteria are what the Phase 4 full review checks against;
+  write them as commands or observable behavior, never vibes.
+- Keep the constraints section short — genuine blockers only. Trust the
+  model with approach decisions inside the scope boundary.
+- For fix rounds (`delegate-codex.sh resume`), send only: the review
+  findings (prioritized), the acceptance criteria that failed, and
+  "Continue end-to-end from here." Do not resend the whole packet.
 
 ## Good Handoff Rules
 
