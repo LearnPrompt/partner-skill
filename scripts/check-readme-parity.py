@@ -12,8 +12,8 @@ ZH = ROOT / "README.md"
 EN = ROOT / "README.en.md"
 
 EXPECTED_HEADINGS = [
-    ("## Showcase", "## Showcase"),
     ("## 30 秒装上", "## Install"),
+    ("## Showcase", "## Showcase"),
     ("## 一句话用起来", "## Use It"),
     ("## 成本压力模型", "## Cost Pressure Model"),
     ("## 它解决什么", "## What It Solves"),
