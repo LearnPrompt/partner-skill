@@ -12,32 +12,24 @@
 
 **把 Claude Code 留给规划、审美和审查，把 Codex 留给实现、跑检查和收尾。最后用一张 Session Receipt 证明：没有乱开新的 Claude 会话烧钱。**
 
-[Showcase](#showcase) · [30 秒装上](#30-秒装上) · [一句话用起来](#一句话用起来) · [成本压力模型](#成本压力模型) · [它解决什么](#它解决什么) · [安全边界](#安全边界) · [验证](#验证)
+[30 秒装上](#30-秒装上) · [Showcase](#showcase) · [一句话用起来](#一句话用起来) · [成本压力模型](#成本压力模型) · [它解决什么](#它解决什么) · [安全边界](#安全边界) · [验证](#验证)
 
 </div>
 
 ---
 
-## Showcase
-
-<div align="center">
-<img src="assets/showcase.gif" alt="Codex-only vs Partner: before/after UI contrast" width="720" />
-</div>
-
-左边是 Codex 单独做出来的——功能正确但视觉上没什么记忆点。右边是同一个 Claude Code 会话接回来做 UI polish 后的结果，右下角 `session: reused ✓` 说明没有新开 Claude 会话。
-
 ## 30 秒装上
 
-最省事的方式，是直接把这个仓库链接发给你的 Agent：
-
-```text
-请安装搭子.skill：https://github.com/LearnPrompt/partner-skill
-```
-
-也可以用 `npx`：
+一行 `npx` 装好：
 
 ```bash
 npx skills add LearnPrompt/partner-skill -g
+```
+
+也可以直接把这个仓库链接发给你的 Agent：
+
+```text
+请安装搭子.skill：https://github.com/LearnPrompt/partner-skill
 ```
 
 本地开发或手动安装：
@@ -48,6 +40,14 @@ cd partner-skill
 bash install.sh --target codex
 bash install.sh --target claude
 ```
+
+## Showcase
+
+<div align="center">
+<img src="assets/showcase.gif" alt="Codex-only vs Partner: before/after UI contrast" width="720" />
+</div>
+
+左边是 Codex 单独做出来的——功能正确但视觉上没什么记忆点。右边是同一个 Claude Code 会话接回来做 UI polish 后的结果，右下角 `session: reused ✓` 说明没有新开 Claude 会话。
 
 ## 一句话用起来
 
@@ -219,3 +219,9 @@ SOURCE_DATE_EPOCH=1782921600 python3 scripts/showcase-cost-ledger.py
 ## License
 
 MIT
+
+---
+
+<div align="center">
+<sub>公众号「卡尔的AI沃茨」 · X @aiwarts · <a href="https://learnprompt.pro/workshop/">learnprompt.pro/workshop</a></sub>
+</div>

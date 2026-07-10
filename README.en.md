@@ -12,32 +12,24 @@
 
 **Use Claude Code for planning, UI taste, and review. Use Codex for implementation and checks. A Session Receipt shows whether you reused the same Claude session.**
 
-[Showcase](#showcase) · [Install](#install) · [Use It](#use-it) · [Cost Pressure Model](#cost-pressure-model) · [What It Solves](#what-it-solves) · [Safety](#safety) · [Verify](#verify)
+[Install](#install) · [Showcase](#showcase) · [Use It](#use-it) · [Cost Pressure Model](#cost-pressure-model) · [What It Solves](#what-it-solves) · [Safety](#safety) · [Verify](#verify)
 
 </div>
 
 ---
 
-## Showcase
-
-<div align="center">
-<img src="assets/showcase.gif" alt="Codex-only vs Partner: before/after UI contrast" width="720" />
-</div>
-
-Left: what Codex produces on its own — functional but visually forgettable. Right: the same card after Claude Code polishes it in the same session. The tiny `session: reused ✓` in the corner is the proof layer — no fresh Claude cold start.
-
 ## Install
 
-Ask your agent to install from GitHub:
-
-```text
-Please install Partner Skill: https://github.com/LearnPrompt/partner-skill
-```
-
-Or install with `npx`:
+One-line install with `npx`:
 
 ```bash
 npx skills add LearnPrompt/partner-skill -g
+```
+
+Or ask your agent to install from GitHub:
+
+```text
+Please install Partner Skill: https://github.com/LearnPrompt/partner-skill
 ```
 
 Manual local install:
@@ -48,6 +40,14 @@ cd partner-skill
 bash install.sh --target codex
 bash install.sh --target claude
 ```
+
+## Showcase
+
+<div align="center">
+<img src="assets/showcase.gif" alt="Codex-only vs Partner: before/after UI contrast" width="720" />
+</div>
+
+Left: what Codex produces on its own — functional but visually forgettable. Right: the same card after Claude Code polishes it in the same session. The tiny `session: reused ✓` in the corner is the proof layer — no fresh Claude cold start.
 
 ## Use It
 
@@ -220,3 +220,9 @@ These checks also run automatically on every push and pull request via GitHub Ac
 ## License
 
 MIT
+
+---
+
+<div align="center">
+<sub>公众号「卡尔的AI沃茨」 · X @aiwarts · <a href="https://learnprompt.pro/workshop/">learnprompt.pro/workshop</a></sub>
+</div>
