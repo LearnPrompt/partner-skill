@@ -73,11 +73,22 @@ source_commit() {
   fi
 }
 
+host_for_dest() {
+  case "$1" in
+    "$HOME"/.codex/*) echo "codex" ;;
+    "$HOME"/.claude/*) echo "claude" ;;
+    "$HOME"/.agents/*) echo "generic" ;;
+    *) echo "unknown" ;;
+  esac
+}
+
 write_install_meta() {
   local meta_path="$1"
+  local host="${2:-unknown}"
   {
     printf 'source_commit=%s\n' "$(source_commit)"
     printf 'installed_at=%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+    printf 'host=%s\n' "$host"
   } >"$meta_path"
 }
 
@@ -144,7 +155,7 @@ copy_payload() {
       -print0 | tar -cf - --null -T -) \
       | tar -xf - -C "$dest"
   fi
-  write_install_meta "$dest/.install-meta"
+  write_install_meta "$dest/.install-meta" "$(host_for_dest "$dest")"
 }
 
 for dest in "${DESTS[@]}"; do
@@ -195,7 +206,7 @@ install_idea_king_skill() {
   mkdir -p "$dest"
   (cd "$ROOT/idea-king" && find . -type f ! -name '.DS_Store' ! -name 'codex-prompt.md' -print0 \
     | tar -cf - --null -T -) | tar -xf - -C "$dest"
-  write_install_meta "$dest/.install-meta"
+  write_install_meta "$dest/.install-meta" "$(host_for_dest "$dest")"
 }
 
 install_idea_king_codex_prompt() {
@@ -206,7 +217,7 @@ install_idea_king_codex_prompt() {
   fi
   mkdir -p "$HOME/.codex/prompts"
   cp "$ROOT/idea-king/codex-prompt.md" "$dest"
-  write_install_meta "$dest.install-meta"
+  write_install_meta "$dest.install-meta" "codex"
 }
 
 for dest in "${DESTS[@]}"; do
