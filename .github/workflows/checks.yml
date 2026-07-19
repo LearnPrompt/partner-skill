@@ -32,6 +32,7 @@ jobs:
           python3 scripts/make-receipt.py --phase review --claude-session ci-test \
             --reused yes --new-claude-p 0 --codex-passes 1 \
             --checks "ci roundtrip" --monitoring-level none \
+            --host claude_code --scope project --config-source project --roles-used '[]' \
             | python3 scripts/validate-receipt.py -
 
       - name: Monitoring probe degrades cleanly without claude CLI

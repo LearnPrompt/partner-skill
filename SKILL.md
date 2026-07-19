@@ -101,8 +101,24 @@ anomalies: <none | permission wait | idle | empty review | failed check | other>
 monitoring_level: <full | degraded | none | unknown>
 direction: <codex-driven | claude-driven>
 codex_jobs: <0 | count>
+host: <claude_code | codex | generic>
+scope: <project | global | n/a>
+config_source: <session | project | global | default | n/a>
+roles_used: <none | JSON array of {role, host, model, effort, verified}>
+receipt_schema_version: 2
 ```
 
 Generate the receipt with `python3 "$PARTNER_DIR/scripts/make-receipt.py"` — it auto-fills `monitoring_level` from the probe and refuses to emit an invalid receipt. Get `new_claude_p_sessions` from `bash "$PARTNER_DIR/scripts/session-snapshot.sh" diff` so the count is computed from transcript evidence. In Direction B, set `direction: claude-driven` and `codex_jobs` to the number of `delegate-codex.sh` jobs (including fix rounds); in Direction A they are `codex-driven` and `0` unless background jobs were used. A written receipt can be re-checked any time with `validate-receipt.py` against `docs/receipt-schema.json`.
+
+`host` is the runtime that loaded this file (see Host Detection above); `scope`
+and `config_source` come straight from `partner-setup.py --status` or a
+`partner-config.py resolve` call (`n/a` when the run touched no configured
+role). `roles_used` lists every role actually invoked this run, each entry's
+`verified` taken from the config's `verified` field, not guessed — an
+unconfigured or unverified role still gets an entry with `verified: false`,
+it is never omitted to make the receipt look cleaner. `receipt_schema_version`
+is always `2`; a receipt missing the four fields above is a schema v1
+receipt from before this contract and will fail `validate-receipt.py`, which
+is the intended signal to regenerate it with the current `make-receipt.py`.
 
 Do not fabricate token savings. When exact token telemetry is unavailable, report verifiable behavior instead: same Claude Code session reused, no fresh `claude -p` session, bounded handoff used, checks passed.

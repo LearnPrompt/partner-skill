@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "partner.receipt.v1",
   "title": "Partner Session Receipt",
-  "description": "Machine-readable form of the [Partner session receipt] text block. Field names and allowed values match SKILL.md.",
+  "description": "Machine-readable form of the [Partner session receipt] text block. Field names and allowed values match SKILL.md. receipt_schema_version 2 adds host/scope/config_source/roles_used for dual-host role tracking; a receipt without them is a v1 receipt and fails validation as the upgrade signal.",
   "type": "object",
   "required": [
     "phase",
@@ -14,7 +14,12 @@
     "anomalies",
     "monitoring_level",
     "direction",
-    "codex_jobs"
+    "codex_jobs",
+    "host",
+    "scope",
+    "config_source",
+    "roles_used",
+    "receipt_schema_version"
   ],
   "properties": {
     "phase": {
@@ -83,6 +88,83 @@
       "type": "integer",
       "minimum": 0,
       "description": "Number of delegate-codex.sh background jobs, including fix rounds. 0 when none were used."
+    },
+    "host": {
+      "enum": [
+        "claude_code",
+        "codex",
+        "generic"
+      ],
+      "description": "The runtime that loaded SKILL.md for this run (self-identified, not the .install-meta tiebreaker)."
+    },
+    "scope": {
+      "enum": [
+        "project",
+        "global",
+        "n/a"
+      ],
+      "description": "Configuration scope in effect, or n/a when no configured role was touched."
+    },
+    "config_source": {
+      "enum": [
+        "session",
+        "project",
+        "global",
+        "default",
+        "n/a"
+      ],
+      "description": "Highest-priority layer that supplied the resolved config, per docs/config-schema.md; n/a when no configured role was touched."
+    },
+    "roles_used": {
+      "description": "'none', or a JSON array of every role invoked this run: {role, host, model, effort, verified}. An unverified role is still listed, never omitted.",
+      "oneOf": [
+        {
+          "const": "none"
+        },
+        {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "role",
+              "host",
+              "model",
+              "effort",
+              "verified"
+            ],
+            "properties": {
+              "role": {
+                "enum": [
+                  "deep_reasoner",
+                  "fast_worker"
+                ]
+              },
+              "host": {
+                "enum": [
+                  "claude_code",
+                  "codex"
+                ]
+              },
+              "model": {
+                "type": "string",
+                "minLength": 1
+              },
+              "effort": {
+                "type": "string",
+                "minLength": 1
+              },
+              "verified": {
+                "type": "boolean"
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      ]
+    },
+    "receipt_schema_version": {
+      "const": 2,
+      "description": "Always 2 for this contract; a receipt missing this field predates dual-host role tracking."
     }
   },
   "additionalProperties": false
