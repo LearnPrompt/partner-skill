@@ -49,6 +49,7 @@ FILE_MAP_ENTRIES = [
     "references/failure-playbook.md",
     "references/scenarios.md",
     "references/darwin-ratchet.md",
+    "references/codex-driven.md",
     "references/claude-driven.md",
     "references/goal-template.md",
     "references/fable5-principles.md",

@@ -179,6 +179,7 @@ references/handoff-template.md   Bounded context packet for Claude Code polish/r
 references/failure-playbook.md   每种异常的固定恢复路径与 .partner/ 状态持久化
 references/scenarios.md          Review-only、debugging、非 UI、非 git、monorepo、跨天任务的流程变体
 references/darwin-ratchet.md     Validation-gated improvement rules
+references/codex-driven.md       Direction A：Codex 主驾流程（Default Flow / Session Strategy / Permission Policy）
 references/claude-driven.md      Direction B：Claude 主驾的五阶段委派流程
 references/goal-template.md      .partner/goal.md 目标文件模板（任务表 + checkpoint 规则）
 references/fable5-principles.md  前沿模型提示词共同准则（why-forward、effort、checkpoint、resume）
