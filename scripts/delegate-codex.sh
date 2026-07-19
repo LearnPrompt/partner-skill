@@ -25,7 +25,8 @@ delegate-codex.sh — background Codex jobs for the Claude-driven Partner flow
 Usage:
   delegate-codex.sh submit --repo <path> --prompt-file <file>
                     [--label <name>] [--effort minimal|low|medium|high|xhigh]
-                    [--model <model>] [--read-only]
+                    [--model <model>] [--role deep_reasoner|fast_worker]
+                    [--read-only] [--dry-run]
   delegate-codex.sh status <jobId> --repo <path> [--wait] [--timeout <seconds>]
   delegate-codex.sh result <jobId> --repo <path> [--json]
   delegate-codex.sh resume <jobId> --repo <path> --prompt-file <file> [--read-only]
@@ -42,6 +43,7 @@ USAGE
 }
 
 JOBS_SUBDIR=".partner/jobs"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 die() {
   echo "ERROR: $*" >&2
@@ -133,24 +135,57 @@ PY
 }
 
 cmd_submit() {
-  local PROMPT_FILE="" LABEL="task" EFFORT="high" MODEL="" READ_ONLY="false"
+  local PROMPT_FILE="" LABEL="task" EFFORT="high" MODEL="" ROLE="" READ_ONLY="false" DRY_RUN="false"
+  local EFFORT_EXPLICIT="false" MODEL_EXPLICIT="false"
+  local EFFORT_SOURCE="default" MODEL_SOURCE="default"
   while [ "$#" -gt 0 ]; do
     case "$1" in
       --repo) REPO="${2:-}"; shift 2 ;;
       --prompt-file) PROMPT_FILE="${2:-}"; shift 2 ;;
       --label) LABEL="${2:-}"; shift 2 ;;
-      --effort) EFFORT="${2:-}"; shift 2 ;;
-      --model) MODEL="${2:-}"; shift 2 ;;
+      --effort) EFFORT="${2:-}"; EFFORT_EXPLICIT="true"; shift 2 ;;
+      --model) MODEL="${2:-}"; MODEL_EXPLICIT="true"; shift 2 ;;
+      --role) ROLE="${2:-}"; shift 2 ;;
       --read-only) READ_ONLY="true"; shift ;;
+      --dry-run) DRY_RUN="true"; shift ;;
       *) die "unknown submit argument: $1" ;;
     esac
   done
   require_repo
   [ -n "$PROMPT_FILE" ] && [ -f "$PROMPT_FILE" ] || die "--prompt-file is required and must exist"
-  command -v codex >/dev/null 2>&1 || die "codex CLI not found on PATH"
+  case "$ROLE" in ""|deep_reasoner|fast_worker) ;; *) die "invalid --role: $ROLE" ;; esac
+
+  if [ -n "$ROLE" ]; then
+    local CONFIG_JSON CONFIG_SOURCE ROLE_MODEL ROLE_EFFORT
+    if ! CONFIG_JSON="$(python3 "$SCRIPT_DIR/partner-config.py" --host codex --repo "$REPO" resolve)"; then
+      die "failed to resolve Codex role config; run 'python3 scripts/partner-config.py --host codex init' and then 'set --role $ROLE --model <model> --effort <effort>'"
+    fi
+    CONFIG_SOURCE="$(printf '%s' "$CONFIG_JSON" | python3 -c 'import json, sys; print(json.load(sys.stdin).get("source", ""))')" || die "invalid JSON from partner-config.py resolve"
+    ROLE_MODEL="$(printf '%s' "$CONFIG_JSON" | python3 -c 'import json, sys; role = sys.argv[1]; print(json.load(sys.stdin).get("hosts", {}).get("codex", {}).get("roles", {}).get(role, {}).get("model", ""))' "$ROLE")" || die "invalid JSON from partner-config.py resolve"
+    ROLE_EFFORT="$(printf '%s' "$CONFIG_JSON" | python3 -c 'import json, sys; role = sys.argv[1]; print(json.load(sys.stdin).get("hosts", {}).get("codex", {}).get("roles", {}).get(role, {}).get("effort", ""))' "$ROLE")" || die "invalid JSON from partner-config.py resolve"
+    if [ -z "$ROLE_MODEL" ] || [ -z "$ROLE_EFFORT" ]; then
+      die "Codex role '$ROLE' is missing model or effort; run 'python3 scripts/partner-config.py --host codex init' and then 'set --role $ROLE --model <model> --effort <effort>'"
+    fi
+    if [ "$MODEL_EXPLICIT" = "false" ]; then
+      MODEL="$ROLE_MODEL"
+      MODEL_SOURCE="config:$CONFIG_SOURCE"
+    fi
+    if [ "$EFFORT_EXPLICIT" = "false" ]; then
+      EFFORT="$ROLE_EFFORT"
+      EFFORT_SOURCE="config:$CONFIG_SOURCE"
+    fi
+  fi
+  [ "$MODEL_EXPLICIT" = "false" ] || MODEL_SOURCE="explicit"
+  [ "$EFFORT_EXPLICIT" = "false" ] || EFFORT_SOURCE="explicit"
   case "$EFFORT" in minimal|low|medium|high|xhigh) ;; *) die "invalid --effort: $EFFORT" ;; esac
 
   LABEL="$(echo "$LABEL" | tr -cs 'A-Za-z0-9_-' '-' | sed 's/^-//;s/-$//')"
+  if [ "$DRY_RUN" = "true" ]; then
+    printf 'role=%s\nmodel=%s\neffort=%s\nmodel_source=%s\neffort_source=%s\n' \
+      "${ROLE:-none}" "${MODEL:-default}" "$EFFORT" "$MODEL_SOURCE" "$EFFORT_SOURCE"
+    return 0
+  fi
+  command -v codex >/dev/null 2>&1 || die "codex CLI not found on PATH"
   local JOB_ID
   JOB_ID="$(make_job_id "$LABEL")"
   JOB="$(job_dir "$JOB_ID")"
@@ -159,8 +194,8 @@ cmd_submit() {
   cp "$PROMPT_FILE" "$JOB/prompt.md"
 
   {
-    printf 'label=%s\neffort=%s\nmodel=%s\nread_only=%s\nsubmitted_at=%s\nmode=fresh\n' \
-      "$LABEL" "$EFFORT" "${MODEL:-default}" "$READ_ONLY" "$(now_utc)"
+    printf 'label=%s\neffort=%s\nmodel=%s\nrole=%s\nmodel_source=%s\neffort_source=%s\nread_only=%s\nsubmitted_at=%s\nmode=fresh\n' \
+      "$LABEL" "$EFFORT" "${MODEL:-default}" "${ROLE:-none}" "$MODEL_SOURCE" "$EFFORT_SOURCE" "$READ_ONLY" "$(now_utc)"
   } >"$JOB/meta"
 
   write_run_script "$JOB" "$EFFORT" "$MODEL" "$READ_ONLY" ""
