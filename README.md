@@ -182,6 +182,7 @@ references/scenarios.md          Review-only、debugging、非 UI、非 git、mo
 references/darwin-ratchet.md     Validation-gated improvement rules
 references/codex-driven.md       Direction A：Codex 主驾流程（Default Flow / Session Strategy / Permission Policy）
 references/claude-driven.md      Direction B：Claude 主驾的五阶段委派流程
+references/setup.md              「搭子，配置」首次配置向导：三种渲染路径 + 第二宿主增量接入
 references/goal-template.md      .partner/goal.md 目标文件模板（任务表 + checkpoint 规则）
 references/fable5-principles.md  前沿模型提示词共同准则（why-forward、effort、checkpoint、resume）
 references/memory-protocol.md    收尾记忆协议（claude-mem / mem0 / auto-memory / rollout）
@@ -196,7 +197,9 @@ scripts/validate-receipt.py      校验 Partner Session Receipt 的字段与取�
 scripts/run-test-prompts.py      行为回归 prompt 的静态检查与实验性 live 模式
 scripts/delegate-codex.sh        Codex 后台任务原语：submit / status / result / resume / cancel
 scripts/partner-config.py        配置引擎：TOML 子集解析、确定性写回、锁与原子写（schema v1）
+scripts/partner-setup.py         向导落盘引擎：--preview/--apply/--rollback/--smoke/--status/--interactive
 tests/test_partner_config.py     配置引擎单元测试（round-trip / 锁 / 优先级链）
+tests/test_partner_setup.py      向导引擎单元测试（幂等 / 防覆盖 / managed block / 回滚）
 tests/test_delegate_role.py      --role 注入与覆盖链单元测试
 idea-king/SKILL.md               点子王：第一性原理拆解 + 对抗式审查（随 Partner 一起安装）
 idea-king/README.md              点子王独立说明与方法论致谢

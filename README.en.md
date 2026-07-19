@@ -183,6 +183,7 @@ references/scenarios.md                 Flow variants for review-only, debugging
 references/darwin-ratchet.md            Validation-gated improvement rules
 references/codex-driven.md              Direction A: Codex-driven flow (Default Flow / Session Strategy / Permission Policy)
 references/claude-driven.md             Direction B: five-phase Claude-driven delegation flow
+references/setup.md                     "搭子，配置" first-run setup wizard: three render paths + second-host merge
 references/goal-template.md             Template for .partner/goal.md (task table + checkpoint rule)
 references/fable5-principles.md         Shared frontier-model prompting rules (why-forward, effort, checkpoint, resume)
 references/memory-protocol.md           Wrap-up memory protocol (claude-mem / mem0 / auto-memory / rollout)
@@ -197,7 +198,9 @@ scripts/validate-receipt.py             Validates Partner Session Receipt fields
 scripts/run-test-prompts.py             Static checks plus experimental live mode for the regression prompts
 scripts/delegate-codex.sh               Codex background-job primitive: submit / status / result / resume / cancel
 scripts/partner-config.py               Config engine: TOML-subset parsing, deterministic writes, locking (schema v1)
+scripts/partner-setup.py                Setup wizard engine: --preview/--apply/--rollback/--smoke/--status/--interactive
 tests/test_partner_config.py            Config engine unit tests (round-trip / lock / precedence chain)
+tests/test_partner_setup.py             Setup engine unit tests (idempotence / overwrite refusal / managed block / rollback)
 tests/test_delegate_role.py             Unit tests for --role injection and the override chain
 idea-king/SKILL.md                      Idea King: first-principles decomposition + adversarial review (installs with Partner)
 idea-king/README.md                     Idea King standalone notes and methodology credits
