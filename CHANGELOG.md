@@ -2,6 +2,8 @@
 
 ## Unreleased — feat/v1.5-dual-host
 
+- feat: partner-setup.py wizard engine + references/setup.md, "搭子，配置" first-run setup (`5e3744b`)
+- feat: install.sh --configure forwards to the terminal setup wizard (`9e95036`)
 - feat: idea-king absorbs Occam/Murphy/Coase laws, ported from installed copy (`51a6389`)
 - feat: idea-king clarify-to-95% pre-verdict protocol, headless degrades to Open Questions (`d86ae57`)
 - refactor: split SKILL.md into Partner Core + references/codex-driven.md with host detection (`4cc5ccd`)
