@@ -48,3 +48,6 @@ jobs:
 
       - name: Install dry run
         run: bash install.sh --target all --dry-run
+
+      - name: Dual-host sandbox matrix
+        run: bash scripts/sandbox-matrix.sh
