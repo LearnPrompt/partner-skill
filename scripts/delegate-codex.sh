@@ -253,18 +253,22 @@ write_run_script() {
     printf 'JOB=%q\n' "$job"
     printf 'REPO=%q\n' "$REPO"
     echo 'PROMPT="$(cat "$JOB/prompt.md")"'
+    # </dev/null: a long prompt can make codex exec also wait on stdin for
+    # more input ("Reading additional input from stdin..."); the background
+    # job's stdin is never closed on its own, so without this the job hangs
+    # forever with no further JSONL events.
     if [ -n "$session_id" ]; then
       # `codex exec resume` accepts no -C/-s flags: cwd comes from the shell,
       # sandbox and effort go through -c config overrides.
       local args="--json -c 'model_reasoning_effort=\"$effort\"'"
       [ "$read_only" = "true" ] && args="$args -c 'sandbox_mode=\"read-only\"'"
       echo 'cd "$REPO"'
-      printf 'codex exec resume %q "$PROMPT" %s >"$JOB/log.jsonl" 2>"$JOB/stderr.log"\n' "$session_id" "$args"
+      printf 'codex exec resume %q "$PROMPT" %s >"$JOB/log.jsonl" 2>"$JOB/stderr.log" </dev/null\n' "$session_id" "$args"
     else
       local args="--json -C \"\$REPO\" -c 'model_reasoning_effort=\"$effort\"'"
       [ -n "$model" ] && args="$args -m \"$model\""
       [ "$read_only" = "true" ] && args="$args -s read-only"
-      printf 'codex exec "$PROMPT" %s >"$JOB/log.jsonl" 2>"$JOB/stderr.log"\n' "$args"
+      printf 'codex exec "$PROMPT" %s >"$JOB/log.jsonl" 2>"$JOB/stderr.log" </dev/null\n' "$args"
     fi
     echo 'echo $? >"$JOB/exit_code"'
   } >"$job/run.sh"
