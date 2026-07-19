@@ -8,6 +8,7 @@ Partner installer
 Usage:
   bash install.sh [--target codex|claude|agents|all] [--dry-run]
   bash install.sh --status
+  bash install.sh --configure [partner-setup.py args...]
 
 Targets:
   codex   -> ~/.codex/skills/partner-skill  (+ ~/.codex/prompts/idea-king.md)
@@ -21,6 +22,9 @@ split. It installs as its own skill directory so both agents can call it.
 
 --status compares every installed copy's .install-meta commit against this
 repository's HEAD so stale copies are visible before they cause confusion.
+
+--configure forwards to `python3 scripts/partner-setup.py --interactive`
+(the terminal setup wizard); any extra arguments are passed through.
 USAGE
 }
 
@@ -46,6 +50,10 @@ while [ "$#" -gt 0 ]; do
     --status)
       STATUS="true"
       shift
+      ;;
+    --configure)
+      shift
+      exec python3 "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/scripts/partner-setup.py" --interactive "$@"
       ;;
     -h|--help)
       usage
