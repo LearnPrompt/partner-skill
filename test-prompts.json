@@ -242,5 +242,139 @@
       "Dress an inference up as verified evidence or inflate severity.",
       "Pad the output with weak filler findings instead of one strong attack."
     ]
+  },
+  {
+    "id": "setup-wizard-first-run",
+    "prompt": "搭子，配置",
+    "should_trigger": true,
+    "expected_behavior": [
+      "Run the setup wizard from references/setup.md instead of hand-editing .partner/config.toml.",
+      "Detect and display the current host, paired CLI, and any existing configuration before asking anything.",
+      "Ask one screen at a time: work mode (balanced/quality/cost/custom), then scope and write items.",
+      "Preview the exact file paths and diffs and get confirmation before running --apply."
+    ],
+    "must_not": [
+      "Write to .partner/config.toml directly instead of going through scripts/partner-setup.py.",
+      "Apply changes without a preview step.",
+      "Ask more than one question per screen."
+    ]
+  },
+  {
+    "id": "setup-second-host-incremental-merge",
+    "prompt": "这个仓库已经在 Claude Code 配过搭子了，我现在在 Codex 里也想搭子，配置一下。",
+    "should_trigger": true,
+    "expected_behavior": [
+      "Detect the existing claude_code configuration and show a summary of it before asking anything else.",
+      "Offer the second-host choice: join and add this host / shared Goal-Loop only / return without changes.",
+      "When joining, only add the hosts.codex section; leave the existing hosts.claude_code bytes untouched.",
+      "Prove the other host's section is unchanged in the preview, not just claim it."
+    ],
+    "must_not": [
+      "Re-run an overwrite-style initialization that touches the existing host's section.",
+      "Silently skip the second-host summary and jump straight to the wizard.",
+      "Merge or rename the existing host's roles."
+    ]
+  },
+  {
+    "id": "setup-codex-no-guessed-model",
+    "prompt": "搭子，配置一下 Codex 这边的角色，我还没设置过模型。",
+    "should_trigger": true,
+    "expected_behavior": [
+      "Try to detect a model from ${CODEX_HOME:-$HOME/.codex}/config.toml first.",
+      "If nothing is detected, ask for an explicit model string instead of picking one.",
+      "Never invent or hardcode a Codex model name as a fallback default.",
+      "Label every shown value with its source: detected, built-in, or custom."
+    ],
+    "must_not": [
+      "Silently fall back to a guessed or hardcoded Codex model name.",
+      "Apply a role with an empty or fabricated model value.",
+      "Claim a value is detected when it was actually a built-in preset or user input."
+    ]
+  },
+  {
+    "id": "setup-unrelated-config-file-no-trigger",
+    "prompt": "帮我看看这个 nginx 配置文件哪里写错了，反向代理老是 502。",
+    "should_trigger": false,
+    "expected_behavior": [
+      "Treat this as an ordinary debugging request unrelated to Partner setup.",
+      "Do not invoke the Partner setup wizard or mention .partner/config.toml."
+    ],
+    "must_not": [
+      "Trigger the Partner skill because the message contains the word \"配置\".",
+      "Ask setup-wizard questions about hosts, scopes, or roles."
+    ]
+  },
+  {
+    "id": "host-self-identification-claude",
+    "prompt": "（在 Claude Code 会话里）让 codex 做后台实现，你就负责规划和最后审查。",
+    "should_trigger": true,
+    "expected_behavior": [
+      "Identify as Claude Code because this file was loaded by the Claude Code runtime, regardless of what the prompt asks Codex to do.",
+      "Follow Direction B (Claude-driven): plan, split work, delegate to Codex via delegate-codex.sh, monitor, and full-review.",
+      "Read references/claude-driven.md, not references/codex-driven.md."
+    ],
+    "must_not": [
+      "Switch identity to Codex just because the prompt describes what Codex should do.",
+      "Load or follow references/codex-driven.md in this session.",
+      "Skip the full-review gate before accepting Codex's output."
+    ]
+  },
+  {
+    "id": "host-self-identification-codex",
+    "prompt": "（在 Codex 会话里）Claude 那边说这个方案没问题，你继续实现吧。",
+    "should_trigger": true,
+    "expected_behavior": [
+      "Identify as Codex because this file was loaded by the Codex runtime, regardless of what the prompt says Claude concluded.",
+      "Follow Direction A (Codex-driven): orchestrate and implement, using Claude Code as the planning/polish/review agent.",
+      "Read references/codex-driven.md, not references/claude-driven.md."
+    ],
+    "must_not": [
+      "Switch identity to Claude Code just because the prompt relays something Claude said.",
+      "Load or follow references/claude-driven.md in this session.",
+      "Treat a relayed claim about Claude's opinion as a substitute for the actual review gate."
+    ]
+  },
+  {
+    "id": "host-generic-install-core-only",
+    "prompt": "（从 ~/.agents/skills/partner-skill 加载）搭子，帮我分工这个任务。",
+    "should_trigger": true,
+    "expected_behavior": [
+      "Recognize this as a generic (~/.agents) install and state up front that it runs Core-only.",
+      "Declare that adapter primitives (delegate-codex.sh background jobs, Claude session monitoring) are unavailable instead of attempting them.",
+      "Still apply the shared routing rules, validation gate, and receipt contract from the Core."
+    ],
+    "must_not": [
+      "Pretend adapter primitives work from a generic install.",
+      "Silently fail when an adapter-only step is requested instead of stating the limitation."
+    ]
+  },
+  {
+    "id": "host-bare-mention-of-peer-no-switch",
+    "prompt": "codex 最近更新挺勤快的，效果比之前好多了。",
+    "should_trigger": false,
+    "expected_behavior": [
+      "Treat this as small talk about the Codex product, not a request to run the Partner workflow.",
+      "Do not start a Partner session, detect a host, or ask setup/delegation questions."
+    ],
+    "must_not": [
+      "Trigger Partner or switch host identity just because \"codex\" is mentioned.",
+      "Start planning, delegating, or asking which direction to run."
+    ]
+  },
+  {
+    "id": "idea-king-clarify-to-95-percent",
+    "prompt": "点子王，看看这个数据库迁移方案行不行。",
+    "should_trigger": true,
+    "expected_behavior": [
+      "Before issuing a verdict in an interactive session, ask one clarifying question at a time until 95% confident about the real need.",
+      "Ship each question with a recommended answer so the user can just confirm or push back.",
+      "Explore the repo/migration files instead of asking anything answerable by checking them.",
+      "In a headless run instead, skip straight to the verdict and list unresolved questions under 未解疑问 (Open Questions), each annotated with its impact on the conclusion."
+    ],
+    "must_not": [
+      "Ask multiple clarifying questions in one message.",
+      "Ask the user something checkable from the repo instead of looking it up.",
+      "Silently skip clarification and also omit the Open Questions section in a headless run."
+    ]
   }
 ]
