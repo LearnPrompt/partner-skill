@@ -44,7 +44,8 @@ Job state lives under `<repo>/.partner/jobs/`.
     step needing a second diagnosis; no durable state, no rework chain.
   - **Cheaper-Claude subagent** (Task tool) — only when the step needs
     Claude-grade reasoning at a lower tier; note that it still bills the API,
-    so it does not save quota the way the Codex channels do.
+    so it does not save quota the way the Codex channels do. See
+    "Sub Agent Routing" below for which agent definition to spawn.
   Never route a quality-critical step to a cheaper channel just to save
   money, and never spend the expensive Claude seat on mechanical work.
 - Adversarial gate: run the idea-king adversarial review (the `idea-king`
@@ -53,6 +54,29 @@ Job state lives under `<repo>/.partner/jobs/`.
   need the expensive model, does the integration cost of the split boundary
   eat the savings, and is each task on the right execution channel (with a
   reason it is not a more expensive one). Fix the split before delegating.
+
+## Sub Agent Routing
+
+When a task routes to the Cheaper-Claude subagent channel, resolve *which*
+agent definition to spawn with this three-level lookup, in order:
+
+1. **`partner-*` namespaced agent** — if `搭子，配置` has generated
+   `partner-deep-reasoner` / `partner-fast-worker` (project or global scope;
+   check `python3 "$PARTNER_DIR/scripts/partner-config.py" --host claude_code resolve`
+   for the configured role, or just try spawning the namespaced agent), use
+   it. Its model/effort came from the user's own setup choice.
+2. **The user's own similarly-named agent** — if no `partner-*` agent exists
+   but the user has their own `deep-reasoner.md` / `fast-worker.md` (or an
+   agent whose description clearly matches the role), use it as-is. Never
+   rename, edit, or treat it as if it were partner-managed.
+3. **Generic `Task` tool** — no matching agent either way: spawn a plain
+   Task-tool subagent with the role described in the prompt. This is the
+   fallback, not a signal that setup is missing something the task needs.
+
+This is a lookup for *which agent answers the call*, not a routing decision
+about channels or billing — see the channel table in
+`references/fable5-principles.md` for that. A repo with no `搭子，配置` run
+yet simply falls through to level 3 every time; that is normal, not broken.
 
 ## Phase 2 — Delegate
 

@@ -88,6 +88,12 @@ Three execution channels, in order of preference for delegable work:
 | Codex subagent (one-shot, e.g. a rescue/second-opinion agent) | Codex subscription | in-process, blocking, no durable state | stuck and want a second diagnosis, or a throwaway assist |
 | Claude subagent (Task tool, cheaper Claude tier) | Claude API metered | in-process, isolated context, returns a summary | the step genuinely needs Claude-grade reasoning at a lower tier and the metered spend is acceptable |
 
+Picking *which* Claude subagent to spawn is a separate, three-level lookup —
+see "Sub Agent Routing" in `references/claude-driven.md`: a `partner-*`
+namespaced agent configured via `搭子，配置` first, the user's own
+similarly-named agent second, the generic `Task` tool last. This is about
+which agent definition answers the call, not which channel bills for it.
+
 Only the Codex channels move the whole meter to the subscription; a
 cheaper-Claude subagent still bills the API. A subagent is a single-call
 primitive; the Partner job is an orchestration layer (submit → monitor →
