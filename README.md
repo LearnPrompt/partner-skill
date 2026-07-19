@@ -41,6 +41,8 @@ bash install.sh --target codex
 bash install.sh --target claude
 ```
 
+装完第一次用之前，说一句「搭子，配置」跑向导：均衡/质量/成本三选一（或自定义），选项目还是全局生效，Claude 侧要不要生成 `partner-*` agent 文件——预览 diff 再落盘，绝不覆盖你已有的 agent。Codex 那边不会替你瞎猜模型名，探测不到就直接问你。
+
 ## Showcase
 
 <div align="center">
@@ -61,6 +63,12 @@ bash install.sh --target claude
 
 ```text
 搭子，Claude 计划，Codex 实现，同会话 review，最后出 receipt。
+```
+
+第一次用先配置：
+
+```text
+搭子，配置
 ```
 
 ## 成本压力模型
@@ -136,6 +144,8 @@ Codex (background jobs):
 
 分工方案先过点子王：结论先行（ship / needs-attention / no-go），每条攻击标注 evidence 或 inference，并附上最便宜的证伪实验。
 
+宿主自识别，不靠猜：这份 SKILL.md 被谁加载（Claude Code 还是 Codex）就是谁的身份，提示词里提另一个 Agent 不会切换身份。角色的模型/推理强度只有一份事实源——`.partner/config.toml`（项目或全局），不会散落进 prompt 或文档里到处抄。
+
 ## 触发方式
 
 ```text
@@ -147,6 +157,8 @@ Codex (background jobs):
 Claude 里跑 Codex Review 验收当前 diff，发现问题你来修。
 搭子，恢复上次任务，接着做。
 搭子，分工给 codex 后台跑，做完你全量验收。
+搭子，配置
+搭子，走完整协议，给我一个 PR 交付。
 点子王，对抗式审查一下这个方案。
 点子王，盘问我这个方案，一次问一个。
 ```
@@ -160,6 +172,9 @@ Claude 里跑 Codex Review 验收当前 diff，发现问题你来修。
 - Session Receipt：把是否复用会话、是否新开 `claude -p`、检查、异常和监控等级写清楚，可用 `scripts/validate-receipt.py` 机器校验。
 - 配套工具：`scripts/make-handoff.sh` 自动生成 bounded handoff 并可持久化到 `.partner/`；`references/failure-playbook.md` 给每种异常固定恢复路径；`references/scenarios.md` 覆盖 review-only、debugging、非 UI、非 git、monorepo、跨天任务。
 - Darwin-style 验证门：一次只改一个协作维度，过检查才保留。
+- 首次配置向导（`搭子，配置`）：均衡/质量/成本预设或自定义，`.partner/config.toml` 是双宿主共享的单一事实源，预览 diff 再落盘，绝不覆盖你已有的 agent 文件；Codex 侧模型不硬编码猜测，探测不到就明确报错。
+- Partner Session Receipt v2：新增 `host`/`scope`/`config_source`/`roles_used` 字段，能证明这次跑的到底是哪个模型、哪个 effort，而不只是"用了 Claude"。
+- 可选的完整协议（`references/goal-to-pr.md`）：Plan→Goal→PR→Verification，一路跑到 merge-ready + preview verified 为止；merge、上生产、打 tag、force-push、删除、破坏性迁移、对外发布，每一个都要单独一句祈使句授权。
 
 ## 文件结构
 
@@ -216,12 +231,16 @@ idea-king/README.md              点子王独立说明与方法论致谢
 - 不默认新开 `claude -p` 做 final review；优先恢复同一个 Claude Code 会话。
 - 不改 repo visibility、不打 tag、不发 registry、不公告，除非用户单独明确授权。
 - 不用 `git reset --hard` 当默认回刀方案；优先用可审计 diff 或 revert。
+- `.partner/config.toml` 默认不进 git（写进 `.git/info/exclude`，不动你的 `.gitignore`）；Codex 侧模型名绝不臆造，探测不到就报错等你给。
+- Managed routing block（写进 CLAUDE.md/AGENTS.md 的常驻路由段）默认关闭，标记损坏的五种情形一律拒绝并解释，绝不猜测修复。
+- 走完整协议（Plan→Goal→PR→Verification）也一样：merge、上生产、打 tag、force-push、删除、破坏性迁移、对外发布，各自需要独立的一句祈使句，不会因为前面一句「继续」就顺带做掉。
 
 ## 验证
 
 ```bash
 bash scripts/check-skill-repo.sh .
 python3 scripts/check-readme-parity.py
+python3 -m unittest discover tests
 jq -r '.[].id' test-prompts.json
 SOURCE_DATE_EPOCH=1782921600 python3 scripts/showcase-cost-ledger.py
 ```
@@ -243,5 +262,7 @@ MIT
 [淘金小镇·ClawHub日榜](https://github.com/LearnPrompt/skillrush-town) · [Irasutoya·正文配图](https://github.com/LearnPrompt/carl-irasutoya-illustrations) · [Humanize PPT·演讲系统](https://github.com/LearnPrompt/humanize-ppt) · [CC Harness·六件套](https://github.com/LearnPrompt/cc-harness-skills) · [微信读书教练](https://github.com/LearnPrompt/carl-weread) · [X Article发布](https://github.com/LearnPrompt/x-article-publisher-skill)
 
 <sub>**[LearnPrompt](https://github.com/LearnPrompt) 出品** · 公众号「卡尔的AI沃茨」 · [X @aiwarts](https://x.com/aiwarts)</sub>
+
+<sub>致谢：`references/goal-to-pr.md` 的 done_when / anti-Goodhart / 祈使句授权法词汇，参考了 [愚公·Loop工程](https://github.com/LearnPrompt/loop-engineering) 的 goal-forging.md 与 guardrails.md（只借词汇与不变量，不搬 YAML 格式与仪式）。</sub>
 
 </div>

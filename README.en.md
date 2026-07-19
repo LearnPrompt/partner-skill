@@ -41,6 +41,8 @@ bash install.sh --target codex
 bash install.sh --target claude
 ```
 
+Before first real use, say "搭子，配置" (Partner, configure) to run the setup wizard: balanced/quality/cost presets or custom, project or global scope, and whether to generate `partner-*` agent files on the Claude side — preview the diff before anything is written, and your existing agent files are never touched. On the Codex side, no model name is ever guessed; if detection fails, it just asks.
+
 ## Showcase
 
 <div align="center">
@@ -62,6 +64,12 @@ Short version:
 
 ```text
 Partner: Claude plans, Codex implements, same-session review, then receipt.
+```
+
+First run, configure first:
+
+```text
+搭子，配置
 ```
 
 ## Cost Pressure Model
@@ -137,6 +145,8 @@ Execution has three channels, ordered by which meter they bill: the Partner back
 
 Every split passes through Idea King first: verdict up front (ship / needs-attention / no-go), each attack tagged evidence or inference, each with the cheapest falsification experiment.
 
+Host self-identification, not guessing: whichever runtime actually loaded this SKILL.md — Claude Code or Codex — is the host; mentioning the other agent in a prompt never switches identity. Role model/effort has exactly one source of truth, `.partner/config.toml` (project or global) — it does not get copy-pasted into prompts or docs.
+
 ## Trigger Prompts
 
 ```text
@@ -147,6 +157,8 @@ Let Claude skip this UI polish task, and Codex monitors it.
 Run Codex Review inside Claude Code, then Codex fixes the findings.
 Partner, resume the last task from .partner/ state.
 Partner, delegate the mechanical parts to Codex in the background, then full-review.
+搭子，配置
+Partner, run the full protocol and deliver a PR.
 Idea King, run an adversarial review on this plan.
 Idea King, grill me on this plan, one question at a time.
 ```
@@ -162,6 +174,9 @@ Chinese triggers such as `搭子` and `搭子.skill` are also first-class trigge
 - A Session Receipt: proof of session reuse, fresh `claude -p` count, checks, anomalies, and monitoring level — machine-checkable via `scripts/validate-receipt.py`.
 - Supporting tools: `scripts/make-handoff.sh` generates bounded handoffs and can persist them under `.partner/`; `references/failure-playbook.md` gives every anomaly a fixed recovery path; `references/scenarios.md` covers review-only, debugging, non-UI, non-git, monorepo, and multi-day tasks.
 - A Darwin-style ratchet: improve one workflow dimension at a time and keep only verified gains.
+- A first-run setup wizard (`搭子，配置`): balanced/quality/cost presets or custom; `.partner/config.toml` is the single dual-host source of truth; previews the diff before writing anything and never touches your existing agent files; the Codex side never guesses a model name — detection failure is a clear error, not a silent fallback.
+- Partner Session Receipt v2: adds `host`/`scope`/`config_source`/`roles_used` fields, so the receipt proves which model and effort actually ran a role, not just "Claude was used."
+- An opt-in full protocol (`references/goal-to-pr.md`): Plan→Goal→PR→Verification, running unattended up through merge-ready + preview verified; merge, production, tags, force-push, deletion, destructive migration, and external publish each still need their own explicit imperative.
 
 ## File Map
 
@@ -217,12 +232,16 @@ idea-king/README.md                     Idea King standalone notes and methodolo
 - Do not use a fresh `claude -p` final review by default. Continue or resume the same Claude Code session first.
 - Do not change repo visibility, tag releases, publish to registries, or announce externally without explicit permission.
 - Do not use `git reset --hard` as the default rollback path. Prefer reviewable diffs or reverts.
+- `.partner/config.toml` is not tracked by Git by default (added to `.git/info/exclude`, your `.gitignore` is untouched); the Codex side never invents a model name — detection failure is a clear error, waiting for you.
+- The managed routing block (the persistent routing section it can write into CLAUDE.md/AGENTS.md) is off by default; all five ways its markers can be corrupted are refused with an explanation, never guessed at.
+- The full protocol (Plan→Goal→PR→Verification) is no exception: merge, production, tags, force-push, deletion, destructive migration, and external publish each need their own explicit imperative — an earlier "continue" never covers them.
 
 ## Verify
 
 ```bash
 bash scripts/check-skill-repo.sh .
 python3 scripts/check-readme-parity.py
+python3 -m unittest discover tests
 jq -r '.[].id' test-prompts.json
 SOURCE_DATE_EPOCH=1782921600 python3 scripts/showcase-cost-ledger.py
 ```
@@ -244,5 +263,7 @@ MIT
 [淘金小镇·ClawHub日榜](https://github.com/LearnPrompt/skillrush-town) · [Irasutoya·正文配图](https://github.com/LearnPrompt/carl-irasutoya-illustrations) · [Humanize PPT·演讲系统](https://github.com/LearnPrompt/humanize-ppt) · [CC Harness·六件套](https://github.com/LearnPrompt/cc-harness-skills) · [微信读书教练](https://github.com/LearnPrompt/carl-weread) · [X Article发布](https://github.com/LearnPrompt/x-article-publisher-skill)
 
 <sub>**[LearnPrompt](https://github.com/LearnPrompt) 出品** · 公众号「卡尔的AI沃茨」 · [X @aiwarts](https://x.com/aiwarts)</sub>
+
+<sub>Acknowledgment: the done_when / anti-Goodhart / imperative-authorization vocabulary in `references/goal-to-pr.md` draws on [愚公·Loop工程](https://github.com/LearnPrompt/loop-engineering)'s goal-forging.md and guardrails.md (vocabulary and invariants only — not its YAML format or ceremony).</sub>
 
 </div>
