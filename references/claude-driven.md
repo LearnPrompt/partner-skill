@@ -142,7 +142,13 @@ bash "$PARTNER_DIR/scripts/delegate-codex.sh" resume <jobId> \
 - Mark tasks done in `.partner/goal.md`; stop any remaining `/loop`.
 - Emit the Partner Session Receipt with `direction: claude-driven` and
   `codex_jobs: <count>`; in this direction `claude_session` refers to the
-  current session and `new_claude_p_sessions` is normally `0`.
+  current session and `new_claude_p_sessions` is normally `0`. Set `host`,
+  `scope`, and `config_source` from `partner-config.py resolve` (or
+  `partner-setup.py --status`), and build `roles_used` from the roles this
+  run actually invoked: each `delegate-codex.sh` job's `meta` file has
+  `role`/`model`/`effort`/`model_source`/`effort_source`, and
+  `partner-config.py resolve` has each role's `verified`/`verified_at`. List
+  a role even when `verified` is `false` — never guess it true.
 - Run the memory protocol in `references/memory-protocol.md`: what got
   delegated, how Codex performed per task type, rework rounds, and effort
   fit — so the next split decision starts smarter.
