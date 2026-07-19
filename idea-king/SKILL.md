@@ -15,6 +15,30 @@ not a report). Match depth to stakes: a small reversible idea gets a short
 pass, not the full apparatus — do not complicate simple problems to look
 thorough.
 
+## Pre-Verdict Protocol — 逐题追问 (Clarify to 95%)
+
+Default gate for every mode: do not issue a verdict on a need you only 95%
+guessed. In an interactive session, before the verdict:
+
+1. Ask one question at a time; let the answer drive the next question.
+   Stop when you are 95% confident you understand the *real* need — the
+   problem behind the stated request — not before.
+2. Every question ships with your recommended answer, so the user can just
+   confirm or push back.
+3. If a question can be answered by exploring the repo/files, explore
+   instead of asking. Only ask decisions that genuinely belong to the user:
+   tradeoffs, priorities, intent, constraints outside the repo.
+4. Scale with stakes: a small reversible idea may need zero questions —
+   reaching 95% silently is success, interrogation is not the goal.
+
+Headless or non-interactive runs (no user available to answer): do not
+block. Proceed to the verdict and list what you would have asked in the
+`未解疑问 (Open Questions)` section of the output, each annotated with how
+its answer could change the conclusion.
+
+Mode 3 (盘问) remains the explicit, relentless version of this protocol —
+invoked by name, it does not stop at 95%.
+
 ## Mode 1 — First-Principles Decomposition (第一性原理拆解)
 
 1. Strip the idea of analogies, conventions, and "how it's usually done."
@@ -105,7 +129,14 @@ shared understanding:
 
 ## 修改建议 (Changes)
 - [specific change, tied to the attack point it resolves]
+
+## 未解疑问 (Open Questions)
+- [question you could not ask or did not get answered] — impact: [how the answer could change the verdict]
 ```
+
+The `未解疑问` section appears only when unanswered questions remain
+(headless run, or the user was unavailable); omit it when clarification
+completed or nothing needed asking.
 
 ## Rules
 
