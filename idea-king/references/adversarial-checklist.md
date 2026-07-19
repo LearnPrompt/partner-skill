@@ -22,6 +22,9 @@ strongest. Depth beats coverage.
 
 ## Integration Cost
 
+Coase's account: transaction costs, not task size, set the delegation
+boundary — delegation is never free; price the handoff before you send it.
+
 - Sum the boundary costs: handoff writing, context rebuilding, review,
   rework rounds. Does the total still beat doing it in one place?
 - Who merges conflicting outputs, and with what authority?
@@ -39,6 +42,11 @@ strongest. Depth beats coverage.
 - What is the single point whose failure invalidates everything after it?
 - Where would a silent failure (wrong but plausible output) pass the
   current acceptance criteria?
+- Murphy audit on acceptance: a verification that only walks the happy
+  path verifies the demo, not the change. Enumerate what *can* go wrong
+  (malformed input, timeout, partial failure, double-fire, empty state)
+  and check each is exercised or consciously waived — whatever can go
+  wrong and is never tested will go wrong in production first.
 - What happens on partial completion — is the intermediate state safe to
   stop in, or does it strand the repo?
 

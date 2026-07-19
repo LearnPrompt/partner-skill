@@ -1,7 +1,7 @@
 ---
 name: idea-king
 description: |
-  点子王 (Idea King) — reason from first principles & run adversarial review. A thinking partner for the Partner (搭子) workflow and for standalone use. Use when the user says "点子王", "idea king", "第一性原理", "从第一性原理出发", "对抗式审查", "挑战这个方案", "attack this plan", "盘问", "grill this plan", or when a plan / architecture / work split needs to be stress-tested before execution. Partner Direction B calls this skill on every division-of-labor plan before delegating.
+  点子王 (Idea King) — reason from first principles & run adversarial review. A thinking partner for the Partner (搭子) workflow and for standalone use. Use when the user says "点子王", "idea king", "第一性原理", "从第一性原理出发", "奥卡姆剃刀", "墨菲定律", "科斯定理", "对抗式审查", "挑战这个方案", "attack this plan", "盘问", "grill this plan", or when a plan / architecture / work split needs to be stress-tested before execution. Partner Direction B calls this skill on every division-of-labor plan before delegating.
 ---
 
 # 点子王 (Idea King)
@@ -26,6 +26,10 @@ thorough.
 4. Compare the rebuilt solution with the original. Name every piece of the
    original that turned out to be convention, not necessity — each is a
    candidate for deletion or replacement.
+5. Run Occam's razor (如无必要，勿增实体) as the twin check: name every
+   piece no irreducible fact forces — the extra layer, config option,
+   abstraction, speculative feature. Convention sneaks in by inheritance;
+   excess sneaks in by invention. Both are deletion candidates.
 
 ## Mode 2 — Adversarial Review (对抗式审查)
 
@@ -38,7 +42,10 @@ Assume the plan WILL fail. Your job is to find how.
    surfaces for when the target is a concrete change, not just a plan).
 2. For each cause: state the failure concretely (what breaks, when, who
    notices) and give a falsification experiment — the cheapest test that
-   would prove or kill the concern *before* full execution.
+   would prove or kill the concern *before* full execution. Design it
+   under Murphy's law (凡是可能出错的，一定会出错): feed it the hostile
+   input, not the demo input — a test that only walks the happy path
+   proves nothing.
 3. Attack the strongest version of the plan, not a strawman. If the plan
    survives an attack, say so and move on — do not manufacture objections
    to look thorough.
@@ -47,8 +54,10 @@ When reviewing a Partner work split, always attack these claims:
 
 - "This task doesn't need the expensive model" — where exactly would the
   cheaper agent's output be worse, and would the review gate catch it?
-- "The split saves money" — does the integration/review/rework cost at the
-  boundary eat the savings?
+- "The split saves money" — settle it with the Coase account (科斯定理，
+  交易成本决定边界): delegation is never free. Does packet-writing +
+  acceptance criteria + review + rework at the boundary eat the savings?
+  If the sum beats doing it in place, the task stays in-house.
 - "This task is on the right channel" — name the recommended execution
   channel (Partner background job / one-shot Codex subagent / cheaper-Claude
   subagent) and prove it: no quality-critical step routed to a cheaper
