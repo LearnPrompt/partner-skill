@@ -183,6 +183,7 @@ references/darwin-ratchet.md     Validation-gated improvement rules
 references/codex-driven.md       Direction A：Codex 主驾流程（Default Flow / Session Strategy / Permission Policy）
 references/claude-driven.md      Direction B：Claude 主驾的五阶段委派流程
 references/setup.md              「搭子，配置」首次配置向导：三种渲染路径 + 第二宿主增量接入
+references/goal-to-pr.md         完整协议(可选)：Plan→Goal→PR→Verification、hard stop 清单、祈使句授权法
 references/goal-template.md      .partner/goal.md 目标文件模板（任务表 + checkpoint 规则）
 references/fable5-principles.md  前沿模型提示词共同准则（why-forward、effort、checkpoint、resume）
 references/memory-protocol.md    收尾记忆协议（claude-mem / mem0 / auto-memory / rollout）

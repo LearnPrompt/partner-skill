@@ -137,6 +137,23 @@ bash "$PARTNER_DIR/scripts/delegate-codex.sh" resume <jobId> \
   receipt. Optionally run the gstack `/codex` review on the final combined
   diff as an independent third-party gate.
 
+## Phase 4.5 — Delivery (opt-in, `references/goal-to-pr.md`)
+
+Only runs when the user asked for the full "完整协议 / PR 交付 / 目标模式"
+protocol (see Trigger Grading in `references/goal-to-pr.md`) and has
+authorized it via a Goal Packet (`references/handoff-template.md`). Skip
+this phase entirely on the default lightweight flow above.
+
+- Follow Stage 3 (PR) and Stage 4 (Verify Ladder) in
+  `references/goal-to-pr.md`: branch/worktree, implement, verify, push,
+  open/update PR, wait for and fix CI, verify preview.
+- Stop at merge-ready + preview verified. Merge, production, tags,
+  force-push, deletion, destructive migration, and external publish are
+  each an independent hard stop — each needs its own fresh imperative
+  sentence, recorded in the goal file's `Delivery.authorization` field.
+- Update `.partner/goal.md`'s `## Delivery` section as each field becomes
+  known (branch/worktree, pr, ci, preview, live).
+
 ## Phase 5 — Wrap Up
 
 - Mark tasks done in `.partner/goal.md`; stop any remaining `/loop`.

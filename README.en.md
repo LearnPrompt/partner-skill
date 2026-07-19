@@ -184,6 +184,7 @@ references/darwin-ratchet.md            Validation-gated improvement rules
 references/codex-driven.md              Direction A: Codex-driven flow (Default Flow / Session Strategy / Permission Policy)
 references/claude-driven.md             Direction B: five-phase Claude-driven delegation flow
 references/setup.md                     "搭子，配置" first-run setup wizard: three render paths + second-host merge
+references/goal-to-pr.md                Opt-in full protocol: Plan→Goal→PR→Verification, hard-stop list, imperative authorization
 references/goal-template.md             Template for .partner/goal.md (task table + checkpoint rule)
 references/fable5-principles.md         Shared frontier-model prompting rules (why-forward, effort, checkpoint, resume)
 references/memory-protocol.md           Wrap-up memory protocol (claude-mem / mem0 / auto-memory / rollout)

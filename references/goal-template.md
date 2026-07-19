@@ -9,12 +9,21 @@ place as jobs progress; do not create parallel copies.
 # Partner Goal
 
 ## Goal
-[One why-forward sentence: working on X for Y, so that Z. Done when: <verifiable completion condition>.]
+[One why-forward sentence: working on X for Y, so that Z. Done when: <verifiable completion condition>. Anti-Goodhart: the done_when check must not be satisfiable by deleting tests, skipping steps, or weakening the acceptance bar — if it can be, fix the check, not the standard.]
 
 ## Checkpoint Rule
 Pause for the user only on: a destructive or irreversible action, a real
 scope change, or something only the user can provide. Otherwise keep going
 and report when done.
+
+## Delivery
+[Only used under the full Plan→Goal→PR→Verification protocol; references/goal-to-pr.md. Leave as "n/a" on the lightweight path.]
+- branch/worktree: <name or path, or n/a>
+- pr: <URL, or n/a>
+- ci: <status, or n/a>
+- preview: <URL/status, or n/a>
+- live: <status, or n/a — production/deploy state, verified independently of ci/preview>
+- authorization: <one line per hard-stop action actually authorized, verbatim user intent, or none yet>
 
 ## Tasks
 | id | owner | task | acceptance | effort | status | jobId |
