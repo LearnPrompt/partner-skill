@@ -200,9 +200,11 @@ scripts/run-test-prompts.py             Static checks plus experimental live mod
 scripts/delegate-codex.sh               Codex background-job primitive: submit / status / result / resume / cancel
 scripts/partner-config.py               Config engine: TOML-subset parsing, deterministic writes, locking (schema v1)
 scripts/partner-setup.py                Setup wizard engine: --preview/--apply/--rollback/--smoke/--status/--interactive
+scripts/goal-sync.py                    Hash-checked .partner/goal.md read/write: concurrent writes abort instead of silently losing updates
 tests/test_partner_config.py            Config engine unit tests (round-trip / lock / precedence chain)
 tests/test_partner_setup.py             Setup engine unit tests (idempotence / overwrite refusal / managed block / rollback)
 tests/test_delegate_role.py             Unit tests for --role injection and the override chain
+tests/test_goal_sync.py                 goal.md concurrency unit tests (stale-hash writes rejected, no silent lost update)
 idea-king/SKILL.md                      Idea King: first-principles decomposition + adversarial review (installs with Partner)
 idea-king/README.md                     Idea King standalone notes and methodology credits
 ```

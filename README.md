@@ -199,9 +199,11 @@ scripts/run-test-prompts.py      行为回归 prompt 的静态检查与实验性
 scripts/delegate-codex.sh        Codex 后台任务原语：submit / status / result / resume / cancel
 scripts/partner-config.py        配置引擎：TOML 子集解析、确定性写回、锁与原子写（schema v1）
 scripts/partner-setup.py         向导落盘引擎：--preview/--apply/--rollback/--smoke/--status/--interactive
+scripts/goal-sync.py             .partner/goal.md 哈希校验读写：并发写入不静默丢更新，冲突即 abort
 tests/test_partner_config.py     配置引擎单元测试（round-trip / 锁 / 优先级链）
 tests/test_partner_setup.py      向导引擎单元测试（幂等 / 防覆盖 / managed block / 回滚）
 tests/test_delegate_role.py      --role 注入与覆盖链单元测试
+tests/test_goal_sync.py          goal.md 并发写入单元测试（哈希不符即拒绝，证明无静默丢更新）
 idea-king/SKILL.md               点子王：第一性原理拆解 + 对抗式审查（随 Partner 一起安装）
 idea-king/README.md              点子王独立说明与方法论致谢
 ```

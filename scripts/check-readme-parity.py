@@ -69,9 +69,11 @@ FILE_MAP_ENTRIES = [
     "scripts/delegate-codex.sh",
     "scripts/partner-config.py",
     "scripts/partner-setup.py",
+    "scripts/goal-sync.py",
     "tests/test_partner_config.py",
     "tests/test_partner_setup.py",
     "tests/test_delegate_role.py",
+    "tests/test_goal_sync.py",
     "idea-king/SKILL.md",
     "idea-king/README.md",
 ]

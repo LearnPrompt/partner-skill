@@ -43,7 +43,10 @@ is a cost, not a safety margin.
   including its `## Delivery` section (branch/worktree, pr, ci, preview,
   live, authorization). The task table's `status` enum is unchanged from
   the base template — do not add or rename values; `/loop` monitoring's
-  stop rule and older goal.md copies depend on the existing enum.
+  stop rule and older goal.md copies depend on the existing enum. Use
+  `scripts/goal-sync.py read`/`write --expect-sha256 <hash>` for the write
+  so a concurrent update from the other host aborts your write instead of
+  being silently lost.
 - Every `done_when` gets the anti-Goodhart clause next to it: the check
   must not be satisfiable by deleting tests, skipping steps, or weakening
   the acceptance bar. A done_when that a maker could trivially "pass" by

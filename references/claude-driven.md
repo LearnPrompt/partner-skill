@@ -27,7 +27,11 @@ Job state lives under `<repo>/.partner/jobs/`.
 - Refine the user's request into a concrete plan, then write
   `<repo>/.partner/goal.md` (template: `references/goal-template.md`): the
   overall goal as one why-forward sentence, a task table, and the checkpoint
-  rule from `references/fable5-principles.md`.
+  rule from `references/fable5-principles.md`. If the repo may have a
+  second host writing the same goal.md concurrently, use
+  `scripts/goal-sync.py read`/`write --expect-sha256 <hash>` instead of
+  editing the file directly — it aborts instead of silently clobbering the
+  other host's update.
 - Split tasks with this default routing:
   - To Codex (subscription quota): mechanical refactors, test writing,
     wide read-only codebase scans, doc generation, boilerplate for isolated
