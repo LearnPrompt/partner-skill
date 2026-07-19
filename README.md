@@ -171,6 +171,7 @@ install.sh                       Local installer for Codex, Claude Code, Agents,
 test-prompts.json                Trigger and behavior regression prompts
 docs/showcase-cost-model.md      Showcase 成本压力模型与真实 token 记录字段
 docs/receipt-schema.json         Partner Session Receipt 的 JSON schema (partner.receipt.v1)
+docs/config-schema.md            Partner 配置 schema v1：字段表、优先级链、并发语义、TOML 子集边界
 examples/session-receipt.md      Minimal visible proof of same-session reuse
 examples/showcase-cost-ledger.json
                                   三种模式的成本压力 ledger
@@ -194,7 +195,11 @@ scripts/session-snapshot.sh      transcript 快照对比，让新开会话数成
 scripts/validate-receipt.py      校验 Partner Session Receipt 的字段与取值
 scripts/run-test-prompts.py      行为回归 prompt 的静态检查与实验性 live 模式
 scripts/delegate-codex.sh        Codex 后台任务原语：submit / status / result / resume / cancel
+scripts/partner-config.py        配置引擎：TOML 子集解析、确定性写回、锁与原子写（schema v1）
+tests/test_partner_config.py     配置引擎单元测试（round-trip / 锁 / 优先级链）
+tests/test_delegate_role.py      --role 注入与覆盖链单元测试
 idea-king/SKILL.md               点子王：第一性原理拆解 + 对抗式审查（随 Partner 一起安装）
+idea-king/README.md              点子王独立说明与方法论致谢
 ```
 
 ## 安全边界

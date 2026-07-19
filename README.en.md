@@ -173,6 +173,7 @@ install.sh                              Local installer for Codex, Claude Code, 
 test-prompts.json                       Trigger and behavior regression prompts
 docs/showcase-cost-model.md             Showcase cost-pressure model and real token capture fields
 docs/receipt-schema.json                JSON schema for the Partner Session Receipt (partner.receipt.v1)
+docs/config-schema.md                   Partner config schema v1: fields, precedence chain, concurrency, TOML subset
 examples/session-receipt.md             Minimal visible proof of same-session reuse
 examples/showcase-cost-ledger.json      Cost-pressure ledger for the three operating modes
 references/monitoring.md                How Codex monitors Claude Code progress
@@ -195,7 +196,11 @@ scripts/session-snapshot.sh             Transcript snapshot diff so the new-sess
 scripts/validate-receipt.py             Validates Partner Session Receipt fields and values
 scripts/run-test-prompts.py             Static checks plus experimental live mode for the regression prompts
 scripts/delegate-codex.sh               Codex background-job primitive: submit / status / result / resume / cancel
+scripts/partner-config.py               Config engine: TOML-subset parsing, deterministic writes, locking (schema v1)
+tests/test_partner_config.py            Config engine unit tests (round-trip / lock / precedence chain)
+tests/test_delegate_role.py             Unit tests for --role injection and the override chain
 idea-king/SKILL.md                      Idea King: first-principles decomposition + adversarial review (installs with Partner)
+idea-king/README.md                     Idea King standalone notes and methodology credits
 ```
 
 ## Safety

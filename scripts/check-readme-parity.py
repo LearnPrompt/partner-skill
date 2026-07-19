@@ -42,6 +42,7 @@ FILE_MAP_ENTRIES = [
     "test-prompts.json",
     "docs/showcase-cost-model.md",
     "docs/receipt-schema.json",
+    "docs/config-schema.md",
     "examples/session-receipt.md",
     "examples/showcase-cost-ledger.json",
     "references/monitoring.md",
@@ -64,7 +65,11 @@ FILE_MAP_ENTRIES = [
     "scripts/validate-receipt.py",
     "scripts/run-test-prompts.py",
     "scripts/delegate-codex.sh",
+    "scripts/partner-config.py",
+    "tests/test_partner_config.py",
+    "tests/test_delegate_role.py",
     "idea-king/SKILL.md",
+    "idea-king/README.md",
 ]
 
 

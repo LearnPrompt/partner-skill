@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased — feat/v1.5-dual-host
+
+- feat: idea-king absorbs Occam/Murphy/Coase laws, ported from installed copy (`51a6389`)
+- feat: idea-king clarify-to-95% pre-verdict protocol, headless degrades to Open Questions (`d86ae57`)
+- refactor: split SKILL.md into Partner Core + references/codex-driven.md with host detection (`4cc5ccd`)
+- feat: partner-config.py TOML-subset config engine (schema v1) with tests and docs (`760d938`)
+- feat: delegate-codex.sh --role injection from partner-config, with --dry-run and tests (`63b6807`)
+- feat: install.sh writes host= marker into .install-meta (`d9eab44`)
+- test: run-test-prompts.py supports should_trigger:false negative cases (`b21cbe3`)
+- fix: remove deprecated --enable web_search_cached from delegate-codex.sh (`30999a2`)
+
 ## v1.4.2 (2026-07-05)
 
 - feat: idea-king absorbs official adversarial-review, grilling, and packet hygiene (`a1ddbc9`)
