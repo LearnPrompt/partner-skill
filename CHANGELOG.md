@@ -2,6 +2,15 @@
 
 ## Unreleased — feat/v1.5-dual-host
 
+- test: dual-host CI sandbox matrix — install order, idempotence, fail-closed (`6333e8c`)
+- fix: redirect codex exec stdin from /dev/null to prevent hung background jobs (`0d673cc`)
+- docs: README bilingual rewrite — setup wizard, host self-ID, receipt v2, opt-in full protocol (`54ce055`)
+- feat: goal-sync.py hash-checked goal.md read/write, no silent lost update (`94349df`)
+- test: test-prompts.json +4 goal-to-pr case incl. ordinary-pr-no-trigger negative (`d99b630`)
+- feat: Plan→Goal→PR→Verification protocol, references/goal-to-pr.md (`f5b9232`)
+- feat: extend Partner Session Receipt with host/scope/config_source/roles_used, schema v2 (`5246d45`)
+- feat: activate Sub Agent three-level routing, partner-* > user agent > generic Task (`3d5e077`)
+- test: test-prompts.json +9 case — 4 setup, 4 host-adapter, 1 idea-king (`c6020f5`)
 - feat: partner-setup.py wizard engine + references/setup.md, "搭子，配置" first-run setup (`5e3744b`)
 - feat: install.sh --configure forwards to the terminal setup wizard (`9e95036`)
 - feat: idea-king absorbs Occam/Murphy/Coase laws, ported from installed copy (`51a6389`)
