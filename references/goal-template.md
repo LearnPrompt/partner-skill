@@ -26,8 +26,8 @@ and report when done.
 - authorization: <one line per hard-stop action actually authorized, verbatim user intent, or none yet>
 
 ## Tasks
-| id | owner | role | task | acceptance | effort | status | jobId |
-|----|-------|------|------|------------|--------|--------|-------|
+| id | owner (executes on) | role (capability tier) | task | acceptance | effort | status | jobId |
+|----|----------------------|-------------------------|------|------------|--------|--------|-------|
 | T1 | claude | deep_reasoner | ... | ... | - | in_progress | - |
 | T2 | codex | fast_worker | ... | [check command that must pass] | high | delegated | job-... |
 
@@ -40,13 +40,32 @@ status: pending | in_progress | delegated | review | rework-1 | rework-2 | taken
 [Integration decisions and takebacks worth carrying into the receipt and memory.]
 ```
 
+`owner` and `role` are independent axes, decided separately for every row —
+neither implies the other:
+
+- **`owner`** = which channel bills for and executes this task: `claude`
+  (this session, Claude API meter) or `codex` (a `delegate-codex.sh`
+  background job, Codex subscription meter). This is the cost-split
+  decision Direction B exists for — Claude stays the driver (plan, split,
+  review) while `codex`-owned rows push the actual grunt work off the
+  Claude meter.
+- **`role`** = which config-defined model/effort tier answers the call once
+  it runs, on *either* side of the owner split: `deep_reasoner` (ambiguous,
+  high-stakes, wrong-premise-is-expensive work) or `fast_worker`
+  (mechanical, spec-complete work). A `codex`-owned row is not automatically
+  `fast_worker` — a hard Codex-side diagnosis still wants `deep_reasoner`'s
+  tier; a routine Claude-owned row can be `fast_worker` too.
+
+Worked example: a task to reconfigure a site's i18n routing (getting the
+locale scheme wrong would silently break every existing URL) is
+`owner: codex` (push the edit-and-build-verify loop off the Claude meter)
+**and** `role: deep_reasoner` (the wrong-premise-late risk justifies the
+expensive tier) — both non-default choices on independent axes, in the
+same row.
+
 Rules:
 
 - One row per task; `jobId` comes from `delegate-codex.sh submit`.
-- `role` is deep_reasoner or fast_worker regardless of `owner` — deciding
-  the channel (claude/codex) and deciding the role (which config-defined
-  model/effort tier answers the call) are two separate judgments, both made
-  at split time. See "Deciding role per task" in `references/claude-driven.md`.
 - `acceptance` must be verifiable (a command to run, a behavior to observe),
   not a vibe. It is what Phase 4 reviews against.
 - The `/loop` monitoring prompt reads this file first, so keep statuses
