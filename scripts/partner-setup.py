@@ -617,7 +617,73 @@ def smoke(args: argparse.Namespace, env: Mapping[str, str]) -> int:
             partner_config.atomic_write(path, partner_config.update_host(old, args.host, roles))
     return 1 if failures else 0
 
-def _detected_host(env: Mapping[str, str]) -> Optional[str]:
+def uninstall(args: argparse.Namespace, env: Mapping[str, str]) -> int:
+    """Remove only what this host generated: manifest-matched agent files,
+    a structurally valid managed routing block, and (opt-in) this host's
+    config roles. A file that drifted from its recorded hash is treated as
+    user-owned and left in place, reported as skipped."""
+
+    removed: List[str] = []
+    skipped: List[str] = []
+    lock_path = config_path(args.scope, args.repo, env)
+    with partner_config.ConfigLock(lock_path, owner_host=args.host):
+        if args.host == "claude_code":
+            mpath = manifest_path(args.repo)
+            _, manifest = load_manifest(mpath)
+            updated_manifest = dict(manifest)
+            for agent_path in _agent_paths(args, env).values():
+                key = str(agent_path)
+                if key not in manifest:
+                    continue
+                if not agent_path.exists():
+                    updated_manifest.pop(key, None)
+                    continue
+                if sha256(read_text(agent_path)) != manifest[key]:
+                    skipped.append(f"{agent_path}: modified since generation; left in place")
+                    continue
+                if not args.dry_run:
+                    agent_path.unlink()
+                    updated_manifest.pop(key, None)
+                removed.append(str(agent_path))
+            if not args.dry_run and updated_manifest != manifest:
+                partner_config.atomic_write(
+                    mpath, json.dumps(updated_manifest, ensure_ascii=False, indent=2, sort_keys=True) + "\n"
+                )
+
+        rpath = _routing_path(args, env)
+        if rpath.exists():
+            old = read_text(rpath)
+            try:
+                new = remove_managed_block(old, args.force)
+            except SetupError as error:
+                skipped.append(f"{rpath}: {error}")
+            else:
+                if new != old:
+                    if not args.dry_run:
+                        partner_config.atomic_write(rpath, new)
+                    removed.append(f"{rpath} (managed routing block)")
+
+        if args.remove_config:
+            cpath = config_path(args.scope, args.repo, env)
+            if cpath.exists():
+                old = read_text(cpath)
+                cleared = partner_config.update_host(old, args.host, {})
+                if cleared != old:
+                    if not args.dry_run:
+                        partner_config.atomic_write(cpath, cleared)
+                    removed.append(f"{cpath} (hosts.{args.host}.roles cleared)")
+
+    prefix = "WOULD_REMOVE" if args.dry_run else "REMOVED"
+    for line in removed:
+        print(f"{prefix} {line}")
+    for line in skipped:
+        print(f"SKIPPED {line}", file=sys.stderr)
+    if not removed and not skipped:
+        print("nothing to remove")
+    return 0
+
+
+
     if env.get("CLAUDECODE") or env.get("CLAUDE_CODE_ENTRYPOINT"):
         return "claude_code"
     if env.get("CODEX_THREAD_ID") or env.get("CODEX_SANDBOX") or env.get("CODEX_HOME"):
@@ -689,6 +755,7 @@ def build_parser() -> argparse.ArgumentParser:
     action.add_argument("--interactive", action="store_true", help="Run the pure-terminal fallback wizard.")
     action.add_argument("--rollback", action="store_true", help="Restore the newest apply backup.")
     action.add_argument("--smoke", action="store_true", help="Smoke-check configured roles and record successful Codex checks.")
+    action.add_argument("--uninstall", action="store_true", help="Remove manifest-tracked generated files, the managed routing block, and optionally this host's config.")
     parser.add_argument("--host", choices=("claude_code", "codex"), help="Host namespace (required for preview/apply; otherwise auto-detected when possible).")
     parser.add_argument("--scope", choices=("project", "global"), default="project", help="Config/artifact scope (default: project).")
     parser.add_argument("--repo", type=Path, default=Path.cwd(), help="Repository root (default: current directory).")
@@ -705,6 +772,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--force", action="store_true", help="Skip managed-content hash validation only; structural checks still apply.")
     parser.add_argument("--exclude-choice", choices=("git-exclude", "self", "track"), default="git-exclude", help="Project config Git handling (default: git-exclude).")
     parser.add_argument("--timestamp", help="Explicit smoke verified_at value; also gives deterministic backup IDs in tests.")
+    parser.add_argument("--remove-config", action="store_true", help="With --uninstall, also clear this host's roles from the config (other host and top-level fields untouched).")
+    parser.add_argument("--dry-run", action="store_true", help="With --uninstall, report what would be removed without writing anything.")
     return parser
 
 def main(argv: Optional[Sequence[str]] = None, env: Optional[Mapping[str, str]] = None) -> int:
@@ -734,6 +803,11 @@ def main(argv: Optional[Sequence[str]] = None, env: Optional[Mapping[str, str]] 
             if not args.host:
                 raise SetupError("smoke host could not be detected; pass --host claude_code|codex")
             return smoke(args, environ)
+        if args.uninstall:
+            args.host = args.host or _detected_host(environ)
+            if not args.host:
+                raise SetupError("uninstall host could not be detected; pass --host claude_code|codex")
+            return uninstall(args, environ)
         if not args.host:
             raise SetupError("--host is required for --preview and --apply")
         plan = build_plan(args, environ)

@@ -94,3 +94,15 @@ a path (exists, not in the manifest), offer the three-way:
 - User-owned files (their agents, hand-written CLAUDE.md/AGENTS.md content)
   are read-only to this flow; the managed routing block writes only inside
   its own markers and only when explicitly enabled.
+
+## Uninstall
+
+`python3 "$PARTNER_DIR/scripts/partner-setup.py" --uninstall --host <host> [--remove-config] [--dry-run]`
+
+Removes only what this host generated: `partner-*` agent files whose hash
+still matches `.partner/.generated-manifest` (a file the user hand-edited
+since generation is left in place and reported as skipped, never deleted),
+and a structurally valid managed routing block. Config is untouched unless
+`--remove-config` is passed, which clears only `hosts.<host>.roles` — the
+other host's section, top-level fields, and `[routing]` are byte-preserved.
+`--dry-run` reports what would be removed without writing anything.

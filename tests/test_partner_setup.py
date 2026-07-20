@@ -296,6 +296,98 @@ class SetupTests(unittest.TestCase):
         self.assertIn("verified=true", status_output)
         self.assertIn(f"verified_at={timestamp}", status_output)
 
+    def test_uninstall_removes_manifest_tracked_agents_and_updates_manifest(self):
+        self.assertEqual(0, self.run_cli(*self.claude_args())[0])
+        deep_agent = self.repo.resolve() / ".claude" / "agents" / "partner-deep-reasoner.md"
+        fast_agent = self.repo.resolve() / ".claude" / "agents" / "partner-fast-worker.md"
+        self.assertTrue(deep_agent.is_file())
+        self.assertTrue(fast_agent.is_file())
+
+        status, output, error = self.run_cli(
+            "--uninstall", "--host", "claude_code", "--repo", str(self.repo)
+        )
+        self.assertEqual((0, ""), (status, error))
+        self.assertIn(f"REMOVED {deep_agent}", output)
+        self.assertIn(f"REMOVED {fast_agent}", output)
+        self.assertFalse(deep_agent.exists())
+        self.assertFalse(fast_agent.exists())
+        manifest = json.loads(
+            (self.repo / ".partner" / ".generated-manifest").read_text(encoding="utf-8")
+        )
+        self.assertNotIn(str(deep_agent), manifest)
+        self.assertNotIn(str(fast_agent), manifest)
+        # Config itself is untouched by a plain uninstall.
+        self.assertTrue((self.repo / ".partner" / "config.toml").is_file())
+
+    def test_uninstall_skips_agent_modified_since_generation(self):
+        self.assertEqual(0, self.run_cli(*self.claude_args())[0])
+        deep_agent = self.repo.resolve() / ".claude" / "agents" / "partner-deep-reasoner.md"
+        deep_agent.write_text("hand-edited by the user\n", encoding="utf-8")
+
+        status, _, error = self.run_cli(
+            "--uninstall", "--host", "claude_code", "--repo", str(self.repo)
+        )
+        self.assertEqual(0, status)
+        self.assertIn("modified since generation", error)
+        self.assertEqual("hand-edited by the user\n", deep_agent.read_text(encoding="utf-8"))
+
+    def test_uninstall_dry_run_removes_nothing(self):
+        self.assertEqual(0, self.run_cli(*self.claude_args())[0])
+        deep_agent = self.repo.resolve() / ".claude" / "agents" / "partner-deep-reasoner.md"
+        before = deep_agent.read_bytes()
+
+        status, output, error = self.run_cli(
+            "--uninstall", "--host", "claude_code", "--repo", str(self.repo), "--dry-run"
+        )
+        self.assertEqual((0, ""), (status, error))
+        self.assertIn(f"WOULD_REMOVE {deep_agent}", output)
+        self.assertTrue(deep_agent.exists())
+        self.assertEqual(before, deep_agent.read_bytes())
+
+    def test_uninstall_removes_managed_block_and_restores_user_content(self):
+        target = self.repo / "CLAUDE.md"
+        original = "# User rules\n\nKeep this byte-for-byte.\n"
+        target.write_text(original, encoding="utf-8")
+        self.assertEqual(
+            0,
+            self.run_cli(*self.claude_args("--apply", "--no-write-agents", "--routing-block"))[0],
+        )
+        self.assertIn(partner_setup.BEGIN_MARKER, target.read_text(encoding="utf-8"))
+
+        status, output, error = self.run_cli(
+            "--uninstall", "--host", "claude_code", "--repo", str(self.repo)
+        )
+        self.assertEqual((0, ""), (status, error))
+        self.assertIn("managed routing block", output)
+        self.assertEqual(original, target.read_text(encoding="utf-8"))
+
+    def test_uninstall_remove_config_clears_only_this_hosts_roles(self):
+        self.write_codex_native()
+        self.assertEqual(0, self.run_cli(*self.codex_args())[0])
+        self.assertEqual(0, self.run_cli(*self.claude_args())[0])
+        config = self.repo / ".partner" / "config.toml"
+        codex_before = "".join(
+            chunk.text
+            for chunk in partner_setup.partner_config.split_sections(partner_setup.read_text(config))
+            if chunk.name and chunk.name.startswith("hosts.codex.roles.")
+        )
+
+        status, output, error = self.run_cli(
+            "--uninstall", "--host", "claude_code", "--repo", str(self.repo), "--remove-config"
+        )
+        self.assertEqual((0, ""), (status, error))
+        self.assertIn("roles cleared", output)
+        parsed = partner_setup.partner_config.validate_config(
+            partner_setup.read_text(config), "claude_code"
+        )
+        self.assertEqual({}, parsed["hosts"]["claude_code"]["roles"])
+        codex_after = "".join(
+            chunk.text
+            for chunk in partner_setup.partner_config.split_sections(partner_setup.read_text(config))
+            if chunk.name and chunk.name.startswith("hosts.codex.roles.")
+        )
+        self.assertEqual(codex_before, codex_after)
+
     def test_claude_smoke_never_guesses_verified_true(self):
         self.assertEqual(0, self.run_cli(*self.claude_args())[0])
         status, output, error = self.run_cli(
