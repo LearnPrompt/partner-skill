@@ -2,6 +2,11 @@
 
 ## Unreleased — feat/v1.5-dual-host
 
+- feat: identity matrix — three cross-vendor identities (deep_reasoner / fast_worker / arbiter), each with its own backend/model/effort; schema v2 with fail-closed v1 migration (`5a1f3d7`, `52ad950`, `da269ce`)
+- feat: arbiter blind-solve protocol + 搭子，试跑 first-run tryout; goal.md task table drops owner in favor of identity (`f329daf`)
+- feat: idea-king adds 分工 (Assignment) section to Partner work-split reviews (`18dd247`)
+- fix: wire per-task role decision into the split flow; clarify owner vs role (`983457f`, `493d561`, superseded by the identity matrix)
+
 - test: dual-host CI sandbox matrix — install order, idempotence, fail-closed (`6333e8c`)
 - fix: redirect codex exec stdin from /dev/null to prevent hung background jobs (`0d673cc`)
 - docs: README bilingual rewrite — setup wizard, host self-ID, receipt v2, opt-in full protocol (`54ce055`)
