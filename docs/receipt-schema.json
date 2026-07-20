@@ -136,7 +136,8 @@
               "role": {
                 "enum": [
                   "deep_reasoner",
-                  "fast_worker"
+                  "fast_worker",
+                  "arbiter"
                 ]
               },
               "host": {

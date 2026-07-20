@@ -32,68 +32,83 @@ Job state lives under `<repo>/.partner/jobs/`.
   `scripts/goal-sync.py read`/`write --expect-sha256 <hash>` instead of
   editing the file directly — it aborts instead of silently clobbering the
   other host's update.
-- Split tasks with this default routing:
-  - To Codex (subscription quota): mechanical refactors, test writing,
-    wide read-only codebase scans, doc generation, boilerplate for isolated
-    modules, batch migrations.
-  - Keep in Claude (API, quality-critical): architecture, the split decision
-    itself, cross-module integration, security/correctness-critical paths,
-    final acceptance.
-- Deciding role per task: channel (claude/codex) and role (deep_reasoner/
-  fast_worker) are two separate judgments — record both in the goal file's
-  task table. Role picks which config-defined model/effort tier answers the
-  call, on either side of the channel split:
-  - `deep_reasoner` — architecture, ambiguous requirements, root-cause
-    diagnosis, anything where a wrong premise in step one is expensive to
-    discover late.
-  - `fast_worker` — mechanical, well-scoped, specification-complete work
-    where the acceptance criteria alone are enough to verify correctness.
-  A Codex task can be `fast_worker` (the common case) or `deep_reasoner`
-  (a hard Codex-side diagnosis); a Claude task can be either too. Do not
-  default every Codex task to `fast_worker` out of habit — an ambiguous
-  Codex-side investigation still wants `deep_reasoner`'s model/effort tier.
-- Pick the execution channel per task (full table and billing in
-  `references/fable5-principles.md`). Default lean, cheapest meter first:
-  - **Partner background job** (`delegate-codex.sh`) — the default for any
-    real unit of delegated work; runs on the Codex subscription while Claude
-    continues, and is full-reviewed in Phase 4.
-  - **One-shot Codex subagent** (e.g. a rescue agent) — only for a stuck
-    step needing a second diagnosis; no durable state, no rework chain.
-  - **Cheaper-Claude subagent** (Task tool) — only when the step needs
-    Claude-grade reasoning at a lower tier; note that it still bills the API,
-    so it does not save quota the way the Codex channels do. See
-    "Sub Agent Routing" below for which agent definition to spawn.
-  Never route a quality-critical step to a cheaper channel just to save
-  money, and never spend the expensive Claude seat on mechanical work.
+- Split tasks by making one judgment per row — which capability does this
+  work need (see the identity definitions in `references/goal-template.md`):
+  - `fast_worker` for mechanical, spec-complete work (refactors, test
+    writing, wide read-only scans, doc generation, boilerplate, batch
+    migrations) — the bulk of delegable work.
+  - `deep_reasoner` for ambiguous, wrong-premise-is-expensive work (a hard
+    diagnosis, a config change whose wrong variant silently breaks things).
+  - identity `-` for what the driver keeps inline: architecture, the split
+    decision itself, cross-task integration, security/correctness-critical
+    paths, final acceptance. Never route these to a cheaper identity to
+    save money, and never burn the driver's seat on mechanical work.
+  Which CLI executes and which meter bills follows from the identity's
+  configured `backend` (`搭子，配置`), not from a separate per-task choice.
+  Two escape hatches remain for edge cases: a one-shot Codex subagent
+  (e.g. a rescue agent) for a stuck step needing a second diagnosis with
+  no durable state, and a raw Task-tool subagent when no Partner identity
+  fits — billing notes for both in `references/fable5-principles.md`.
 - Adversarial gate: run the idea-king adversarial review (the `idea-king`
   skill, or `references/../idea-king/SKILL.md` content inline) against the
-  split. It must answer three questions: does each Codex task really not
-  need the expensive model, does the integration cost of the split boundary
-  eat the savings, and is each task on the right execution channel (with a
-  reason it is not a more expensive one). Fix the split before delegating.
+  split. It must answer three questions: does each delegated task really
+  not need the expensive tier, does the integration cost of the split
+  boundary eat the savings, and does each row's identity match the work's
+  actual stakes (with a reason it is not a more expensive one). Fix the
+  split before delegating; its `分工 (Assignment)` section is the
+  corrected task→identity mapping you act on.
 
 ## Sub Agent Routing
 
-When a task routes to the Cheaper-Claude subagent channel, resolve *which*
-agent definition to spawn with this three-level lookup, in order:
+This lookup applies **only to identities whose configured `backend` is
+`claude`** — an identity with `backend = codex` never enters it: that work
+goes through `delegate-codex.sh` (Phase 2), and spawning a Task subagent
+for it would silently swap in the wrong vendor and meter. For a
+claude-backend identity, resolve *which* agent definition to spawn with
+this three-level lookup, in order:
 
 1. **`partner-*` namespaced agent** — if `搭子，配置` has generated
-   `partner-deep-reasoner` / `partner-fast-worker` (project or global scope;
-   check `python3 "$PARTNER_DIR/scripts/partner-config.py" --host claude_code resolve`
-   for the configured role, or just try spawning the namespaced agent), use
-   it. Its model/effort came from the user's own setup choice.
+   `partner-deep-reasoner` / `partner-fast-worker` / `partner-arbiter`
+   (project or global scope; check
+   `python3 "$PARTNER_DIR/scripts/partner-config.py" --host claude_code resolve`
+   for the configured identity, or just try spawning the namespaced agent),
+   use it. Its model/effort came from the user's own setup choice.
 2. **The user's own similarly-named agent** — if no `partner-*` agent exists
    but the user has their own `deep-reasoner.md` / `fast-worker.md` (or an
-   agent whose description clearly matches the role), use it as-is. Never
-   rename, edit, or treat it as if it were partner-managed.
+   agent whose description clearly matches the identity), use it as-is.
+   Never rename, edit, or treat it as if it were partner-managed.
 3. **Generic `Task` tool** — no matching agent either way: spawn a plain
-   Task-tool subagent with the role described in the prompt. This is the
+   Task-tool subagent with the identity described in the prompt. This is the
    fallback, not a signal that setup is missing something the task needs.
 
-This is a lookup for *which agent answers the call*, not a routing decision
-about channels or billing — see the channel table in
-`references/fable5-principles.md` for that. A repo with no `搭子，配置` run
-yet simply falls through to level 3 every time; that is normal, not broken.
+A repo with no `搭子，配置` run yet simply falls through to level 3 every
+time; that is normal, not broken.
+
+## Arbiter Protocol — 盲解仲裁
+
+For contentious or high-stakes calls — the driver judges the answer
+disputable, or the user says 仲裁 / 有争议 / second opinion — do not settle
+for one solver's answer:
+
+1. Send the **same problem, verbatim** to both `deep_reasoner` and
+   `arbiter`, each through its own configured backend (subagent spawn or
+   `delegate-codex.sh --host claude_code --role arbiter`).
+2. **Contamination rule**: neither packet may contain the other solver's
+   answer, conclusion, or any leaning hint ("X thinks A, verify it" is
+   already contaminated). Blind means blind — a contaminated run silently
+   produces fake agreement and must be rerun, not patched.
+3. Compare the two answers. Agreement → adopt, note dual-verified.
+   Disagreement → the driver rules, and records the point of divergence
+   plus the ruling's reasoning in the receipt (both solvers appear in
+   `roles_used`; the divergence goes in the report/Notes).
+4. The blind check is strongest when arbiter and deep_reasoner run on
+   different vendors (the wizard's default presets guarantee this); if the
+   config has them same-vendor, the protocol still runs but the receipt
+   notes `same-vendor` so the weaker independence is visible.
+
+This is distinct from the idea-king gate: 点子王 attacks a *plan* you
+already have; the arbiter independently *solves the same problem* with no
+knowledge of the first answer.
 
 ## Phase 2 — Delegate
 
@@ -101,23 +116,25 @@ yet simply falls through to level 3 every time; that is normal, not broken.
   `references/handoff-template.md`: why-forward context, one-sentence task,
   verifiable acceptance criteria, scope constraints, and the fixed output
   rules (no optional commentary; lessons learned at the end).
-- Submit as a background job, passing the task's `role` from the goal
-  table so model/effort resolve from `搭子，配置`'s config instead of a
-  hardcoded default (explicit `--model`/`--effort` still wins if you have a
-  genuine per-task reason to override — see `--role` in
-  `scripts/delegate-codex.sh`'s usage):
+- Submit as a background job, passing the row's identity so backend, model,
+  and effort resolve from `搭子，配置`'s config. `--host claude_code` reads
+  the driver's own routing table (explicit `--model`/`--effort` still wins
+  per field if a specific task genuinely needs an override):
 
 ```bash
 prompt=$(mktemp)
 # ... write the delegation packet into "$prompt" ...
 bash "$PARTNER_DIR/scripts/delegate-codex.sh" submit \
-  --repo "$REPO" --prompt-file "$prompt" --label <task-id> --role <deep_reasoner|fast_worker>
+  --repo "$REPO" --prompt-file "$prompt" --label <task-id> \
+  --host claude_code --role <identity>
 ```
 
-If the repo has no Partner config yet, `--role` fails closed with a clear
-error instead of guessing — run `搭子，配置` first, or fall back to an
-explicit `--effort` for this one job and note in `Notes` that role config
-is still pending.
+The tool fail-closes on both misconfigurations: no Partner config yet →
+clear error (run `搭子，配置` first, or fall back to an explicit `--effort`
+for this one job and note it in `Notes`); identity configured with
+`backend = claude` → refusal with a pointer to spawn the `partner-<identity>`
+subagent instead — this is the guard against silently running a
+claude-backend identity on the wrong vendor.
 
 - Use `--read-only` for scan/review jobs that must not modify the repo.
 - Record the returned jobId in the goal file's task row. Independent tasks

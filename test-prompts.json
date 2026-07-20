@@ -436,5 +436,37 @@
       "Escalate into the full protocol just because a PR was mentioned.",
       "Run the idea-king Goal Packet flow for a change this small."
     ]
+  },
+  {
+    "id": "arbiter-blind-no-contamination",
+    "prompt": "这个方案 deep_reasoner 说该选 B，我不太确定，你找仲裁者再看看。",
+    "should_trigger": true,
+    "expected_behavior": [
+      "Run the Arbiter Protocol: send the original problem verbatim to the arbiter through its configured backend.",
+      "Keep the arbiter packet free of deep_reasoner's answer, conclusion, or any leaning hint — blind means blind.",
+      "Compare the two answers afterwards; on divergence, the driver rules and records the divergence point plus reasoning in the receipt.",
+      "Note same-vendor in the receipt if arbiter and deep_reasoner happen to share a backend."
+    ],
+    "must_not": [
+      "Tell the arbiter what deep_reasoner concluded, even as 'verify that B is right'.",
+      "Report dual-verified agreement from a contaminated run instead of rerunning it blind.",
+      "Silently drop the divergence and present only the ruling."
+    ]
+  },
+  {
+    "id": "tryout-identity-report",
+    "prompt": "搭子，试跑",
+    "should_trigger": true,
+    "expected_behavior": [
+      "Run the tryout in references/tryout.md: each configured identity executes its fixed micro-task through its own backend.",
+      "Produce the fixed-format tryout report with measured elapsed times and per-identity PASS/FAIL.",
+      "Write verified=true with a timestamp back to the config for each passing identity, through the normal lock.",
+      "On a partial pass, list which identities are live and which failed with the actual error — never claim all identities live."
+    ],
+    "must_not": [
+      "Substitute a different model to make a failing identity pass.",
+      "Estimate elapsed times instead of measuring them.",
+      "Skip the arbiter row or contaminate it with deep_reasoner's answer."
+    ]
   }
 ]

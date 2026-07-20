@@ -186,7 +186,9 @@ Claude 里跑 Codex Review 验收当前 diff，发现问题你来修。
 搭子，恢复上次任务，接着做。
 搭子，分工给 codex 后台跑，做完你全量验收。
 搭子，配置
+搭子，试跑
 搭子，走完整协议，给我一个 PR 交付。
+这个结论有争议，找仲裁者盲解一遍再定。
 点子王，对抗式审查一下这个方案。
 点子王，盘问我这个方案，一次问一个。
 ```
@@ -225,7 +227,8 @@ references/scenarios.md          Review-only、debugging、非 UI、非 git、mo
 references/darwin-ratchet.md     Validation-gated improvement rules
 references/codex-driven.md       Direction A：Codex 主驾流程（Default Flow / Session Strategy / Permission Policy）
 references/claude-driven.md      Direction B：Claude 主驾的五阶段委派流程
-references/setup.md              「搭子，配置」首次配置向导：三种渲染路径 + 第二宿主增量接入
+references/setup.md              「搭子，配置」首次配置向导：身份矩阵（三身份跨家搭配）+ 第二宿主增量接入
+references/tryout.md             「搭子，试跑」身份试跑：三身份各跑一个微任务，出对照报告证明模型真生效
 references/goal-to-pr.md         完整协议(可选)：Plan→Goal→PR→Verification、hard stop 清单、祈使句授权法
 references/goal-template.md      .partner/goal.md 目标文件模板（任务表 + checkpoint 规则）
 references/fable5-principles.md  前沿模型提示词共同准则（why-forward、effort、checkpoint、resume）

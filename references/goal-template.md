@@ -26,10 +26,10 @@ and report when done.
 - authorization: <one line per hard-stop action actually authorized, verbatim user intent, or none yet>
 
 ## Tasks
-| id | owner (executes on) | role (capability tier) | task | acceptance | effort | status | jobId |
-|----|----------------------|-------------------------|------|------------|--------|--------|-------|
-| T1 | claude | deep_reasoner | ... | ... | - | in_progress | - |
-| T2 | codex | fast_worker | ... | [check command that must pass] | high | delegated | job-... |
+| id | identity | task | acceptance | effort | status | jobId |
+|----|----------|------|------------|--------|--------|-------|
+| T1 | deep_reasoner | ... | ... | - | in_progress | - |
+| T2 | fast_worker | ... | [check command that must pass] | high | delegated | job-... |
 
 status: pending | in_progress | delegated | review | rework-1 | rework-2 | taken-back | done
 
@@ -40,32 +40,36 @@ status: pending | in_progress | delegated | review | rework-1 | rework-2 | taken
 [Integration decisions and takebacks worth carrying into the receipt and memory.]
 ```
 
-`owner` and `role` are independent axes, decided separately for every row —
-neither implies the other:
+Splitting a task means making **one** judgment per row: which capability
+does this work need? The three identities are defined by `搭子，配置`, each
+carrying its own backend (which CLI executes and which meter bills), model,
+and effort — so picking the identity picks the execution channel
+automatically; there is no separate "owner" decision:
 
-- **`owner`** = which channel bills for and executes this task: `claude`
-  (this session, Claude API meter) or `codex` (a `delegate-codex.sh`
-  background job, Codex subscription meter). This is the cost-split
-  decision Direction B exists for — Claude stays the driver (plan, split,
-  review) while `codex`-owned rows push the actual grunt work off the
-  Claude meter.
-- **`role`** = which config-defined model/effort tier answers the call once
-  it runs, on *either* side of the owner split: `deep_reasoner` (ambiguous,
-  high-stakes, wrong-premise-is-expensive work) or `fast_worker`
-  (mechanical, spec-complete work). A `codex`-owned row is not automatically
-  `fast_worker` — a hard Codex-side diagnosis still wants `deep_reasoner`'s
-  tier; a routine Claude-owned row can be `fast_worker` too.
+- **`deep_reasoner`** — architecture, ambiguous requirements, root-cause
+  diagnosis, anything where a wrong premise in step one is expensive to
+  discover late.
+- **`fast_worker`** — mechanical, well-scoped, specification-complete work
+  where the acceptance criteria alone are enough to verify correctness.
+- **`arbiter`** — the blind second solver for contentious or high-stakes
+  calls; normally invoked by the Arbiter protocol in
+  `references/claude-driven.md`, not assigned routine rows of its own.
 
-Worked example: a task to reconfigure a site's i18n routing (getting the
-locale scheme wrong would silently break every existing URL) is
-`owner: codex` (push the edit-and-build-verify loop off the Claude meter)
-**and** `role: deep_reasoner` (the wrong-premise-late risk justifies the
-expensive tier) — both non-default choices on independent axes, in the
-same row.
+Rows the driver keeps for itself — the split decision, cross-task
+integration, final acceptance — take identity `-`: they run inline in the
+driving session and never spawn or delegate.
+
+At execution time, resolve the identity's config
+(`partner-config.py resolve`): `backend = codex` → submit through
+`delegate-codex.sh --host <driver> --role <identity>` (Codex subscription
+meter); `backend = claude` → spawn the `partner-<identity>` subagent
+(Claude API meter). The same identity can point at either vendor — that
+mapping lives in `.partner/config.toml`, not in this table.
 
 Rules:
 
-- One row per task; `jobId` comes from `delegate-codex.sh submit`.
+- One row per task; `jobId` comes from `delegate-codex.sh submit` (rows
+  whose identity resolves to a claude backend keep `-`).
 - `acceptance` must be verifiable (a command to run, a behavior to observe),
   not a vibe. It is what Phase 4 reviews against.
 - The `/loop` monitoring prompt reads this file first, so keep statuses

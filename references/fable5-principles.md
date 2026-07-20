@@ -33,10 +33,10 @@ Put this rule in the goal file and in every delegation packet.
 ## Effort as a Handoff Parameter
 
 Effort level is the intelligence/latency/cost dial. Prefer `delegate-codex.sh
---role deep_reasoner|fast_worker` so effort (and model) resolve from
-`搭子，配置`'s config instead of being picked ad hoc per call; pass an
+--host <driver> --role <identity>` so backend, effort, and model resolve
+from `搭子，配置`'s config instead of being picked ad hoc per call; pass an
 explicit `--effort` only when a specific task genuinely needs to override
-its role's default. Without a `--role` or explicit `--effort`, the tool
+its identity's default. Without a `--role` or explicit `--effort`, the tool
 falls back to `high` — reserve `xhigh` for the hardest, quality-critical
 jobs (expect long runtimes); `medium` only for genuinely trivial mechanical
 work. On a subscription plan, do not economize on effort at the price of

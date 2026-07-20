@@ -186,7 +186,9 @@ Run Codex Review inside Claude Code, then Codex fixes the findings.
 Partner, resume the last task from .partner/ state.
 Partner, delegate the mechanical parts to Codex in the background, then full-review.
 搭子，配置
+搭子，试跑
 Partner, run the full protocol and deliver a PR.
+This conclusion is contested — have the arbiter blind-solve it before we decide.
 Idea King, run an adversarial review on this plan.
 Idea King, grill me on this plan, one question at a time.
 ```
@@ -226,7 +228,8 @@ references/scenarios.md                 Flow variants for review-only, debugging
 references/darwin-ratchet.md            Validation-gated improvement rules
 references/codex-driven.md              Direction A: Codex-driven flow (Default Flow / Session Strategy / Permission Policy)
 references/claude-driven.md             Direction B: five-phase Claude-driven delegation flow
-references/setup.md                     "搭子，配置" first-run setup wizard: three render paths + second-host merge
+references/setup.md                     "搭子，配置" first-run setup wizard: identity matrix (three cross-vendor identities) + second-host merge
+references/tryout.md                    "搭子，试跑" identity tryout: one micro-task per identity, report proving the models are live
 references/goal-to-pr.md                Opt-in full protocol: Plan→Goal→PR→Verification, hard-stop list, imperative authorization
 references/goal-template.md             Template for .partner/goal.md (task table + checkpoint rule)
 references/fable5-principles.md         Shared frontier-model prompting rules (why-forward, effort, checkpoint, resume)

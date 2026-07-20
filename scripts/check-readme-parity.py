@@ -54,6 +54,7 @@ FILE_MAP_ENTRIES = [
     "references/codex-driven.md",
     "references/claude-driven.md",
     "references/setup.md",
+    "references/tryout.md",
     "references/goal-to-pr.md",
     "references/goal-template.md",
     "references/fable5-principles.md",

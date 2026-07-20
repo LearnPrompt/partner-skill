@@ -37,7 +37,7 @@ HOSTS = {"claude_code", "codex", "generic"}
 SCOPES = {"project", "global", "n/a"}
 CONFIG_SOURCES = {"session", "project", "global", "default", "n/a"}
 ROLE_HOSTS = {"claude_code", "codex"}
-ROLES = {"deep_reasoner", "fast_worker"}
+ROLES = {"deep_reasoner", "fast_worker", "arbiter"}
 
 REQUIRED_FIELDS = [
     "phase",

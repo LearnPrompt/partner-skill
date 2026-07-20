@@ -23,19 +23,27 @@ Pick exactly one, by host:
 ## Screens (balanced path ≤3 steps)
 
 1. **Detection (display, don't ask)** — run `partner-setup.py --status` and
-   show: current host, peer CLI availability, existing config (if any), and
-   detected model/effort values with their source tag
-   (`detected` from host config | `built-in` alias | `custom (unverified)`).
-   If a config with another host's namespace already exists, jump to
-   *Second host joining* below.
+   show: current host, both CLIs' availability (`claude` and `codex` on
+   PATH — an identity can only use a backend whose CLI is installed),
+   existing config (if any), and detected model/effort values with their
+   source tag (`detected` from host config | `built-in` alias |
+   `custom (unverified)`). If a config with another host's namespace
+   already exists, jump to *Second host joining* below.
 2. **Work mode** — one choice: 均衡 balanced (default) / 质量 quality /
-   成本 cost / 自定义 custom. Only custom expands per-role model + effort
-   questions. For the Codex host, models are never offered from a hardcoded
-   list: offer the detected value or ask for an explicit string.
+   成本 cost / 自定义 custom. Each preset carries a full identity matrix —
+   three identities (deep_reasoner / fast_worker / arbiter), each with its
+   own backend (which CLI executes), model, and effort, freely mixed across
+   vendors. Only custom expands the per-identity backend → model → effort
+   questions (one identity per screen). Codex-backend models are never
+   offered from a hardcoded list: offer the detected value or ask for an
+   explicit string. If arbiter and deep_reasoner end up on the same
+   backend, warn that the blind cross-check loses independence — allow it,
+   but say it.
 3. **Scope & writes** — scope: 当前项目 project (default) / 所有项目
-   global. Write items: generate Claude agent files ☑ (claude_code host
-   only) / persistent routing block ☐ (default OFF — plain "no" is the
-   right answer unless the user asked for always-on routing rules).
+   global. Write items: generate Claude agent files ☑ (only for identities
+   whose backend is claude) / persistent routing block ☐ (default OFF —
+   plain "no" is the right answer unless the user asked for always-on
+   routing rules).
 
 Then, without asking further questions:
 
@@ -47,13 +55,16 @@ Then, without asking further questions:
    the exclude choice (default: one line in `.git/info/exclude`); relay its
    report.
 6. **Smoke test (recommended, skippable, never blocking)** —
-   `partner-setup.py --smoke`. Codex roles verify through the delegate
-   dry-run chain and get `verified=true` written back. Claude agent files
-   are only visible to *new* sessions: the engine reports
-   `needs_new_session`; tell the user verification completes automatically
-   on first real use in a fresh session. Never claim verified without
-   engine evidence.
-7. Close with a normal Partner Session Receipt.
+   `partner-setup.py --smoke`. Codex-backend identities verify through the
+   delegate dry-run chain and get `verified=true` written back.
+   Claude-backend agent files are only visible to *new* sessions: the
+   engine reports `needs_new_session`; tell the user verification completes
+   automatically on first real use in a fresh session. Never claim verified
+   without engine evidence.
+7. Point the user at "搭子，试跑" (`references/tryout.md`) — the real
+   end-to-end proof pass where every identity runs a micro-task and a
+   report shows each one live on its configured model. Close with a normal
+   Partner Session Receipt.
 
 ## Second host joining (incremental merge)
 
