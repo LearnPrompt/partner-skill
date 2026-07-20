@@ -369,7 +369,7 @@ HTML = r'''<!doctype html>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>搭子配置</title>
   <style>
-    /* Taste read: targeted developer-tool redesign. Variance 6, motion 3, density 6. */
+    /* Base structural styles. The taste-v2 layer below owns the visual direction. */
     :root {
       color-scheme:dark;
       --bg:#0b0d0f;
@@ -518,102 +518,330 @@ HTML = r'''<!doctype html>
       *,*::before,*::after { scroll-behavior:auto!important; transition:none!important; animation:none!important; }
     }
   </style>
+  <style>
+    /* Reading this as a local Agent setup tool for first-time users, with a kinetic instrument-panel language. Variance 8, motion 6, density 5. */
+    :root {
+      color-scheme:light;
+      --canvas:#f0f1ec;
+      --paper:#fafaf7;
+      --paper-strong:#ffffff;
+      --ink:#171915;
+      --ink-soft:#343730;
+      --muted-v2:#6b6f66;
+      --line-v2:#d3d6cc;
+      --accent-v2:#e75b38;
+      --accent-deep:#8f2f19;
+      --accent-soft:#f7d9d0;
+      --shadow-v2:0 28px 70px rgba(66,54,43,.12);
+      --display:"Avenir Next","SF Pro Display","PingFang SC",sans-serif;
+      --body:"Avenir Next","SF Pro Text","PingFang SC",sans-serif;
+      --mono-v2:"SFMono-Regular","JetBrains Mono",Consolas,monospace;
+    }
+    html { background:var(--canvas); scroll-behavior:smooth; }
+    body { min-width:320px; background:
+      radial-gradient(circle at 82% 4%,rgba(231,91,56,.15),transparent 30rem),
+      var(--canvas); color:var(--ink); font:15px/1.5 var(--body); overflow-x:hidden; }
+    body::before { content:""; position:fixed; inset:0; pointer-events:none; z-index:3; opacity:.13; background-image:radial-gradient(rgba(23,25,21,.42) .45px,transparent .55px); background-size:4px 4px; }
+    .shell { width:min(1320px,calc(100% - 48px)); margin:0 auto 80px; }
+    .masthead { height:68px; display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid rgba(23,25,21,.18); }
+    .brand { display:flex; align-items:center; gap:11px; font-weight:680; letter-spacing:-.025em; }
+    .brand-mark { width:32px; height:32px; display:grid; place-items:center; border-radius:10px; background:var(--ink); color:var(--paper); font-weight:760; }
+    .brand small { display:block; color:var(--muted-v2); font:10px/1.2 var(--mono-v2); letter-spacing:.03em; }
+    .local-state { display:flex; align-items:center; gap:8px; color:var(--muted-v2); font:11px var(--mono-v2); }
+    .local-state::before { content:""; width:7px; height:7px; border-radius:50%; background:var(--accent-v2); box-shadow:0 0 0 4px rgba(231,91,56,.12); }
+    .hero { min-height:430px; display:grid; grid-template-columns:minmax(0,1fr) minmax(440px,.85fr); gap:clamp(36px,7vw,100px); align-items:center; padding:42px 0 54px; }
+    .hero-copy { align-self:center; }
+    .hero h1 { max-width:760px; margin:0; color:var(--ink); font:760 clamp(46px,6vw,78px)/.98 var(--display); letter-spacing:-.065em; text-wrap:balance; }
+    .hero .subtitle { max-width:520px; margin-top:22px; color:var(--ink-soft); font-size:17px; line-height:1.65; text-wrap:pretty; }
+    .repo-block { width:auto; margin-top:30px; text-align:left; }
+    .repo-block span { color:var(--muted-v2); text-transform:none; letter-spacing:0; font-size:11px; }
+    .repo-block code { display:inline-block; max-width:100%; padding:9px 12px; border:1px solid var(--line-v2); border-radius:10px; background:rgba(255,255,255,.5); color:var(--ink-soft); font:11px/1.4 var(--mono-v2); }
+    .hero-map { position:relative; min-height:340px; overflow:hidden; border-radius:30px; background:var(--ink); color:var(--paper); box-shadow:0 35px 80px rgba(63,44,32,.22); isolation:isolate; }
+    .hero-map::before { content:""; position:absolute; width:320px; height:320px; right:-100px; top:-130px; border-radius:50%; background:radial-gradient(circle,rgba(231,91,56,.72),rgba(231,91,56,0) 68%); opacity:.7; }
+    .hero-map::after { content:""; position:absolute; inset:0; z-index:-1; opacity:.12; background-image:radial-gradient(rgba(250,250,247,.75) .55px,transparent .7px); background-size:7px 7px; }
+    .map-caption { position:absolute; left:24px; top:22px; color:#aeb1a8; font:10px var(--mono-v2); }
+    .agent-core { position:absolute; left:7%; top:50%; width:126px; height:126px; transform:translateY(-50%); display:grid; place-content:center; text-align:center; border:1px solid rgba(250,250,247,.28); border-radius:28px; background:#242720; box-shadow:inset 0 1px rgba(255,255,255,.09),0 18px 42px rgba(0,0,0,.28); }
+    .agent-core strong { font:720 28px/1 var(--display); letter-spacing:-.05em; }
+    .agent-core small { margin-top:8px; color:#aeb1a8; font:9px var(--mono-v2); }
+    .agent-core::after { content:""; position:absolute; inset:-10px; border:1px solid rgba(231,91,56,.32); border-radius:36px; }
+    .role-node { position:absolute; left:62%; width:31%; min-width:140px; padding:13px 15px; border:1px solid rgba(250,250,247,.18); border-radius:16px; background:rgba(41,44,36,.92); box-shadow:inset 0 1px rgba(255,255,255,.06); }
+    .role-node.deep { top:10%; }
+    .role-node.fast { top:40%; }
+    .role-node.arbiter { top:70%; }
+    .role-node span { display:block; color:#aeb1a8; font-size:10px; margin-bottom:3px; }
+    .role-node strong { display:block; overflow:hidden; color:var(--paper); font:10px/1.45 var(--mono-v2); text-overflow:ellipsis; white-space:nowrap; }
+    .route-line { position:absolute; left:31%; width:34%; height:1px; transform-origin:left center; background:linear-gradient(90deg,rgba(231,91,56,.18),rgba(231,91,56,.78)); }
+    .route-line.deep { top:48%; transform:rotate(-28deg); }
+    .route-line.fast { top:50%; }
+    .route-line.arbiter { top:52%; transform:rotate(28deg); }
+    .route-line i { position:absolute; left:0; top:-4px; width:9px; height:9px; border-radius:3px; background:var(--accent-v2); box-shadow:0 0 16px rgba(231,91,56,.7); }
+    .detect { display:grid; grid-template-columns:.72fr .92fr 1fr 1fr 1.2fr; margin-bottom:0; overflow:hidden; border:1px solid var(--line-v2); border-radius:18px; background:rgba(250,250,247,.72); box-shadow:0 14px 35px rgba(66,54,43,.07); }
+    .detect .item,.detect .item:first-child { min-width:0; padding:17px 18px; border:0; border-left:1px solid var(--line-v2); }
+    .detect .item:first-child { border-left:0; }
+    .detect .item:nth-child(1) { --i:0; }
+    .detect .item:nth-child(2) { --i:1; }
+    .detect .item:nth-child(3) { --i:2; }
+    .detect .item:nth-child(4) { --i:3; }
+    .detect .item:nth-child(5) { --i:4; }
+    .k { color:var(--muted-v2); font-size:10px; letter-spacing:.02em; }
+    .v { color:var(--ink); font:650 12px/1.4 var(--body); }
+    .ok { color:var(--accent-deep); }
+    .warn,.bad { color:var(--accent-deep); }
+    .config-section { margin-top:70px; }
+    .config-heading { max-width:680px; margin-bottom:24px; }
+    .config-heading h2 { color:var(--ink); font:720 clamp(30px,4vw,48px)/1.05 var(--display); letter-spacing:-.045em; }
+    .config-heading p { max-width:570px; margin-top:10px; color:var(--muted-v2); font-size:14px; }
+    .modes { display:grid; grid-template-columns:repeat(4,1fr); gap:5px; padding:5px; border-radius:18px; background:var(--ink); box-shadow:0 20px 45px rgba(66,54,43,.14); }
+    .mode { appearance:none; width:100%; min-height:86px; display:block; position:relative; overflow:hidden; padding:15px 16px; border:0; border-radius:13px; background:transparent; color:#b8bbb2; text-align:left; cursor:pointer; }
+    .mode strong { position:relative; z-index:1; display:block; margin:0 0 6px; color:inherit; font:680 15px var(--body); }
+    .mode small { position:relative; z-index:1; display:block; color:inherit; font:10px/1.45 var(--mono-v2); opacity:.75; }
+    .mode::before { content:""; position:absolute; inset:0; border-radius:inherit; background:var(--accent-v2); transform:scale(.86); opacity:0; }
+    .mode:hover { color:var(--paper); background:#252820; }
+    .mode.active { color:var(--paper); background:transparent; }
+    .mode.active::before { transform:scale(1); opacity:1; }
+    .config-grid { display:grid; grid-template-columns:minmax(0,1.55fr) minmax(300px,.7fr); gap:22px; align-items:start; margin-top:22px; }
+    .matrix-panel,.settings-panel { border:1px solid var(--line-v2); border-radius:24px; background:rgba(250,250,247,.82); box-shadow:var(--shadow-v2); }
+    .matrix-panel { min-width:0; padding:24px; }
+    .main-heading { align-items:flex-start; padding:0 0 18px; border:0; }
+    .main-heading h2 { color:var(--ink); font:700 23px/1.15 var(--display); letter-spacing:-.035em; }
+    .main-heading p { max-width:530px; color:var(--muted-v2); font-size:12px; }
+    .current-mode { color:var(--accent-deep); font:10px var(--mono-v2); }
+    .matrix { display:grid; gap:12px; }
+    .identity { display:grid; grid-template-columns:minmax(145px,.8fr) minmax(130px,.7fr) minmax(210px,1.2fr) minmax(120px,.62fr); gap:12px; align-items:start; position:relative; overflow:hidden; padding:17px; border:1px solid var(--line-v2); border-radius:17px; background:var(--paper-strong); box-shadow:0 10px 26px rgba(66,54,43,.06); }
+    .identity:first-child { border-top:1px solid var(--line-v2); }
+    .identity:nth-child(1) { --row:0; }
+    .identity:nth-child(2) { --row:1; margin-left:clamp(0px,2.7vw,34px); }
+    .identity:nth-child(3) { --row:2; margin-right:clamp(0px,1.4vw,18px); }
+    .identity::before { content:""; position:absolute; left:0; top:13px; bottom:13px; width:3px; border-radius:3px; background:var(--accent-v2); transform:scaleY(0); }
+    .identity:hover { background:var(--paper-strong); box-shadow:0 18px 38px rgba(66,54,43,.12); }
+    .identity:hover::before { transform:scaleY(1); }
+    .identity-head { padding:1px 0 0; }
+    .identity h3 { color:var(--ink); font:680 15px var(--body); }
+    .identity-head small { color:var(--muted-v2); }
+    .identity-code { color:#979b91; }
+    label,.field-label { color:var(--muted-v2); font-size:10px; }
+    select,input[type=text] { min-height:43px; border:1px solid var(--line-v2); border-radius:11px; background:#f3f4ef; color:var(--ink); font:12px var(--mono-v2); }
+    select:hover,input[type=text]:hover { border-color:#aeb2a6; }
+    select:focus-visible,input:focus-visible,button:focus-visible { outline:3px solid rgba(231,91,56,.3); outline-offset:2px; border-color:var(--accent-v2); }
+    .source { color:#888d82; }
+    .settings-panel { position:sticky; top:18px; overflow:hidden; }
+    .settings-head { padding:23px 22px 18px; background:var(--accent-soft); }
+    .settings-head h2 { color:var(--ink); font:700 21px/1.15 var(--display); letter-spacing:-.03em; }
+    .settings-head p { margin-top:7px; color:#765c53; font-size:12px; }
+    .settings-body { padding:20px 22px 8px; }
+    .setting-block + .setting-block { margin-top:18px; padding-top:18px; border-top:1px solid var(--line-v2); }
+    .choice { color:var(--ink-soft); }
+    .choice input { accent-color:var(--accent-v2); }
+    .choice:has(input:disabled) { color:#9a9d95; }
+    .peer { margin:0; padding:18px 22px; border:0; border-bottom:1px solid var(--line-v2); border-radius:0; background:#fff5e3; box-shadow:none; }
+    .peer h2 { color:#7d5617; }
+    .actions { display:grid; gap:12px; margin:14px 22px 22px; padding:17px 0 0; border-top:1px solid var(--line-v2); background:transparent; }
+    .status { width:100%; margin:0; color:var(--muted-v2); text-align:left; font-size:11px; }
+    .status::before { content:""; display:inline-block; width:7px; height:7px; margin-right:8px; border-radius:50%; background:#aeb2a6; vertical-align:1px; }
+    [aria-busy="true"] .status::before { background:var(--accent-v2); }
+    button.primary,button.apply { min-height:48px; border:1px solid var(--ink); border-radius:13px; padding:11px 17px; background:var(--ink); color:var(--paper); font-weight:700; }
+    button.primary { width:100%; position:relative; overflow:hidden; }
+    button.primary::after { content:""; position:absolute; inset:-80% -35%; background:linear-gradient(90deg,transparent,rgba(255,255,255,.22),transparent); transform:translateX(-70%) rotate(12deg); }
+    button.primary:hover { filter:none; background:var(--accent-v2); border-color:var(--accent-v2); }
+    button.apply { background:var(--accent-v2); border-color:var(--accent-v2); color:var(--paper); }
+    button.apply:hover { background:var(--accent-deep); }
+    button:disabled { opacity:.38; }
+    .output-section { display:none; margin-top:22px; padding:24px; border:1px solid var(--line-v2); border-radius:24px; background:rgba(250,250,247,.9); box-shadow:var(--shadow-v2); }
+    .output-section h2 { color:var(--ink); font:700 22px var(--display); }
+    .output-section.stale { opacity:.5; transform:scale(.99); }
+    .output-section.has-error { border-left:4px solid var(--accent-v2); padding-left:24px; }
+    pre { border:0; border-radius:16px; background:var(--ink); color:#e8eadf; box-shadow:inset 0 1px rgba(255,255,255,.08); }
+    .confirm { justify-content:flex-end; }
+    .confirm label { color:var(--ink); }
+    .result { border-left:4px solid var(--accent-v2); }
+    .loading-copy { color:var(--muted-v2); }
+    @media (prefers-reduced-motion:no-preference) {
+      .hero-copy { animation:rise-in .72s cubic-bezier(.16,1,.3,1) both; }
+      .hero-map { animation:map-in .82s .08s cubic-bezier(.16,1,.3,1) both; }
+      .detect { animation:rise-in .65s .18s cubic-bezier(.16,1,.3,1) both; }
+      .detect .item { animation:rise-in .48s cubic-bezier(.16,1,.3,1) both; animation-delay:calc(.22s + var(--i,0) * .055s); }
+      .agent-core::after { animation:core-breathe 2.8s ease-in-out infinite; }
+      .route-line i { animation:signal-run 2.2s cubic-bezier(.4,0,.2,1) infinite; }
+      .route-line.fast i { animation-delay:.55s; }
+      .route-line.arbiter i { animation-delay:1.1s; }
+      .mode,.mode::before,.identity,.identity::before,button,select,input { transition:transform .28s cubic-bezier(.16,1,.3,1),opacity .28s ease,background-color .28s ease,border-color .28s ease,box-shadow .28s ease,color .28s ease; }
+      .mode:active,button:active { transform:scale(.98); }
+      .identity { animation:row-enter .48s cubic-bezier(.16,1,.3,1) both; animation-delay:calc(var(--row,0) * .07s); }
+      .identity:hover { transform:translateY(-3px); }
+      .output-section[style*="block"] { animation:output-enter .5s cubic-bezier(.16,1,.3,1) both; }
+      [aria-busy="true"] .status::before { animation:busy-pulse 1s ease-in-out infinite; }
+      [aria-busy="true"] button.primary::after { animation:button-scan 1.3s ease-in-out infinite; }
+    }
+    @keyframes rise-in { from { opacity:0; transform:translateY(22px); } to { opacity:1; transform:translateY(0); } }
+    @keyframes map-in { from { opacity:0; transform:translateY(28px) rotate(1.5deg) scale(.96); } to { opacity:1; transform:none; } }
+    @keyframes row-enter { from { opacity:0; transform:translateX(18px); } to { opacity:1; transform:translateX(0); } }
+    @keyframes output-enter { from { opacity:0; transform:translateY(18px) scale(.985); } to { opacity:1; transform:none; } }
+    @keyframes signal-run { 0% { opacity:0; transform:translateX(0) scale(.75); } 18% { opacity:1; } 80% { opacity:1; } 100% { opacity:0; transform:translateX(150px) scale(1); } }
+    @keyframes core-breathe { 0%,100% { opacity:.35; transform:scale(.96); } 50% { opacity:1; transform:scale(1.04); } }
+    @keyframes busy-pulse { 0%,100% { transform:scale(.8); opacity:.5; } 50% { transform:scale(1.35); opacity:1; } }
+    @keyframes button-scan { from { transform:translateX(-70%) rotate(12deg); } to { transform:translateX(70%) rotate(12deg); } }
+    @media (max-width:1040px) {
+      .hero { grid-template-columns:1fr 1fr; gap:34px; }
+      .config-grid { grid-template-columns:1fr; }
+      .settings-panel { position:static; }
+      .settings-body { display:grid; grid-template-columns:1fr 1fr; gap:22px; }
+      .setting-block + .setting-block { margin:0; padding:0 0 0 22px; border-top:0; border-left:1px solid var(--line-v2); }
+      .actions { grid-template-columns:1fr auto; align-items:center; }
+      .status { width:auto; }
+      button.primary { width:auto; }
+    }
+    @media (max-width:780px) {
+      .shell { width:min(100% - 28px,1320px); }
+      .hero { min-height:auto; grid-template-columns:1fr; padding:38px 0 42px; }
+      .hero h1 { font-size:clamp(44px,13vw,66px); }
+      .hero-map { min-height:320px; }
+      .detect { grid-template-columns:1fr 1fr; }
+      .detect .item,.detect .item:first-child { padding:13px 12px; border-top:1px solid var(--line-v2); border-left:1px solid var(--line-v2); }
+      .detect .item:nth-child(odd) { border-left:0; }
+      .detect .item:first-child,.detect .item:nth-child(2) { border-top:0; }
+      .modes { grid-template-columns:1fr 1fr; }
+      .identity,.identity:nth-child(2),.identity:nth-child(3) { grid-template-columns:1fr 1fr; margin:0; }
+      .identity-head,.field.model-field { grid-column:1 / -1; }
+      .settings-body { display:block; }
+      .setting-block + .setting-block { margin-top:18px; padding:18px 0 0; border-top:1px solid var(--line-v2); border-left:0; }
+      .actions { grid-template-columns:1fr; }
+      button.primary { width:100%; }
+      .confirm { align-items:stretch; }
+    }
+    @media (max-width:500px) {
+      .masthead { height:60px; }
+      .brand small { display:none; }
+      .hero-map { min-height:380px; }
+      .agent-core { left:50%; top:43%; transform:translate(-50%,-50%); }
+      .role-node { left:7%; width:86%; display:grid; grid-template-columns:90px 1fr; gap:8px; align-items:center; }
+      .role-node.deep { top:63%; }
+      .role-node.fast { top:74%; }
+      .role-node.arbiter { top:85%; }
+      .route-line { display:none; }
+      .modes { grid-template-columns:1fr; }
+      .mode { min-height:70px; }
+      .identity { grid-template-columns:1fr; }
+      .identity-head,.field.model-field { grid-column:1; }
+      .main-heading { display:block; }
+      .current-mode { display:block; margin-top:10px; }
+      .matrix-panel,.output-section { padding:18px; }
+    }
+    @media (prefers-reduced-motion:reduce) {
+      html { scroll-behavior:auto; }
+      *,*::before,*::after { animation:none!important; transition:none!important; }
+    }
+  </style>
 </head>
 <body>
   <main class="shell">
-    <header class="topbar">
-      <div class="title-block">
+    <nav class="masthead" aria-label="搭子配置">
+      <div class="brand"><span class="brand-mark">搭</span><span>Partner Setup<small>本地 Agent 配置台</small></span></div>
+      <div class="local-state">仅在本机运行</div>
+    </nav>
+
+    <header class="hero">
+      <div class="hero-copy">
         <h1>配置你的搭子</h1>
-        <p class="subtitle">三个角色一次定好。页面会先给出真实路径和精确 diff，只有确认后才写入。</p>
+        <p class="subtitle">把推理、执行和仲裁一次分配清楚。先看真实模型与精确 diff，确认后才写入。</p>
+        <div class="repo-block"><span>当前项目</span><code id="repo"></code></div>
       </div>
-      <div class="repo-block"><span>当前项目</span><code id="repo"></code></div>
+      <div class="hero-map" aria-label="当前角色路由预览">
+        <span class="map-caption">真实配置预览</span>
+        <div class="agent-core"><strong>搭子</strong><small>orchestrator</small></div>
+        <div class="route-line deep" aria-hidden="true"><i></i></div>
+        <div class="route-line fast" aria-hidden="true"><i></i></div>
+        <div class="route-line arbiter" aria-hidden="true"><i></i></div>
+        <div class="role-node deep"><span>深度推理</span><strong id="heroDeep">正在检测</strong></div>
+        <div class="role-node fast"><span>快速执行</span><strong id="heroFast">正在检测</strong></div>
+        <div class="role-node arbiter"><span>独立仲裁</span><strong id="heroArbiter">正在检测</strong></div>
+      </div>
     </header>
 
     <section class="detect" id="detect" aria-label="本机环境检测">
       <p class="loading-copy">正在读取本机环境...</p>
     </section>
 
-    <div class="workspace" id="configWorkspace" aria-busy="true">
-      <aside class="rail" aria-label="配置选项">
-        <section class="rail-section">
-          <div class="section-heading"><h2>工作模式</h2><p>先选一套起点，右侧可以逐项修改。</p></div>
-          <div class="modes" id="modes"><p class="loading-copy">正在生成模式...</p></div>
+    <section class="config-section" id="configWorkspace" aria-busy="true">
+      <div class="config-heading"><h2>先选工作模式</h2><p>预设只负责给出起点。三个角色的 CLI、具体模型和 reasoning effort 都能继续修改。</p></div>
+      <div class="modes" id="modes"><p class="loading-copy">正在生成模式...</p></div>
+
+      <div class="config-grid">
+        <section class="matrix-panel" aria-labelledby="matrixTitle">
+          <div class="main-heading">
+            <div><h2 id="matrixTitle">模型矩阵</h2><p>页面只使用本机检测值、内置别名或你的明确输入，不猜模型。</p></div>
+            <span class="current-mode" id="currentMode">当前模式：读取中</span>
+          </div>
+          <div class="matrix" id="identities"><p class="loading-copy">正在读取具体模型...</p></div>
         </section>
 
-        <section class="rail-section">
-          <div class="setting-block">
-            <div class="section-heading"><h2>写入范围</h2><p>项目配置优先于全局配置。</p></div>
-            <div class="choice-row">
-              <label class="choice"><input type="radio" name="scope" value="project" checked> 当前项目</label>
-              <label class="choice"><input type="radio" name="scope" value="global"> 所有项目</label>
+        <aside class="settings-panel" aria-label="写入与验证设置">
+          <div class="settings-head"><h2>写入与验证</h2><p>所有选择会先进入精确预览，不会直接修改文件。</p></div>
+
+          <section class="peer" id="peerWrap">
+            <h2>检测到另一宿主已有配置</h2>
+            <p class="muted" id="peerSummary"></p>
+            <div class="field-stack">
+              <div>
+                <label for="join">这次怎么处理</label>
+                <select id="join">
+                  <option value="add">接入并添加本宿主配置（推荐）</option>
+                  <option value="shared">仅用共享 Goal/Loop，不生成配置</option>
+                  <option value="cancel">返回，不做修改</option>
+                </select>
+              </div>
+            </div>
+          </section>
+
+          <div class="settings-body">
+            <div class="setting-block">
+              <div class="section-heading"><h2>写入范围</h2><p>项目配置优先于全局配置。</p></div>
+              <div class="choice-row">
+                <label class="choice"><input type="radio" name="scope" value="project" checked> 当前项目</label>
+                <label class="choice"><input type="radio" name="scope" value="global"> 所有项目</label>
+              </div>
+            </div>
+            <div class="setting-block field-stack">
+              <div>
+                <label for="exclude">项目配置的 Git 处理</label>
+                <select id="exclude">
+                  <option value="git-exclude">仅本机忽略（推荐）</option>
+                  <option value="track">提交到仓库</option>
+                  <option value="self">写入 .gitignore</option>
+                </select>
+              </div>
+              <label class="choice"><input type="checkbox" id="agents"> 生成或刷新 Claude partner-* agents</label>
+              <label class="choice"><input type="checkbox" id="smoke" checked> 写入后运行 smoke test</label>
+              <div>
+                <label for="routing">常驻路由块</label>
+                <select id="routing">
+                  <option value="none">不修改（推荐）</option>
+                  <option value="write">写入或刷新</option>
+                  <option value="remove">移除已生成的路由块</option>
+                </select>
+              </div>
             </div>
           </div>
-          <div class="setting-block field-stack">
-            <div>
-              <label for="exclude">项目配置的 Git 处理</label>
-              <select id="exclude">
-                <option value="git-exclude">仅本机忽略（推荐）</option>
-                <option value="track">提交到仓库</option>
-                <option value="self">写入 .gitignore</option>
-              </select>
-            </div>
-            <label class="choice"><input type="checkbox" id="agents"> 生成或刷新 Claude partner-* agents</label>
-            <label class="choice"><input type="checkbox" id="smoke" checked> 写入后运行 smoke test</label>
-            <div>
-              <label for="routing">常驻路由块</label>
-              <select id="routing">
-                <option value="none">不修改（推荐）</option>
-                <option value="write">写入或刷新</option>
-                <option value="remove">移除已生成的路由块</option>
-              </select>
-            </div>
+          <div class="actions">
+            <span class="status" id="status" role="status" aria-live="polite">尚未写入任何配置</span>
+            <button class="primary" id="previewBtn">生成精确预览</button>
           </div>
-        </section>
+        </aside>
+      </div>
 
-        <section class="rail-section peer" id="peerWrap">
-          <h2>检测到另一宿主已有配置</h2>
-          <p class="muted" id="peerSummary"></p>
-          <div class="field-stack">
-            <div>
-              <label for="join">这次怎么处理</label>
-              <select id="join">
-                <option value="add">接入并添加本宿主配置（推荐）</option>
-                <option value="shared">仅用共享 Goal/Loop，不生成配置</option>
-                <option value="cancel">返回，不做修改</option>
-              </select>
-            </div>
-          </div>
-        </section>
-      </aside>
-
-      <section class="main-panel" aria-labelledby="matrixTitle">
-        <div class="main-heading">
-          <div><h2 id="matrixTitle">模型矩阵</h2><p>每个角色都明确显示执行 CLI、具体模型和 reasoning effort。</p></div>
-          <span class="current-mode" id="currentMode">当前模式：读取中</span>
+      <div class="output-section" id="previewWrap" aria-live="polite">
+        <h2>精确预览</h2>
+        <pre id="preview"></pre>
+        <div class="confirm" id="confirm">
+          <label class="choice"><input type="checkbox" id="confirmed"> 我确认按上面的路径和 diff 写入</label>
+          <button class="apply" id="apply" disabled>确认并写入</button>
         </div>
+      </div>
 
-        <div class="matrix" id="identities"><p class="loading-copy">正在读取具体模型...</p></div>
-
-        <div class="output-section" id="previewWrap" aria-live="polite">
-          <h2>精确预览</h2>
-          <pre id="preview"></pre>
-          <div class="confirm" id="confirm">
-            <label class="choice"><input type="checkbox" id="confirmed"> 我确认按上面的路径和 diff 写入</label>
-            <button class="apply" id="apply" disabled>确认并写入</button>
-          </div>
-        </div>
-
-        <div class="output-section result" id="resultWrap" aria-live="polite">
-          <h2>执行结果</h2>
-          <pre id="result"></pre>
-        </div>
-
-        <div class="actions">
-          <button class="primary" id="previewBtn">生成精确预览</button>
-          <span class="status" id="status" role="status" aria-live="polite">尚未写入任何配置</span>
-        </div>
-      </section>
-    </div>
+      <div class="output-section result" id="resultWrap" aria-live="polite">
+        <h2>执行结果</h2>
+        <pre id="result"></pre>
+      </div>
+    </section>
   </main>
   <script>
     const token = new URLSearchParams(location.search).get('token');
@@ -622,7 +850,13 @@ HTML = r'''<!doctype html>
     let matrix = {};
     let previewValid = false;
     const MODE_LABELS = {balanced:'均衡',quality:'质量',cost:'成本',custom:'自定义'};
-    const SHORT_ROLE_LABELS = {deep_reasoner:'推理',fast_worker:'执行',arbiter:'仲裁'};
+    const MODE_DESCRIPTIONS = {
+      balanced:'Claude 主理，Codex 执行',
+      quality:'更多任务交给 Claude',
+      cost:'Codex 主跑，Claude 兜底',
+      custom:'逐个角色手动设置',
+    };
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     const $ = (id) => document.getElementById(id);
     const clone = (value) => JSON.parse(JSON.stringify(value));
 
@@ -630,10 +864,7 @@ HTML = r'''<!doctype html>
       return String(value ?? '').replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
     }
     function modeSummary(name) {
-      if (name === 'custom') return '<span class="mode-line">逐项选择具体值</span>';
-      return Object.entries(state.presets[name]).map(([identity, values]) =>
-        `<span class="mode-line"><b>${esc(SHORT_ROLE_LABELS[identity])}</b>${esc(values.backend)} / ${esc(values.model || '需填写')} / ${esc(values.effort)}</span>`
-      ).join('');
+      return esc(MODE_DESCRIPTIONS[name]);
     }
     function sourceLabel(source) {
       return ({
@@ -653,11 +884,25 @@ HTML = r'''<!doctype html>
       });
       $('currentMode').textContent = `当前模式：${MODE_LABELS[mode]}`;
     }
+    function syncHeroMap() {
+      const targets = {
+        deep_reasoner:'heroDeep',
+        fast_worker:'heroFast',
+        arbiter:'heroArbiter',
+      };
+      for (const [identity, target] of Object.entries(targets)) {
+        const values = matrix[identity];
+        if (!values) continue;
+        const backend = values.backend === 'claude' ? 'Claude Code' : 'Codex';
+        $(target).textContent = `${backend} / ${values.model || '需填写'} / ${values.effort}`;
+      }
+    }
     function invalidate() {
       previewValid = false;
       $('confirmed').checked = false;
       $('apply').disabled = true;
       $('confirm').style.display = 'none';
+      if ($('previewWrap').style.display === 'block') $('previewWrap').classList.add('stale');
       $('status').textContent = '选择已变化，请重新生成预览';
     }
     function selectMode(next) {
@@ -665,6 +910,7 @@ HTML = r'''<!doctype html>
       if (next !== 'custom') matrix = clone(state.presets[next]);
       syncModeControls();
       renderIdentities();
+      syncHeroMap();
       invalidate();
     }
     function renderIdentities() {
@@ -685,6 +931,7 @@ HTML = r'''<!doctype html>
         matrix[identity].model_source = 'custom (unverified)';
         mode = 'custom';
         syncModeControls();
+        syncHeroMap();
         card.querySelector('.source').textContent = '来源：自定义，未验证';
         invalidate();
       }));
@@ -731,13 +978,14 @@ HTML = r'''<!doctype html>
         <div class="item"><div class="k">Claude CLI</div><div class="v ${state.clis.claude.available ? 'ok':'bad'}">${esc(state.clis.claude.version || '未安装')}</div></div>
         <div class="item" title="${esc(state.clis.codex.path || '')}"><div class="k">Codex CLI (${esc(state.clis.codex.source)})</div><div class="v ${state.clis.codex.available ? 'ok':'bad'}">${esc(state.clis.codex.version || '未安装')}</div></div>
         <div class="item"><div class="k">Codex 检测值</div><div class="v ${state.detected.codex_model ? 'ok':'warn'}">${esc(codex)}</div></div>`;
-      $('modes').innerHTML = Object.entries(MODE_LABELS).map(([name,label]) => `<button class="mode ${name === mode ? 'active':''}" data-mode="${name}" aria-pressed="${name === mode}"><strong>${label}</strong><small>${modeSummary(name)}</small></button>`).join('');
+      $('modes').innerHTML = Object.entries(MODE_LABELS).map(([name,label]) => `<button type="button" class="mode ${name === mode ? 'active':''}" data-mode="${name}" aria-pressed="${name === mode}"><strong>${label}</strong><small>${modeSummary(name)}</small></button>`).join('');
       document.querySelectorAll('.mode').forEach(el => el.addEventListener('click', () => selectMode(el.dataset.mode)));
       $('agents').disabled = !state.write_agents_available;
       $('agents').checked = state.write_agents_available;
       if (!state.write_agents_available) $('agents').parentElement.title = 'Codex 宿主不生成 Claude Code 专属 agent 文件';
       renderIdentities();
       syncModeControls();
+      syncHeroMap();
       const peerEntries = Object.entries(state.peer.identities || {});
       if (peerEntries.length) {
         $('peerSummary').textContent = `${state.peer.host} / ${state.peer.source} / ` + peerEntries.map(([name,v]) => `${name}: ${v.backend}/${v.model}/${v.effort}`).join('；');
@@ -756,6 +1004,7 @@ HTML = r'''<!doctype html>
       $('previewBtn').disabled = true;
       $('previewBtn').textContent = '正在生成...';
       $('configWorkspace').setAttribute('aria-busy', 'true');
+      $('previewWrap').classList.remove('stale');
       $('status').textContent = '正在生成精确 diff...';
       try {
         const data = await api('/api/preview', payload());
@@ -765,12 +1014,14 @@ HTML = r'''<!doctype html>
         previewValid = data.ok;
         $('confirm').style.display = data.ok ? 'flex' : 'none';
         $('status').textContent = data.ok ? '预览完成，尚未写入' : '预览失败，没有写入';
+        $('previewWrap').scrollIntoView({behavior:reduceMotion ? 'auto' : 'smooth',block:'start'});
       } catch (error) {
         $('preview').textContent = error.message;
         $('previewWrap').style.display = 'block';
         $('previewWrap').classList.add('has-error');
         $('confirm').style.display = 'none';
         $('status').textContent = '预览失败，没有写入';
+        $('previewWrap').scrollIntoView({behavior:reduceMotion ? 'auto' : 'smooth',block:'start'});
       } finally {
         $('previewBtn').textContent = '生成精确预览';
         $('previewBtn').disabled = false;
@@ -791,11 +1042,13 @@ HTML = r'''<!doctype html>
         $('resultWrap').classList.toggle('has-error', !data.ok);
         $('status').textContent = data.ok ? '配置已写入' : '写入失败';
         previewValid = false;
+        $('resultWrap').scrollIntoView({behavior:reduceMotion ? 'auto' : 'smooth',block:'start'});
       } catch (error) {
         $('result').textContent = error.message;
         $('resultWrap').style.display = 'block';
         $('resultWrap').classList.add('has-error');
         $('status').textContent = '写入失败';
+        $('resultWrap').scrollIntoView({behavior:reduceMotion ? 'auto' : 'smooth',block:'start'});
       } finally {
         $('apply').textContent = '确认并写入';
         $('previewBtn').disabled = false;

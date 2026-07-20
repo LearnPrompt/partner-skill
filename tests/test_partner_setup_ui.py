@@ -135,13 +135,17 @@ class SetupUITests(unittest.TestCase):
 
     def test_ui_keeps_the_taste_design_and_accessibility_contract(self):
         html = partner_setup_ui.HTML
-        self.assertIn("Variance 6, motion 3, density 6", html)
-        self.assertIn('class="workspace"', html)
+        self.assertIn("Variance 8, motion 6, density 5", html)
+        self.assertIn('class="hero-map"', html)
         self.assertIn('class="matrix" id="identities"', html)
+        self.assertIn("@keyframes signal-run", html)
+        self.assertIn("syncHeroMap()", html)
+        self.assertIn("renderIdentities();\n      syncHeroMap();", html)
+        self.assertIn("prefers-reduced-motion:no-preference", html)
         self.assertIn("prefers-reduced-motion:reduce", html)
         self.assertIn('role="status" aria-live="polite"', html)
         self.assertIn('aria-describedby="${identity}-source"', html)
-        for forbidden in ("radial-gradient", "backdrop-filter", "—", "–", " · "):
+        for forbidden in ("backdrop-filter", "—", "–", " · "):
             self.assertNotIn(forbidden, html)
 
 
