@@ -39,6 +39,19 @@ Job state lives under `<repo>/.partner/jobs/`.
   - Keep in Claude (API, quality-critical): architecture, the split decision
     itself, cross-module integration, security/correctness-critical paths,
     final acceptance.
+- Deciding role per task: channel (claude/codex) and role (deep_reasoner/
+  fast_worker) are two separate judgments — record both in the goal file's
+  task table. Role picks which config-defined model/effort tier answers the
+  call, on either side of the channel split:
+  - `deep_reasoner` — architecture, ambiguous requirements, root-cause
+    diagnosis, anything where a wrong premise in step one is expensive to
+    discover late.
+  - `fast_worker` — mechanical, well-scoped, specification-complete work
+    where the acceptance criteria alone are enough to verify correctness.
+  A Codex task can be `fast_worker` (the common case) or `deep_reasoner`
+  (a hard Codex-side diagnosis); a Claude task can be either too. Do not
+  default every Codex task to `fast_worker` out of habit — an ambiguous
+  Codex-side investigation still wants `deep_reasoner`'s model/effort tier.
 - Pick the execution channel per task (full table and billing in
   `references/fable5-principles.md`). Default lean, cheapest meter first:
   - **Partner background job** (`delegate-codex.sh`) — the default for any
@@ -88,15 +101,23 @@ yet simply falls through to level 3 every time; that is normal, not broken.
   `references/handoff-template.md`: why-forward context, one-sentence task,
   verifiable acceptance criteria, scope constraints, and the fixed output
   rules (no optional commentary; lessons learned at the end).
-- Submit as a background job (default effort `high` — the user is on a
-  subscription plan, do not economize on effort at the cost of rework):
+- Submit as a background job, passing the task's `role` from the goal
+  table so model/effort resolve from `搭子，配置`'s config instead of a
+  hardcoded default (explicit `--model`/`--effort` still wins if you have a
+  genuine per-task reason to override — see `--role` in
+  `scripts/delegate-codex.sh`'s usage):
 
 ```bash
 prompt=$(mktemp)
 # ... write the delegation packet into "$prompt" ...
 bash "$PARTNER_DIR/scripts/delegate-codex.sh" submit \
-  --repo "$REPO" --prompt-file "$prompt" --label <task-id> --effort high
+  --repo "$REPO" --prompt-file "$prompt" --label <task-id> --role <deep_reasoner|fast_worker>
 ```
+
+If the repo has no Partner config yet, `--role` fails closed with a clear
+error instead of guessing — run `搭子，配置` first, or fall back to an
+explicit `--effort` for this one job and note in `Notes` that role config
+is still pending.
 
 - Use `--read-only` for scan/review jobs that must not modify the repo.
 - Record the returned jobId in the goal file's task row. Independent tasks

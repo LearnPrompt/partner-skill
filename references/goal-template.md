@@ -26,10 +26,10 @@ and report when done.
 - authorization: <one line per hard-stop action actually authorized, verbatim user intent, or none yet>
 
 ## Tasks
-| id | owner | task | acceptance | effort | status | jobId |
-|----|-------|------|------------|--------|--------|-------|
-| T1 | claude | ... | ... | - | in_progress | - |
-| T2 | codex | ... | [check command that must pass] | high | delegated | job-... |
+| id | owner | role | task | acceptance | effort | status | jobId |
+|----|-------|------|------|------------|--------|--------|-------|
+| T1 | claude | deep_reasoner | ... | ... | - | in_progress | - |
+| T2 | codex | fast_worker | ... | [check command that must pass] | high | delegated | job-... |
 
 status: pending | in_progress | delegated | review | rework-1 | rework-2 | taken-back | done
 
@@ -43,6 +43,10 @@ status: pending | in_progress | delegated | review | rework-1 | rework-2 | taken
 Rules:
 
 - One row per task; `jobId` comes from `delegate-codex.sh submit`.
+- `role` is deep_reasoner or fast_worker regardless of `owner` — deciding
+  the channel (claude/codex) and deciding the role (which config-defined
+  model/effort tier answers the call) are two separate judgments, both made
+  at split time. See "Deciding role per task" in `references/claude-driven.md`.
 - `acceptance` must be verifiable (a command to run, a behavior to observe),
   not a vibe. It is what Phase 4 reviews against.
 - The `/loop` monitoring prompt reads this file first, so keep statuses
