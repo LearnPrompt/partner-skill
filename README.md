@@ -12,7 +12,7 @@
 
 **把 Claude Code 留给规划、审美和审查，把 Codex 留给实现、跑检查和收尾。最后用一张 Session Receipt 证明：没有乱开新的 Claude 会话烧钱。**
 
-[30 秒装上](#30-秒装上) · [Showcase](#showcase) · [一句话用起来](#一句话用起来) · [成本压力模型](#成本压力模型) · [它解决什么](#它解决什么) · [安全边界](#安全边界) · [验证](#验证)
+[30 秒装上](#30-秒装上) · [Showcase](#showcase) · [一句话用起来](#一句话用起来) · [分宿主用法](#分宿主用法) · [成本压力模型](#成本压力模型) · [它解决什么](#它解决什么) · [安全边界](#安全边界) · [验证](#验证)
 
 </div>
 
@@ -70,6 +70,34 @@ bash install.sh --target claude
 ```text
 搭子，配置
 ```
+
+## 分宿主用法
+
+**装在 Codex 里（Direction A，Codex 主驾）**
+
+```bash
+bash install.sh --target codex
+```
+
+```text
+搭子
+```
+
+Codex 读到这份 SKILL.md 就自认宿主是 codex，走 `references/codex-driven.md`：自己编排实现、跑检查、修细节；Claude Code 只负责规划、UI polish 和最终 `/codex:review`，同一个 Claude 会话复用，不重复冷启动。
+
+**装在 Claude Code 里（Direction B，Claude 主驾）**
+
+```bash
+bash install.sh --target claude
+```
+
+```text
+搭子，分工给 codex 后台跑，做完你全量验收。
+```
+
+Claude Code 读到这份 SKILL.md 就自认宿主是 claude_code，走 `references/claude-driven.md`：规划、拆分、先过点子王对抗式审查，再把机械/额度压力型任务丢给 `delegate-codex.sh` 后台作业，用 loop 盯进度，最后全量 review 才接受。
+
+宿主身份看的是"谁加载了这份 SKILL.md"，不是提示词里提到谁——在 Claude Code 里说"让 codex 做"不会让它把自己当成 Codex，反过来也一样。两边角色的模型/推理强度共用一份 `.partner/config.toml`，向导（见上）里选一次就够了。
 
 ## 成本压力模型
 

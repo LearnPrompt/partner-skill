@@ -12,7 +12,7 @@
 
 **Use Claude Code for planning, UI taste, and review. Use Codex for implementation and checks. A Session Receipt shows whether you reused the same Claude session.**
 
-[Install](#install) · [Showcase](#showcase) · [Use It](#use-it) · [Cost Pressure Model](#cost-pressure-model) · [What It Solves](#what-it-solves) · [Safety](#safety) · [Verify](#verify)
+[Install](#install) · [Showcase](#showcase) · [Use It](#use-it) · [Per-Host Usage](#per-host-usage) · [Cost Pressure Model](#cost-pressure-model) · [What It Solves](#what-it-solves) · [Safety](#safety) · [Verify](#verify)
 
 </div>
 
@@ -71,6 +71,34 @@ First run, configure first:
 ```text
 搭子，配置
 ```
+
+## Per-Host Usage
+
+**Installed in Codex (Direction A, Codex-driven)**
+
+```bash
+bash install.sh --target codex
+```
+
+```text
+Partner skill
+```
+
+Codex reads this SKILL.md and self-identifies as the `codex` host, following `references/codex-driven.md`: it orchestrates and implements, runs checks, and fixes details itself; Claude Code only plans, polishes the UI, and runs the final `/codex:review` — same Claude session reused, no repeated cold start.
+
+**Installed in Claude Code (Direction B, Claude-driven)**
+
+```bash
+bash install.sh --target claude
+```
+
+```text
+Partner, delegate the mechanical parts to Codex in the background, then full-review.
+```
+
+Claude Code reads this SKILL.md and self-identifies as the `claude_code` host, following `references/claude-driven.md`: plan, split the work, pass it through the Idea King adversarial gate, then hand mechanical or quota-pressure tasks to `delegate-codex.sh` background jobs, watch them with a loop, and full-review before accepting.
+
+Host identity comes from who loaded this SKILL.md, not from who the prompt mentions — asking Claude Code to "let Codex do it" never makes it think it's Codex, and vice versa. Both sides' role model/effort share one `.partner/config.toml`; pick it once via the setup wizard above.
 
 ## Cost Pressure Model
 

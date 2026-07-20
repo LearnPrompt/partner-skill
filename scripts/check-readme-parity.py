@@ -15,6 +15,7 @@ EXPECTED_HEADINGS = [
     ("## 30 秒装上", "## Install"),
     ("## Showcase", "## Showcase"),
     ("## 一句话用起来", "## Use It"),
+    ("## 分宿主用法", "## Per-Host Usage"),
     ("## 成本压力模型", "## Cost Pressure Model"),
     ("## 它解决什么", "## What It Solves"),
     ("## 触发方式", "## Trigger Prompts"),
