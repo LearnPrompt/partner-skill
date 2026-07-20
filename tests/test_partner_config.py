@@ -22,23 +22,27 @@ SPEC.loader.exec_module(partner_config)
 def document(claude_model: str = "opus", codex_model: str = "gpt-test") -> str:
     return (
         "# keep this top comment\r\n"
-        "schema_version = 1\r\n"
+        "schema_version = 2\r\n"
         "revision = 7\r\n"
         "\r\n"
-        "[hosts.claude_code.roles.deep_reasoner]\r\n"
+        "[hosts.claude_code.identities.deep_reasoner]\r\n"
+        'backend = "claude"\r\n'
         f'model = "{claude_model}" # claude comment\r\n'
         'effort = "high"\r\n'
         "\r\n"
-        "[hosts.claude_code.roles.fast_worker]\r\n"
+        "[hosts.claude_code.identities.fast_worker]\r\n"
+        'backend = "codex"\r\n'
         'model = "sonnet"\r\n'
         'effort = "medium"\r\n'
         "\r\n"
         "# codex prefix comment must survive\r\n"
-        "[hosts.codex.roles.deep_reasoner]\r\n"
+        "[hosts.codex.identities.deep_reasoner]\r\n"
+        'backend = "codex"\r\n'
         f'model = "{codex_model}" # untouched inline\r\n'
         'effort = "xhigh"\r\n'
         "\r\n"
-        "[hosts.codex.roles.fast_worker]\r\n"
+        "[hosts.codex.identities.fast_worker]\r\n"
+        'backend = "claude"\r\n'
         'model = "gpt-fast"\r\n'
         'effort = "medium"\r\n'
         "\r\n"
@@ -50,23 +54,39 @@ def document(claude_model: str = "opus", codex_model: str = "gpt-test") -> str:
     )
 
 
+def legacy_document() -> str:
+    return (
+        "schema_version = 1\n"
+        "revision = 4\n"
+        "\n"
+        "[hosts.codex.roles.deep_reasoner]\n"
+        'model = "gpt-legacy"\n'
+        'effort = "xhigh"\n'
+        "verified = true\n"
+        "\n"
+        "[hosts.codex.roles.fast_worker]\n"
+        'model = "gpt-legacy-fast"\n'
+        'effort = "medium"\n'
+    )
+
+
 class ConfigRoundTripTests(unittest.TestCase):
     def test_unowned_host_routing_and_comments_are_byte_preserved(self):
         original = document()
         before_chunks = {
             chunk.name: chunk.text
             for chunk in partner_config.split_sections(original)
-            if chunk.name and not chunk.name.startswith("hosts.claude_code.roles.")
+            if chunk.name and not chunk.name.startswith("hosts.claude_code.identities.")
         }
-        roles = {
-            "deep_reasoner": {"model": "new-opus", "effort": "high"},
-            "fast_worker": {"model": "new-sonnet", "effort": "low"},
+        identities = {
+            "deep_reasoner": {"backend": "claude", "model": "new-opus", "effort": "high"},
+            "fast_worker": {"backend": "codex", "model": "new-sonnet", "effort": "low"},
         }
-        updated = partner_config.update_host(original, "claude_code", roles)
+        updated = partner_config.update_host(original, "claude_code", identities)
         after_chunks = {
             chunk.name: chunk.text
             for chunk in partner_config.split_sections(updated)
-            if chunk.name and not chunk.name.startswith("hosts.claude_code.roles.")
+            if chunk.name and not chunk.name.startswith("hosts.claude_code.identities.")
         }
         self.assertEqual(before_chunks, after_chunks)
         self.assertIn("# keep this top comment\r\n", updated)
@@ -75,34 +95,36 @@ class ConfigRoundTripTests(unittest.TestCase):
         original = document()
         claude_bytes = "".join(
             chunk.text for chunk in partner_config.split_sections(original)
-            if chunk.name and chunk.name.startswith("hosts.claude_code.roles.")
+            if chunk.name and chunk.name.startswith("hosts.claude_code.identities.")
         )
         parsed = partner_config.validate_config(original, "codex")
-        roles = parsed["hosts"]["codex"]["roles"]
-        roles["fast_worker"]["effort"] = "low"
-        updated = partner_config.update_host(original, "codex", roles)
+        identities = parsed["hosts"]["codex"]["identities"]
+        identities["fast_worker"]["effort"] = "low"
+        updated = partner_config.update_host(original, "codex", identities)
         updated_claude_bytes = "".join(
             chunk.text for chunk in partner_config.split_sections(updated)
-            if chunk.name and chunk.name.startswith("hosts.claude_code.roles.")
+            if chunk.name and chunk.name.startswith("hosts.claude_code.identities.")
         )
         self.assertEqual(claude_bytes, updated_claude_bytes)
         self.assertIn('effort = "low"', updated)
 
     def test_emitter_is_idempotent(self):
         parsed = partner_config.validate_config(document(), "claude_code")
-        roles = parsed["hosts"]["claude_code"]["roles"]
-        once = partner_config.update_host(document(), "claude_code", roles)
-        twice = partner_config.update_host(once, "claude_code", roles)
+        identities = parsed["hosts"]["claude_code"]["identities"]
+        once = partner_config.update_host(document(), "claude_code", identities)
+        twice = partner_config.update_host(once, "claude_code", identities)
         self.assertEqual(once, twice)
+        self.assertLess(once.index("backend ="), once.index("model ="))
         self.assertLess(once.index("model ="), once.index("effort ="))
 
 
 class UnsupportedSyntaxTests(unittest.TestCase):
     def assert_parse_error(self, assignment: str):
         text = (
-            "schema_version = 1\n"
+            "schema_version = 2\n"
             "revision = 0\n"
-            "[hosts.codex.roles.deep_reasoner]\n"
+            "[hosts.codex.identities.deep_reasoner]\n"
+            'backend = "codex"\n'
             f"{assignment}\n"
             'effort = "high"\n'
         )
@@ -122,13 +144,112 @@ class UnsupportedSyntaxTests(unittest.TestCase):
         self.assert_parse_error("model = 2026-07-19T10:00:00Z")
 
     def test_array_of_tables_fails_closed(self):
-        text = "schema_version = 1\n[[hosts.codex.roles]]\nmodel = \"x\"\n"
+        text = "schema_version = 2\n[[hosts.codex.identities]]\nmodel = \"x\"\n"
         with self.assertRaises(partner_config.ConfigParseError) as raised:
             partner_config.validate_config(text, "codex")
         self.assertIn("line 2, column 1", str(raised.exception))
 
     def test_dotted_key_assignment_fails_closed(self):
         self.assert_parse_error('settings.model = "x"')
+
+
+class BackendValidationTests(unittest.TestCase):
+    def identity_document(self, backend: str = "") -> str:
+        return (
+            "schema_version = 2\n"
+            "revision = 0\n"
+            "[hosts.codex.identities.deep_reasoner]\n"
+            f"{backend}"
+            'model = "gpt-test"\n'
+            'effort = "high"\n'
+        )
+
+    def test_missing_backend_fails_validation(self):
+        with self.assertRaises(partner_config.ConfigValidationError) as raised:
+            partner_config.validate_config(self.identity_document(), "codex")
+        self.assertIn("backend must be one of claude, codex", str(raised.exception))
+
+    def test_invalid_backend_fails_validation(self):
+        with self.assertRaises(partner_config.ConfigValidationError) as raised:
+            partner_config.validate_config(
+                self.identity_document('backend = "local"\n'), "codex"
+            )
+        self.assertIn("backend must be one of claude, codex", str(raised.exception))
+
+
+class LegacyMigrationTests(unittest.TestCase):
+    def run_cli(self, *arguments):
+        stdout = io.StringIO()
+        stderr = io.StringIO()
+        with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
+            status = partner_config.main(list(arguments))
+        return status, stdout.getvalue(), stderr.getvalue()
+
+    def assert_upgrade_error(self, message: str, path: Path):
+        self.assertIn(partner_config.V1_UPGRADE_MESSAGE, message)
+        self.assertIn(str(path), message)
+
+    def test_resolve_v1_file_reports_upgrade_guide_and_path(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            repo = root / "repo"
+            path = repo / ".partner" / "config.toml"
+            path.parent.mkdir(parents=True)
+            path.write_text(legacy_document(), encoding="utf-8")
+            env = {"HOME": str(root / "home"), "XDG_CONFIG_HOME": str(root / "xdg")}
+            with self.assertRaises(partner_config.ConfigValidationError) as raised:
+                partner_config.resolve_config(repo, "codex", env=env)
+            self.assert_upgrade_error(str(raised.exception), path)
+
+    def test_validate_v1_file_reports_upgrade_guide_and_path(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / ".partner" / "config.toml"
+            path.parent.mkdir(parents=True)
+            path.write_text(legacy_document(), encoding="utf-8")
+            status, _, error = self.run_cli(
+                "--host", "codex", "--repo", directory, "validate"
+            )
+            self.assertEqual(2, status)
+            self.assert_upgrade_error(error, path)
+
+    def test_set_v1_file_reports_upgrade_guide_without_writing(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / ".partner" / "config.toml"
+            path.parent.mkdir(parents=True)
+            path.write_text(legacy_document(), encoding="utf-8")
+            before = path.read_bytes()
+            status, _, error = self.run_cli(
+                "--host", "codex", "--repo", directory, "set",
+                "--role", "deep_reasoner", "--backend", "codex",
+                "--model", "new-model", "--effort", "high",
+            )
+            self.assertEqual(2, status)
+            self.assert_upgrade_error(error, path)
+            self.assertEqual(before, path.read_bytes())
+
+    def test_schema_v2_with_legacy_role_section_fails_closed(self):
+        text = legacy_document().replace("schema_version = 1", "schema_version = 2")
+        path = Path("/tmp/schema-v2-with-roles.toml")
+        with self.assertRaises(partner_config.ConfigValidationError) as raised:
+            partner_config.validate_config(text, "codex", path=path)
+        self.assert_upgrade_error(str(raised.exception), path)
+
+    def test_read_legacy_v1_extracts_only_model_and_effort_without_writing(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "config.toml"
+            path.write_text(legacy_document(), encoding="utf-8")
+            before = path.read_bytes()
+            extracted = partner_config.read_legacy_v1(
+                path.read_text(encoding="utf-8"), "codex"
+            )
+            self.assertEqual(
+                {
+                    "deep_reasoner": {"model": "gpt-legacy", "effort": "xhigh"},
+                    "fast_worker": {"model": "gpt-legacy-fast", "effort": "medium"},
+                },
+                extracted,
+            )
+            self.assertEqual(before, path.read_bytes())
 
 
 class ResolveTests(unittest.TestCase):
@@ -143,30 +264,32 @@ class ResolveTests(unittest.TestCase):
             project_path.parent.mkdir(parents=True)
             global_path.write_text(
                 partner_config.update_host("", "codex", {
-                    "deep_reasoner": {"model": "global", "effort": "high"},
-                    "fast_worker": {"model": "global-fast", "effort": "low"},
+                    "deep_reasoner": {"backend": "codex", "model": "global", "effort": "high"},
+                    "fast_worker": {"backend": "claude", "model": "global-fast", "effort": "low"},
                 }), encoding="utf-8"
             )
             project_path.write_text(
                 partner_config.update_host("", "codex", {
-                    "deep_reasoner": {"model": "project", "effort": "xhigh"},
-                    "fast_worker": {"model": "project-fast", "effort": "medium"},
+                    "deep_reasoner": {"backend": "codex", "model": "project", "effort": "xhigh"},
+                    "fast_worker": {"backend": "claude", "model": "project-fast", "effort": "medium"},
                 }), encoding="utf-8"
             )
             env = {"HOME": str(root / "home"), "XDG_CONFIG_HOME": str(xdg)}
             resolved = partner_config.resolve_config(repo, "codex", env=env)
             self.assertEqual("project", resolved["source"])
-            self.assertEqual("project", resolved["hosts"]["codex"]["roles"]["deep_reasoner"]["model"])
-            override = {"hosts": {"codex": {"roles": {"deep_reasoner": {"model": "session"}}}}}
+            self.assertEqual("project", resolved["hosts"]["codex"]["identities"]["deep_reasoner"]["model"])
+            self.assertEqual("codex", resolved["hosts"]["codex"]["identities"]["deep_reasoner"]["backend"])
+            override = {"hosts": {"codex": {"identities": {"deep_reasoner": {"model": "session"}}}}}
             resolved = partner_config.resolve_config(repo, "codex", override, env=env)
             self.assertEqual("session", resolved["source"])
-            self.assertEqual("session", resolved["hosts"]["codex"]["roles"]["deep_reasoner"]["model"])
+            self.assertEqual("session", resolved["hosts"]["codex"]["identities"]["deep_reasoner"]["model"])
             project_path.unlink()
             resolved = partner_config.resolve_config(repo, "codex", env=env)
             self.assertEqual("global", resolved["source"])
             global_path.unlink()
             resolved = partner_config.resolve_config(repo, "codex", env=env)
             self.assertEqual("default", resolved["source"])
+            self.assertEqual({}, resolved["hosts"]["codex"]["identities"])
 
 
 class AtomicWriteTests(unittest.TestCase):
@@ -193,15 +316,24 @@ class CliTests(unittest.TestCase):
             self.assertEqual(0, self.run_cli(*base, "init")[0])
             status, _, error = self.run_cli(
                 *base, "set", "--role", "deep_reasoner",
-                "--model", "chosen-model", "--effort", "high",
+                "--backend", "codex", "--model", "chosen-model", "--effort", "high",
             )
             self.assertEqual((0, ""), (status, error))
             self.assertEqual(0, self.run_cli(*base, "validate")[0])
             status, output, error = self.run_cli(
-                *base, "get", "hosts.codex.roles.deep_reasoner.model"
+                *base, "get", "hosts.codex.identities.deep_reasoner.model"
             )
             self.assertEqual((0, "chosen-model\n", ""), (status, output, error))
+            status, _, error = self.run_cli(
+                *base, "set", "--role", "deep_reasoner", "--effort", "xhigh"
+            )
+            self.assertEqual((0, ""), (status, error))
+            status, output, error = self.run_cli(
+                *base, "get", "hosts.codex.identities.deep_reasoner.backend"
+            )
+            self.assertEqual((0, "codex\n", ""), (status, output, error))
             path = Path(directory) / ".partner" / "config.toml"
+            self.assertIn("schema_version = 2", path.read_text(encoding="utf-8"))
             before = path.read_bytes()
             self.assertEqual(0, self.run_cli(*base, "init")[0])
             self.assertEqual(before, path.read_bytes())
@@ -213,11 +345,44 @@ class CliTests(unittest.TestCase):
             path = Path(directory) / ".partner" / "config.toml"
             before = path.read_bytes()
             status, _, error = self.run_cli(
-                *base, "set", "--role", "fast_worker", "--model", "model-only"
+                *base, "set", "--role", "fast_worker", "--backend", "claude",
+                "--model", "model-only"
             )
             self.assertEqual(2, status)
             self.assertIn("effort must be a non-empty string", error)
             self.assertEqual(before, path.read_bytes())
+
+    def test_new_identity_requires_backend_without_writing(self):
+        with tempfile.TemporaryDirectory() as directory:
+            base = ("--host", "codex", "--repo", directory)
+            self.assertEqual(0, self.run_cli(*base, "init")[0])
+            path = Path(directory) / ".partner" / "config.toml"
+            before = path.read_bytes()
+            status, _, error = self.run_cli(
+                *base, "set", "--role", "fast_worker",
+                "--model", "gpt-fast", "--effort", "medium",
+            )
+            self.assertEqual(2, status)
+            self.assertIn("backend must be one of claude, codex", error)
+            self.assertEqual(before, path.read_bytes())
+
+    def test_arbiter_full_read_write_chain(self):
+        with tempfile.TemporaryDirectory() as directory:
+            base = ("--host", "claude_code", "--repo", directory)
+            self.assertEqual(0, self.run_cli(*base, "init")[0])
+            status, _, error = self.run_cli(
+                *base, "set", "--role", "arbiter", "--backend", "codex",
+                "--model", "gpt-arbiter", "--effort", "xhigh", "--verified",
+            )
+            self.assertEqual((0, ""), (status, error))
+            status, output, error = self.run_cli(
+                *base, "get", "hosts.claude_code.identities.arbiter"
+            )
+            self.assertEqual((0, ""), (status, error))
+            self.assertEqual(
+                {"backend": "codex", "effort": "xhigh", "model": "gpt-arbiter", "verified": True},
+                json.loads(output),
+            )
 
 
 class LockTests(unittest.TestCase):

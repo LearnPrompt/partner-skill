@@ -3,7 +3,7 @@
 
 This is deliberately a TOML subset implementation.  It splits the document
 into raw section chunks, then parses only top-level metadata, [routing], and
-the role sections owned by the selected host.  Unowned chunks are never
+the identity sections owned by the selected host.  Unowned chunks are never
 reformatted.
 """
 
@@ -24,8 +24,10 @@ from typing import Any, Callable, Dict, Iterable, List, Mapping, MutableMapping,
 
 
 HOSTS = ("claude_code", "codex")
-ROLES = ("deep_reasoner", "fast_worker")
-ROLE_FIELD_ORDER = ("model", "effort", "verified", "verified_at")
+IDENTITIES = ("deep_reasoner", "fast_worker", "arbiter")
+IDENTITY_FIELD_ORDER = ("backend", "model", "effort", "verified", "verified_at")
+BACKENDS = ("claude", "codex")
+V1_UPGRADE_MESSAGE = "检测到 schema v1 配置，请重跑 搭子，配置 升级（旧值会作为向导初值）"
 SUBSET_GUIDE = "See docs/config-schema.md#supported-toml-subset."
 SECTION_RE = re.compile(r"^[ \t]*\[([A-Za-z0-9_-]+(?:\.[A-Za-z0-9_-]+)*)\][ \t]*(?:#.*)?(?:\r?\n)?$")
 KEY_RE = re.compile(r"^[A-Za-z0-9_-]+$")
@@ -36,12 +38,12 @@ DATETIME_RE = re.compile(
 
 
 DEFAULTS: Dict[str, Any] = {
-    "schema_version": 1,
+    "schema_version": 2,
     "revision": 0,
     "routing": {"always_on_host_rules": False},
     "hosts": {
-        "claude_code": {"roles": {}},
-        "codex": {"roles": {}},
+        "claude_code": {"identities": {}},
+        "codex": {"identities": {}},
     },
 }
 
@@ -60,7 +62,7 @@ class ConfigParseError(ConfigError):
 
 
 class ConfigValidationError(ConfigError):
-    """The parsed values do not satisfy schema v1."""
+    """The parsed values do not satisfy schema v2."""
 
 
 class ConfigLockError(ConfigError):
@@ -83,6 +85,11 @@ def _copy(value: Any) -> Any:
 def _validate_host(host: str) -> None:
     if host not in HOSTS:
         raise ConfigValidationError(f"host must be one of {', '.join(HOSTS)}; got {host!r}")
+
+
+def _legacy_v1_error(path: Optional[Path] = None) -> ConfigValidationError:
+    location = str(path) if path is not None else "<input>"
+    return ConfigValidationError(f"{V1_UPGRADE_MESSAGE}；文件路径：{location}")
 
 
 def split_sections(text: str) -> List[SectionChunk]:
@@ -244,17 +251,27 @@ def _deep_merge(base: MutableMapping[str, Any], overlay: Mapping[str, Any]) -> M
     return base
 
 
-def parse_config(text: str, host: str) -> Dict[str, Any]:
-    """Parse schema metadata, routing, and only ``host`` role sections."""
+def parse_config(text: str, host: str, *, path: Optional[Path] = None) -> Dict[str, Any]:
+    """Parse schema metadata, routing, and only ``host`` identity sections."""
 
     _validate_host(host)
-    result: Dict[str, Any] = {"hosts": {host: {"roles": {}}}}
+    result: Dict[str, Any] = {"hosts": {host: {"identities": {}}}}
     seen_sections = set()
-    role_prefix = f"hosts.{host}.roles."
+    identity_prefix = f"hosts.{host}.identities."
+    chunks = split_sections(text)
 
-    for chunk in split_sections(text):
+    if any(
+        chunk.name and re.match(r"^hosts\.[^.]+\.roles(?:\.|$)", chunk.name)
+        for chunk in chunks
+    ):
+        raise _legacy_v1_error(path)
+
+    for chunk in chunks:
         if chunk.name is None:
             top = _parse_assignments(chunk)
+            schema_version = top.get("schema_version")
+            if isinstance(schema_version, int) and not isinstance(schema_version, bool) and schema_version == 1:
+                raise _legacy_v1_error(path)
             for key in ("schema_version", "revision"):
                 if key in top:
                     result[key] = top[key]
@@ -263,21 +280,57 @@ def parse_config(text: str, host: str) -> Dict[str, Any]:
                 raise ConfigParseError(chunk.start_line, 1, "duplicate [routing] section.")
             seen_sections.add(chunk.name)
             result["routing"] = _parse_assignments(chunk)
-        elif chunk.name.startswith(role_prefix):
-            role = chunk.name[len(role_prefix):]
-            if "." in role or not role:
-                raise ConfigParseError(chunk.start_line, 1, f"invalid owned role section [{chunk.name}].")
+        elif chunk.name.startswith(identity_prefix):
+            identity = chunk.name[len(identity_prefix):]
+            if "." in identity or not identity:
+                raise ConfigParseError(chunk.start_line, 1, f"invalid owned identity section [{chunk.name}].")
             if chunk.name in seen_sections:
                 raise ConfigParseError(chunk.start_line, 1, f"duplicate [{chunk.name}] section.")
             seen_sections.add(chunk.name)
-            result["hosts"][host]["roles"][role] = _parse_assignments(chunk)
+            result["hosts"][host]["identities"][identity] = _parse_assignments(chunk)
     return result
 
 
-def _validate_data(data: Dict[str, Any], host: str) -> Dict[str, Any]:
+def read_legacy_v1(text: str, host: str) -> Dict[str, Dict[str, Any]]:
+    """Read legacy role model/effort values for setup defaults without writing."""
+
+    _validate_host(host)
+    prefix = f"hosts.{host}.roles."
+    result: Dict[str, Dict[str, Any]] = {}
+    seen_sections = set()
+    for chunk in split_sections(text):
+        if not chunk.name or not chunk.name.startswith(prefix):
+            continue
+        role = chunk.name[len(prefix):]
+        if "." in role or not role:
+            raise ConfigParseError(chunk.start_line, 1, f"invalid legacy role section [{chunk.name}].")
+        if chunk.name in seen_sections:
+            raise ConfigParseError(chunk.start_line, 1, f"duplicate [{chunk.name}] section.")
+        seen_sections.add(chunk.name)
+        if role not in IDENTITIES[:2]:
+            continue
+        fields = _parse_assignments(chunk)
+        extracted = {
+            field: fields[field]
+            for field in ("model", "effort")
+            if field in fields and isinstance(fields[field], str)
+        }
+        if extracted:
+            result[role] = extracted
+    return result
+
+
+def _validate_data(
+    data: Dict[str, Any],
+    host: str,
+    *,
+    path: Optional[Path] = None,
+) -> Dict[str, Any]:
     schema_version = data.get("schema_version")
-    if not isinstance(schema_version, int) or isinstance(schema_version, bool) or schema_version != 1:
-        raise ConfigValidationError("schema_version must be integer 1")
+    if isinstance(schema_version, int) and not isinstance(schema_version, bool) and schema_version == 1:
+        raise _legacy_v1_error(path)
+    if not isinstance(schema_version, int) or isinstance(schema_version, bool) or schema_version != 2:
+        raise ConfigValidationError("schema_version must be integer 2")
     revision = data.get("revision")
     if not isinstance(revision, int) or isinstance(revision, bool) or revision < 0:
         raise ConfigValidationError("revision must be a non-negative integer")
@@ -288,28 +341,35 @@ def _validate_data(data: Dict[str, Any], host: str) -> Dict[str, Any]:
     if not isinstance(always_on, bool):
         raise ConfigValidationError("routing.always_on_host_rules must be a boolean")
     try:
-        roles = data["hosts"][host]["roles"]
+        identities = data["hosts"][host]["identities"]
     except (KeyError, TypeError):
-        raise ConfigValidationError(f"hosts.{host}.roles must be a table") from None
-    if not isinstance(roles, Mapping):
-        raise ConfigValidationError(f"hosts.{host}.roles must be a table")
-    for role, fields in roles.items():
-        if role not in ROLES:
-            raise ConfigValidationError(f"unsupported role in hosts.{host}: {role!r}")
+        raise ConfigValidationError(f"hosts.{host}.identities must be a table") from None
+    if not isinstance(identities, Mapping):
+        raise ConfigValidationError(f"hosts.{host}.identities must be a table")
+    for identity, fields in identities.items():
+        if identity not in IDENTITIES:
+            raise ConfigValidationError(f"unsupported identity in hosts.{host}: {identity!r}")
+        backend = fields.get("backend")
+        if backend not in BACKENDS:
+            raise ConfigValidationError(
+                f"hosts.{host}.identities.{identity}.backend must be one of {', '.join(BACKENDS)}"
+            )
         for required in ("model", "effort"):
             if required not in fields or not isinstance(fields[required], str) or not fields[required].strip():
-                raise ConfigValidationError(f"hosts.{host}.roles.{role}.{required} must be a non-empty string")
+                raise ConfigValidationError(
+                    f"hosts.{host}.identities.{identity}.{required} must be a non-empty string"
+                )
         if "verified" in fields and not isinstance(fields["verified"], bool):
-            raise ConfigValidationError(f"hosts.{host}.roles.{role}.verified must be a boolean")
+            raise ConfigValidationError(f"hosts.{host}.identities.{identity}.verified must be a boolean")
         if "verified_at" in fields and not isinstance(fields["verified_at"], str):
-            raise ConfigValidationError(f"hosts.{host}.roles.{role}.verified_at must be a string")
+            raise ConfigValidationError(f"hosts.{host}.identities.{identity}.verified_at must be a string")
     return data
 
 
-def validate_config(text: str, host: str) -> Dict[str, Any]:
-    """Parse and validate the schema-v1 values visible to ``host``."""
+def validate_config(text: str, host: str, *, path: Optional[Path] = None) -> Dict[str, Any]:
+    """Parse and validate the schema-v2 values visible to ``host``."""
 
-    return _validate_data(parse_config(text, host), host)
+    return _validate_data(parse_config(text, host, path=path), host, path=path)
 
 
 def _format_value(value: Any) -> str:
@@ -324,44 +384,55 @@ def _format_value(value: Any) -> str:
     raise ConfigValidationError(f"cannot emit unsupported value {value!r}")
 
 
-def emit_host_sections(host: str, roles: Mapping[str, Mapping[str, Any]]) -> str:
-    """Return canonical role sections for one host."""
+def emit_host_sections(host: str, identities: Mapping[str, Mapping[str, Any]]) -> str:
+    """Return canonical identity sections for one host."""
 
     _validate_host(host)
     blocks: List[str] = []
-    ordered_roles = [role for role in ROLES if role in roles]
-    ordered_roles.extend(sorted(set(roles) - set(ROLES)))
-    for role in ordered_roles:
-        fields = roles[role]
-        lines = [f"[hosts.{host}.roles.{role}]"]
-        ordered_fields = [field for field in ROLE_FIELD_ORDER if field in fields]
-        ordered_fields.extend(sorted(set(fields) - set(ROLE_FIELD_ORDER)))
+    ordered_identities = [identity for identity in IDENTITIES if identity in identities]
+    ordered_identities.extend(sorted(set(identities) - set(IDENTITIES)))
+    for identity in ordered_identities:
+        fields = identities[identity]
+        lines = [f"[hosts.{host}.identities.{identity}]"]
+        ordered_fields = [field for field in IDENTITY_FIELD_ORDER if field in fields]
+        ordered_fields.extend(sorted(set(fields) - set(IDENTITY_FIELD_ORDER)))
         lines.extend(f"{field} = {_format_value(fields[field])}" for field in ordered_fields)
         blocks.append("\n".join(lines))
     return "\n\n".join(blocks) + ("\n" if blocks else "")
 
 
 def _base_document() -> str:
-    return "schema_version = 1\nrevision = 0\n"
+    return "schema_version = 2\nrevision = 0\n"
 
 
-def update_host(text: str, host: str, roles: Mapping[str, Mapping[str, Any]]) -> str:
-    """Replace only one host's role chunks, preserving every other chunk."""
+def update_host(
+    text: str,
+    host: str,
+    identities: Mapping[str, Mapping[str, Any]],
+    *,
+    path: Optional[Path] = None,
+) -> str:
+    """Replace only one host's identity chunks, preserving every other chunk."""
 
     _validate_host(host)
-    candidate_roles = _copy(dict(roles))
-    for role in candidate_roles:
-        if role not in ROLES:
-            raise ConfigValidationError(f"unsupported role: {role!r}")
-    emitted = emit_host_sections(host, candidate_roles)
+    candidate_identities = _copy(dict(identities))
+    for identity in candidate_identities:
+        if identity not in IDENTITIES:
+            raise ConfigValidationError(f"unsupported identity: {identity!r}")
+    emitted = emit_host_sections(host, candidate_identities)
     if not text:
         routing = "[routing]\nalways_on_host_rules = false\n"
         candidate = _base_document() + "\n" + emitted + ("\n" if emitted else "") + routing
-        validate_config(candidate, host)
+        validate_config(candidate, host, path=path)
         return candidate
 
     chunks = split_sections(text)
-    prefix = f"hosts.{host}.roles."
+    if any(
+        chunk.name and re.match(r"^hosts\.[^.]+\.roles(?:\.|$)", chunk.name)
+        for chunk in chunks
+    ):
+        raise _legacy_v1_error(path)
+    prefix = f"hosts.{host}.identities."
     indexes = [index for index, chunk in enumerate(chunks) if chunk.name and chunk.name.startswith(prefix)]
     insert_at = indexes[0] if indexes else len(chunks)
     kept = [chunk.text for index, chunk in enumerate(chunks) if index not in indexes]
@@ -375,7 +446,7 @@ def update_host(text: str, host: str, roles: Mapping[str, Mapping[str, Any]]) ->
             insertion += "\n"
         kept.insert(insert_at, insertion)
     candidate = "".join(kept)
-    validate_config(candidate, host)
+    validate_config(candidate, host, path=path)
     return candidate
 
 
@@ -549,7 +620,7 @@ class ConfigLock:
 def write_host_config(
     path: Path,
     host: str,
-    roles: Mapping[str, Mapping[str, Any]],
+    identities: Mapping[str, Mapping[str, Any]],
     *,
     lock_options: Optional[Mapping[str, Any]] = None,
 ) -> str:
@@ -559,7 +630,7 @@ def write_host_config(
     options.setdefault("owner_host", host)
     with ConfigLock(path, **options):
         current = _read_text(path) if Path(path).exists() else ""
-        updated = update_host(current, host, roles)
+        updated = update_host(current, host, identities, path=Path(path))
         atomic_write(Path(path), updated)
     return updated
 
@@ -569,9 +640,9 @@ def _host_overlay(data: Mapping[str, Any], host: str) -> Dict[str, Any]:
     for key in ("schema_version", "revision", "routing"):
         if key in data:
             overlay[key] = _copy(data[key])
-    roles = data.get("hosts", {}).get(host, {}).get("roles", {})
-    if roles:
-        overlay["hosts"] = {host: {"roles": _copy(roles)}}
+    identities = data.get("hosts", {}).get(host, {}).get("identities", {})
+    if identities:
+        overlay["hosts"] = {host: {"identities": _copy(identities)}}
     return overlay
 
 
@@ -591,7 +662,7 @@ def resolve_config(
     project_path = project_config_path(Path(repo))
     for label, path in (("global", global_path), ("project", project_path)):
         if path.is_file():
-            parsed = validate_config(_read_text(path), host)
+            parsed = validate_config(_read_text(path), host, path=path)
             _deep_merge(resolved, _host_overlay(parsed, host))
             source = label
     if session_override:
@@ -619,11 +690,11 @@ def _parse_override(items: Iterable[str], host: str) -> Dict[str, Any]:
     result: Dict[str, Any] = {}
     for item in items:
         if "=" not in item:
-            raise ConfigError(f"override must be ROLE.FIELD=VALUE: {item!r}")
+            raise ConfigError(f"override must be IDENTITY.FIELD=VALUE: {item!r}")
         dotted, raw = item.split("=", 1)
         parts = dotted.split(".")
-        if len(parts) != 2 or parts[0] not in ROLES or parts[1] not in ROLE_FIELD_ORDER:
-            raise ConfigError(f"override must target ROLE.FIELD: {dotted!r}")
+        if len(parts) != 2 or parts[0] not in IDENTITIES or parts[1] not in IDENTITY_FIELD_ORDER:
+            raise ConfigError(f"override must target IDENTITY.FIELD: {dotted!r}")
         field = parts[1]
         if field == "verified":
             if raw not in ("true", "false"):
@@ -635,12 +706,12 @@ def _parse_override(items: Iterable[str], host: str) -> Dict[str, Any]:
             value = raw
         else:
             raise ConfigError(f"override value must not be empty: {dotted}")
-        result.setdefault("hosts", {}).setdefault(host, {}).setdefault("roles", {}).setdefault(parts[0], {})[parts[1]] = value
+        result.setdefault("hosts", {}).setdefault(host, {}).setdefault("identities", {}).setdefault(parts[0], {})[parts[1]] = value
     return result
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Manage partner-skill schema-v1 configuration.")
+    parser = argparse.ArgumentParser(description="Manage partner-skill schema-v2 configuration.")
     parser.add_argument("--scope", choices=("project", "global"), default="project", help="Configuration file to read or write (default: project).")
     parser.add_argument("--host", choices=HOSTS, required=True, help="Host namespace this process owns.")
     parser.add_argument("--repo", type=Path, default=Path.cwd(), help="Repository root for project scope and resolution.")
@@ -649,8 +720,9 @@ def build_parser() -> argparse.ArgumentParser:
     get_parser = subparsers.add_parser("get", help="Read the selected scope without resolving lower layers.")
     get_parser.add_argument("key", nargs="?", help="Optional dotted key; default prints visible config as JSON.")
 
-    set_parser = subparsers.add_parser("set", help="Set one role and preserve the other host byte-for-byte.")
-    set_parser.add_argument("--role", choices=ROLES, required=True)
+    set_parser = subparsers.add_parser("set", help="Set one identity and preserve the other host byte-for-byte.")
+    set_parser.add_argument("--role", choices=IDENTITIES, required=True, help="Identity to update.")
+    set_parser.add_argument("--backend", choices=BACKENDS)
     set_parser.add_argument("--model")
     set_parser.add_argument("--effort")
     verified = set_parser.add_mutually_exclusive_group()
@@ -660,10 +732,10 @@ def build_parser() -> argparse.ArgumentParser:
     set_parser.add_argument("--verified-at")
 
     resolve_parser = subparsers.add_parser("resolve", help="Resolve session > project > global > defaults.")
-    resolve_parser.add_argument("--override", action="append", default=[], metavar="ROLE.FIELD=VALUE")
+    resolve_parser.add_argument("--override", action="append", default=[], metavar="IDENTITY.FIELD=VALUE")
 
     subparsers.add_parser("validate", help="Validate the selected file for the owned host namespace.")
-    subparsers.add_parser("init", help="Create or merge default role values for the owned host.")
+    subparsers.add_parser("init", help="Create an empty schema-v2 identity document for the owned host.")
     return parser
 
 
@@ -678,7 +750,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             return 0
         if args.command == "init":
             if path.is_file():
-                validate_config(_read_text(path), args.host)
+                validate_config(_read_text(path), args.host, path=path)
             else:
                 write_host_config(path, args.host, {})
             print(path)
@@ -686,7 +758,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         if not path.is_file():
             raise ConfigError(f"config does not exist: {path}; run init first")
         text = _read_text(path)
-        data = validate_config(text, args.host)
+        data = validate_config(text, args.host, path=path)
         if args.command == "validate":
             print(f"PASS {path}")
             return 0
@@ -700,16 +772,22 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 print(value)
             return 0
         if args.command == "set":
-            roles = data["hosts"][args.host]["roles"]
-            current = dict(roles.get(args.role, {}))
-            updates = {"model": args.model, "effort": args.effort, "verified": args.verified, "verified_at": args.verified_at}
+            identities = data["hosts"][args.host]["identities"]
+            current = dict(identities.get(args.role, {}))
+            updates = {
+                "backend": args.backend,
+                "model": args.model,
+                "effort": args.effort,
+                "verified": args.verified,
+                "verified_at": args.verified_at,
+            }
             for key, value in updates.items():
                 if value is not None:
                     current[key] = value
             if args.verified is False and args.verified_at is None:
                 current.pop("verified_at", None)
-            roles[args.role] = current
-            write_host_config(path, args.host, roles)
+            identities[args.role] = current
+            write_host_config(path, args.host, identities)
             print(path)
             return 0
         parser.error(f"unknown command: {args.command}")
