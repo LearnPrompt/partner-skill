@@ -25,7 +25,8 @@ delegate-codex.sh — background Codex jobs for the Claude-driven Partner flow
 Usage:
   delegate-codex.sh submit --repo <path> --prompt-file <file>
                     [--label <name>] [--effort minimal|low|medium|high|xhigh]
-                    [--model <model>] [--role deep_reasoner|fast_worker]
+                    [--model <model>] [--role deep_reasoner|fast_worker|arbiter]
+                    [--host claude_code|codex]
                     [--read-only] [--dry-run]
   delegate-codex.sh status <jobId> --repo <path> [--wait] [--timeout <seconds>]
   delegate-codex.sh result <jobId> --repo <path> [--json]
@@ -35,7 +36,8 @@ Usage:
 
 Defaults: --effort high (Partner default for delegated work), read-write
 sandbox per the user's codex config. Use --read-only for review/adversarial
-jobs that must not touch the repo.
+jobs that must not touch the repo. --host selects the identity routing table;
+identities with backend=claude must be spawned as host subagents.
 
 Exit codes: status prints RUNNING/DONE/FAILED/CANCELLED; `status --wait`
 returns non-zero on timeout or failure so callers can branch on it.
@@ -135,7 +137,7 @@ PY
 }
 
 cmd_submit() {
-  local PROMPT_FILE="" LABEL="task" EFFORT="high" MODEL="" ROLE="" READ_ONLY="false" DRY_RUN="false"
+  local PROMPT_FILE="" LABEL="task" EFFORT="high" MODEL="" ROLE="" CONFIG_HOST="codex" READ_ONLY="false" DRY_RUN="false"
   local EFFORT_EXPLICIT="false" MODEL_EXPLICIT="false"
   local EFFORT_SOURCE="default" MODEL_SOURCE="default"
   while [ "$#" -gt 0 ]; do
@@ -146,6 +148,7 @@ cmd_submit() {
       --effort) EFFORT="${2:-}"; EFFORT_EXPLICIT="true"; shift 2 ;;
       --model) MODEL="${2:-}"; MODEL_EXPLICIT="true"; shift 2 ;;
       --role) ROLE="${2:-}"; shift 2 ;;
+      --host) CONFIG_HOST="${2:-}"; shift 2 ;;
       --read-only) READ_ONLY="true"; shift ;;
       --dry-run) DRY_RUN="true"; shift ;;
       *) die "unknown submit argument: $1" ;;
@@ -153,18 +156,23 @@ cmd_submit() {
   done
   require_repo
   [ -n "$PROMPT_FILE" ] && [ -f "$PROMPT_FILE" ] || die "--prompt-file is required and must exist"
-  case "$ROLE" in ""|deep_reasoner|fast_worker) ;; *) die "invalid --role: $ROLE" ;; esac
+  case "$ROLE" in ""|deep_reasoner|fast_worker|arbiter) ;; *) die "invalid --role: $ROLE" ;; esac
+  case "$CONFIG_HOST" in claude_code|codex) ;; *) die "invalid --host: $CONFIG_HOST" ;; esac
 
   if [ -n "$ROLE" ]; then
-    local CONFIG_JSON CONFIG_SOURCE ROLE_MODEL ROLE_EFFORT
-    if ! CONFIG_JSON="$(python3 "$SCRIPT_DIR/partner-config.py" --host codex --repo "$REPO" resolve)"; then
-      die "failed to resolve Codex role config; run 'python3 scripts/partner-config.py --host codex init' and then 'set --role $ROLE --model <model> --effort <effort>'"
+    local CONFIG_JSON CONFIG_SOURCE ROLE_BACKEND ROLE_MODEL ROLE_EFFORT
+    if ! CONFIG_JSON="$(python3 "$SCRIPT_DIR/partner-config.py" --host "$CONFIG_HOST" --repo "$REPO" resolve)"; then
+      die "failed to resolve Codex identity config; run 'python3 scripts/partner-config.py --host $CONFIG_HOST init' and then 'set --role $ROLE --backend codex --model <model> --effort <effort>'"
     fi
     CONFIG_SOURCE="$(printf '%s' "$CONFIG_JSON" | python3 -c 'import json, sys; print(json.load(sys.stdin).get("source", ""))')" || die "invalid JSON from partner-config.py resolve"
-    ROLE_MODEL="$(printf '%s' "$CONFIG_JSON" | python3 -c 'import json, sys; role = sys.argv[1]; print(json.load(sys.stdin).get("hosts", {}).get("codex", {}).get("roles", {}).get(role, {}).get("model", ""))' "$ROLE")" || die "invalid JSON from partner-config.py resolve"
-    ROLE_EFFORT="$(printf '%s' "$CONFIG_JSON" | python3 -c 'import json, sys; role = sys.argv[1]; print(json.load(sys.stdin).get("hosts", {}).get("codex", {}).get("roles", {}).get(role, {}).get("effort", ""))' "$ROLE")" || die "invalid JSON from partner-config.py resolve"
-    if [ -z "$ROLE_MODEL" ] || [ -z "$ROLE_EFFORT" ]; then
-      die "Codex role '$ROLE' is missing model or effort; run 'python3 scripts/partner-config.py --host codex init' and then 'set --role $ROLE --model <model> --effort <effort>'"
+    ROLE_BACKEND="$(printf '%s' "$CONFIG_JSON" | python3 -c 'import json, sys; host, role = sys.argv[1:]; print(json.load(sys.stdin).get("hosts", {}).get(host, {}).get("identities", {}).get(role, {}).get("backend", ""))' "$CONFIG_HOST" "$ROLE")" || die "invalid JSON from partner-config.py resolve"
+    ROLE_MODEL="$(printf '%s' "$CONFIG_JSON" | python3 -c 'import json, sys; host, role = sys.argv[1:]; print(json.load(sys.stdin).get("hosts", {}).get(host, {}).get("identities", {}).get(role, {}).get("model", ""))' "$CONFIG_HOST" "$ROLE")" || die "invalid JSON from partner-config.py resolve"
+    ROLE_EFFORT="$(printf '%s' "$CONFIG_JSON" | python3 -c 'import json, sys; host, role = sys.argv[1:]; print(json.load(sys.stdin).get("hosts", {}).get(host, {}).get("identities", {}).get(role, {}).get("effort", ""))' "$CONFIG_HOST" "$ROLE")" || die "invalid JSON from partner-config.py resolve"
+    if [ -z "$ROLE_BACKEND" ] || [ -z "$ROLE_MODEL" ] || [ -z "$ROLE_EFFORT" ]; then
+      die "Codex identity '$ROLE' is missing backend, model, or effort; run 'python3 scripts/partner-config.py --host $CONFIG_HOST init' and then 'set --role $ROLE --backend codex --model <model> --effort <effort>'"
+    fi
+    if [ "$ROLE_BACKEND" != "codex" ]; then
+      die "identity $ROLE is configured as backend=$ROLE_BACKEND; spawn partner-$ROLE subagent inside the host instead of delegating to Codex"
     fi
     if [ "$MODEL_EXPLICIT" = "false" ]; then
       MODEL="$ROLE_MODEL"
@@ -181,8 +189,8 @@ cmd_submit() {
 
   LABEL="$(echo "$LABEL" | tr -cs 'A-Za-z0-9_-' '-' | sed 's/^-//;s/-$//')"
   if [ "$DRY_RUN" = "true" ]; then
-    printf 'role=%s\nmodel=%s\neffort=%s\nmodel_source=%s\neffort_source=%s\n' \
-      "${ROLE:-none}" "${MODEL:-default}" "$EFFORT" "$MODEL_SOURCE" "$EFFORT_SOURCE"
+    printf 'role=%s\nbackend=codex\nconfig_host=%s\nmodel=%s\neffort=%s\nmodel_source=%s\neffort_source=%s\n' \
+      "${ROLE:-none}" "$CONFIG_HOST" "${MODEL:-default}" "$EFFORT" "$MODEL_SOURCE" "$EFFORT_SOURCE"
     return 0
   fi
   command -v codex >/dev/null 2>&1 || die "codex CLI not found on PATH"
@@ -194,8 +202,8 @@ cmd_submit() {
   cp "$PROMPT_FILE" "$JOB/prompt.md"
 
   {
-    printf 'label=%s\neffort=%s\nmodel=%s\nrole=%s\nmodel_source=%s\neffort_source=%s\nread_only=%s\nsubmitted_at=%s\nmode=fresh\n' \
-      "$LABEL" "$EFFORT" "${MODEL:-default}" "${ROLE:-none}" "$MODEL_SOURCE" "$EFFORT_SOURCE" "$READ_ONLY" "$(now_utc)"
+    printf 'label=%s\neffort=%s\nmodel=%s\nrole=%s\nbackend=codex\nconfig_host=%s\nmodel_source=%s\neffort_source=%s\nread_only=%s\nsubmitted_at=%s\nmode=fresh\n' \
+      "$LABEL" "$EFFORT" "${MODEL:-default}" "${ROLE:-none}" "$CONFIG_HOST" "$MODEL_SOURCE" "$EFFORT_SOURCE" "$READ_ONLY" "$(now_utc)"
   } >"$JOB/meta"
 
   write_run_script "$JOB" "$EFFORT" "$MODEL" "$READ_ONLY" ""
