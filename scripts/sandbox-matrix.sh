@@ -58,7 +58,7 @@ sys.modules[spec.name] = module
 spec.loader.exec_module(module)
 with open(config_path, "r", encoding="utf-8", newline="") as handle:
     text = handle.read()
-prefix = f"hosts.{host}.roles."
+prefix = f"hosts.{host}.identities."
 for chunk in module.split_sections(text):
     if chunk.name and chunk.name.startswith(prefix):
         sys.stdout.buffer.write(chunk.text.encode("utf-8"))
@@ -80,7 +80,10 @@ setup_claude() {
   local log="$2"
   run_setup "$scratch" "$log" \
     --apply --host claude_code --repo "$scratch/repo" \
-    --mode balanced --exclude-choice track
+    --mode balanced --exclude-choice track \
+    --role-model deep_reasoner=gpt-test \
+    --role-model fast_worker=gpt-test \
+    --role-model arbiter=gpt-test
 }
 
 setup_codex() {
@@ -90,7 +93,8 @@ setup_codex() {
     --apply --host codex --repo "$scratch/repo" \
     --mode balanced --exclude-choice track \
     --role-model deep_reasoner=gpt-test \
-    --role-model fast_worker=gpt-test
+    --role-model fast_worker=gpt-test \
+    --role-model arbiter=gpt-test
 }
 
 require_file() {
@@ -118,8 +122,7 @@ scenario_claude_then_codex() {
   local repo="$scratch/repo"
   local config="$repo/.partner/config.toml"
   local deep_agent="$repo/.claude/agents/partner-deep-reasoner.md"
-  local fast_agent="$repo/.claude/agents/partner-fast-worker.md"
-  local deep_sha fast_sha
+  local deep_sha
 
   prepare_scratch "$scratch" || {
     printf 'could not prepare isolated environment: %s\n' "$scratch"
@@ -130,14 +133,13 @@ scenario_claude_then_codex() {
     sed 's/^/  /' "$scratch/claude.log"
     return 1
   fi
-  require_file "$config" && require_file "$deep_agent" && require_file "$fast_agent" || return 1
+  require_file "$config" && require_file "$deep_agent" || return 1
   extract_host_sections "$config" claude_code "$scratch/claude.before" || return 1
   if [[ ! -s "$scratch/claude.before" ]]; then
-    printf 'no hosts.claude_code.roles sections found\n'
+    printf 'no hosts.claude_code.identities sections found\n'
     return 1
   fi
   deep_sha="$(sha256_file "$deep_agent")" || return 1
-  fast_sha="$(sha256_file "$fast_agent")" || return 1
 
   if ! setup_codex "$scratch" "$scratch/codex.log"; then
     printf 'Codex setup failed\n'
@@ -146,12 +148,11 @@ scenario_claude_then_codex() {
   fi
   extract_host_sections "$config" claude_code "$scratch/claude.after" || return 1
   if ! cmp -s "$scratch/claude.before" "$scratch/claude.after"; then
-    printf 'hosts.claude_code.roles sections changed:\n'
+    printf 'hosts.claude_code.identities sections changed:\n'
     diff -u "$scratch/claude.before" "$scratch/claude.after" || true
     return 1
   fi
   compare_sha "partner-deep-reasoner.md" "$deep_sha" "$deep_agent" || return 1
-  compare_sha "partner-fast-worker.md" "$fast_sha" "$fast_agent" || return 1
 }
 
 scenario_codex_then_claude() {
@@ -171,7 +172,7 @@ scenario_codex_then_claude() {
   require_file "$config" || return 1
   extract_host_sections "$config" codex "$scratch/codex.before" || return 1
   if [[ ! -s "$scratch/codex.before" ]]; then
-    printf 'no hosts.codex.roles sections found\n'
+    printf 'no hosts.codex.identities sections found\n'
     return 1
   fi
 
@@ -182,7 +183,7 @@ scenario_codex_then_claude() {
   fi
   extract_host_sections "$config" codex "$scratch/codex.after" || return 1
   if ! cmp -s "$scratch/codex.before" "$scratch/codex.after"; then
-    printf 'hosts.codex.roles sections changed:\n'
+    printf 'hosts.codex.identities sections changed:\n'
     diff -u "$scratch/codex.before" "$scratch/codex.after" || true
     return 1
   fi
@@ -193,7 +194,6 @@ scenario_idempotent_rerun() {
   local repo="$scratch/repo"
   local config="$repo/.partner/config.toml"
   local deep_agent="$repo/.claude/agents/partner-deep-reasoner.md"
-  local fast_agent="$repo/.claude/agents/partner-fast-worker.md"
   local path label before
 
   prepare_scratch "$scratch" || {
@@ -205,21 +205,19 @@ scenario_idempotent_rerun() {
     sed 's/^/  /' "$scratch/first.log"
     return 1
   fi
-  require_file "$config" && require_file "$deep_agent" && require_file "$fast_agent" || return 1
+  require_file "$config" && require_file "$deep_agent" || return 1
   cp "$config" "$scratch/config.before"
   cp "$deep_agent" "$scratch/deep.before"
-  cp "$fast_agent" "$scratch/fast.before"
 
   if ! setup_claude "$scratch" "$scratch/second.log"; then
     printf 'second Claude setup failed\n'
     sed 's/^/  /' "$scratch/second.log"
     return 1
   fi
-  for path in "$config" "$deep_agent" "$fast_agent"; do
+  for path in "$config" "$deep_agent"; do
     case "$path" in
       "$config") label="config.toml"; before="$scratch/config.before" ;;
-      "$deep_agent") label="partner-deep-reasoner.md"; before="$scratch/deep.before" ;;
-      *) label="partner-fast-worker.md"; before="$scratch/fast.before" ;;
+      *) label="partner-deep-reasoner.md"; before="$scratch/deep.before" ;;
     esac
     if ! cmp -s "$before" "$path"; then
       printf '%s changed on identical re-apply: before=%s after=%s\n' \
@@ -240,6 +238,9 @@ scenario_invalid_role_effort() {
   if run_setup "$scratch" "$scratch/invalid.log" \
     --apply --host claude_code --repo "$scratch/repo" \
     --mode balanced --exclude-choice track \
+    --role-model deep_reasoner=gpt-test \
+    --role-model fast_worker=gpt-test \
+    --role-model arbiter=gpt-test \
     --role-effort deep_reasoner=invalid; then
     printf 'invalid --role-effort unexpectedly exited zero\n'
     return 1

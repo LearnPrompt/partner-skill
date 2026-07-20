@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Configure partner-skill roles and deterministic host artifacts."""
+"""Configure partner-skill identities and deterministic host artifacts."""
 
 from __future__ import annotations
 
@@ -29,7 +29,8 @@ partner_config = importlib.util.module_from_spec(SPEC)
 sys.modules[SPEC.name] = partner_config
 SPEC.loader.exec_module(partner_config)
 
-ROLES = ("deep_reasoner", "fast_worker")
+IDENTITIES = partner_config.IDENTITIES
+BACKENDS = partner_config.BACKENDS
 EFFORTS = ("minimal", "low", "medium", "high", "xhigh")
 BEGIN_MARKER = "<!-- BEGIN PARTNER MANAGED ROUTING (do not edit; managed by partner-skill) -->"
 END_MARKER = "<!-- END PARTNER MANAGED ROUTING -->"
@@ -37,20 +38,27 @@ HASH_PREFIX = "<!-- partner-content-hash:sha256:"
 ROUTING_POLICY = (
     "Route reasoning-intensive, ambiguous work to partner-deep-reasoner.\n"
     "Route mechanical, well-scoped execution to partner-fast-worker.\n"
+    "Route independent blind-solve arbitration to partner-arbiter.\n"
 )
 MANAGED_COMMENT = '<!-- managed by partner-skill - edit via "搭子，配置" -->'
 
-# Presets are starting values only. Claude uses stable aliases; Codex deliberately
-# has no built-in model names and must detect one or receive an explicit override.
-CLAUDE_PRESETS: Dict[str, Dict[str, Tuple[str, str]]] = {
-    "balanced": {"deep_reasoner": ("opus", "high"), "fast_worker": ("sonnet", "medium")},
-    "quality": {"deep_reasoner": ("opus", "high"), "fast_worker": ("opus", "high")},
-    "cost": {"deep_reasoner": ("sonnet", "medium"), "fast_worker": ("haiku", "low")},
-}
-CODEX_EFFORT_PRESETS: Dict[str, Dict[str, str]] = {
-    "balanced": {"deep_reasoner": "high", "fast_worker": "medium"},
-    "quality": {"deep_reasoner": "xhigh", "fast_worker": "high"},
-    "cost": {"deep_reasoner": "medium", "fast_worker": "low"},
+# ``None`` means that the Codex model must be detected or explicitly supplied.
+PRESETS: Dict[str, Dict[str, Tuple[str, Optional[str], str]]] = {
+    "balanced": {
+        "deep_reasoner": ("claude", "opus", "high"),
+        "fast_worker": ("codex", None, "medium"),
+        "arbiter": ("codex", None, "xhigh"),
+    },
+    "quality": {
+        "deep_reasoner": ("claude", "opus", "high"),
+        "fast_worker": ("claude", "opus", "high"),
+        "arbiter": ("codex", None, "xhigh"),
+    },
+    "cost": {
+        "deep_reasoner": ("codex", None, "xhigh"),
+        "fast_worker": ("codex", None, "medium"),
+        "arbiter": ("claude", "sonnet", "high"),
+    },
 }
 
 class SetupError(Exception):
@@ -63,6 +71,7 @@ class FileChange:
     new: str
     existed: bool
     blocked: Optional[str] = None
+    delete: bool = False
 
     @property
     def changed(self) -> bool:
@@ -73,6 +82,7 @@ class Plan:
     changes: List[FileChange]
     notes: List[str]
     choices: Dict[str, Dict[str, str]]
+    unavailable: List[str]
 
 def read_text(path: Path) -> str:
     with path.open("r", encoding="utf-8", newline="") as handle:
@@ -101,19 +111,23 @@ def manifest_path(repo: Path) -> Path:
 def backup_root(repo: Path) -> Path:
     return repo.resolve() / ".partner" / "backups"
 
-def parse_role_values(items: Sequence[str], option: str) -> Dict[str, str]:
+def parse_identity_values(items: Sequence[str], option: str) -> Dict[str, str]:
     values: Dict[str, str] = {}
     for item in items:
         if "=" not in item:
-            raise SetupError(f"{option} must be ROLE=VALUE; got {item!r}")
-        role, value = item.split("=", 1)
-        if role not in ROLES:
-            raise SetupError(f"{option} role must be one of {', '.join(ROLES)}; got {role!r}")
-        if role in values:
-            raise SetupError(f"{option} repeats role {role!r}")
+            raise SetupError(f"{option} must be IDENTITY=VALUE; got {item!r}")
+        identity, value = item.split("=", 1)
+        if identity not in IDENTITIES:
+            raise SetupError(
+                f"{option} identity must be one of {', '.join(IDENTITIES)}; got {identity!r}"
+            )
+        if identity in values:
+            raise SetupError(f"{option} repeats identity {identity!r}")
         if not value.strip() or value != value.strip() or any(ord(char) < 32 for char in value):
-            raise SetupError(f"{option} value for {role} must be non-empty and contain no control characters")
-        values[role] = value
+            raise SetupError(
+                f"{option} value for {identity} must be non-empty and contain no control characters"
+            )
+        values[identity] = value
     return values
 
 def _top_level_codex_values(path: Path) -> Dict[str, str]:
@@ -181,97 +195,126 @@ def detect_claude(env: Mapping[str, str]) -> Dict[str, str]:
     except (OSError, UnicodeError, ValueError):
         pass
     agents = home / ".claude" / "agents"
-    for role in ROLES:
-        for name in (f"partner-{role.replace('_', '-')}.md", f"{role.replace('_', '-')}.md"):
+    for identity in IDENTITIES:
+        for name in (
+            f"partner-{identity.replace('_', '-')}.md",
+            f"{identity.replace('_', '-')}.md",
+        ):
             model = _frontmatter_model(agents / name)
             if model:
-                detected[role] = model
+                detected[identity] = model
                 break
     return detected
 
-def choose_roles(args: argparse.Namespace, env: Mapping[str, str]) -> Tuple[Dict[str, Dict[str, Any]], Dict[str, Dict[str, str]], List[str]]:
-    models = parse_role_values(args.role_model, "--role-model")
-    efforts = parse_role_values(args.role_effort, "--role-effort")
-    for role, effort in efforts.items():
+def choose_identities(
+    args: argparse.Namespace,
+    env: Mapping[str, str],
+) -> Tuple[Dict[str, Dict[str, Any]], Dict[str, Dict[str, str]], List[str]]:
+    backends = parse_identity_values(args.role_backend, "--role-backend")
+    models = parse_identity_values(args.role_model, "--role-model")
+    efforts = parse_identity_values(args.role_effort, "--role-effort")
+    for identity, backend in backends.items():
+        if backend not in BACKENDS:
+            raise SetupError(
+                f"--role-backend for {identity} must be one of {', '.join(BACKENDS)}"
+            )
+    for identity, effort in efforts.items():
         if effort not in EFFORTS:
-            raise SetupError(f"--role-effort for {role} must be one of {', '.join(EFFORTS)}")
-    roles: Dict[str, Dict[str, Any]] = {}
+            raise SetupError(
+                f"--role-effort for {identity} must be one of {', '.join(EFFORTS)}"
+            )
+    identities: Dict[str, Dict[str, Any]] = {}
     sources: Dict[str, Dict[str, str]] = {}
     notes: List[str] = []
     if args.mode == "custom":
-        for role in ROLES:
-            if role not in models or role not in efforts:
+        for identity in IDENTITIES:
+            if identity not in backends or identity not in models or identity not in efforts:
                 raise SetupError(
-                    "custom mode requires --role-model and --role-effort for both roles"
+                    "custom mode requires --role-backend, --role-model, and "
+                    "--role-effort for all three identities"
                 )
-            roles[role] = {"model": models[role], "effort": efforts[role], "verified": False}
-            sources[role] = {"model": "custom", "effort": "custom"}
-        return roles, sources, notes
-
-    if args.host == "claude_code":
-        detected = detect_claude(env)
-        if detected:
-            summary = ", ".join(f"{role}={value}" for role, value in sorted(detected.items()))
-            notes.append(f"Claude detected models (read-only): {summary}")
-        preset = CLAUDE_PRESETS[args.mode]
-        for role in ROLES:
-            model, effort = preset[role]
-            roles[role] = {
-                "model": models.get(role, model),
-                "effort": efforts.get(role, effort),
+            identities[identity] = {
+                "backend": backends[identity],
+                "model": models[identity],
+                "effort": efforts[identity],
                 "verified": False,
             }
-            sources[role] = {
-                "model": "custom" if role in models else "built-in",
-                "effort": "custom" if role in efforts else "built-in",
-            }
-    else:
-        detected = detect_codex(env)
-        detected_model = detected.get("model")
-        if detected:
-            notes.append(
-                "Codex detected: "
-                + ", ".join(f"{key}={value}" for key, value in sorted(detected.items()))
-            )
-        missing = [role for role in ROLES if role not in models and not detected_model]
-        if missing:
+            sources[identity] = {field: "custom" for field in ("backend", "model", "effort")}
+        return identities, sources, notes
+
+    codex_detected = detect_codex(env)
+    detected_model = codex_detected.get("model")
+    if codex_detected:
+        notes.append(
+            "Codex detected: "
+            + ", ".join(f"{key}={value}" for key, value in sorted(codex_detected.items()))
+        )
+    missing_models: List[str] = []
+    for identity in IDENTITIES:
+        preset_backend, preset_model, preset_effort = PRESETS[args.mode][identity]
+        backend = backends.get(identity, preset_backend)
+        if identity in backends and backend != preset_backend and identity not in models:
             raise SetupError(
-                "Codex model was not detected. Set top-level model in "
-                "${CODEX_HOME:-$HOME/.codex}/config.toml or pass "
-                "--role-model deep_reasoner=<model> --role-model fast_worker=<model>; "
-                "no model name is guessed."
+                f"--role-backend changes {identity} from {preset_backend} to {backend}; "
+                f"also pass --role-model {identity}=<model>"
             )
-        preset = CODEX_EFFORT_PRESETS[args.mode]
-        for role in ROLES:
-            roles[role] = {
-                "model": models.get(role, detected_model),
-                "effort": efforts.get(role, preset[role]),
-                "verified": False,
-            }
-            sources[role] = {
-                "model": "custom" if role in models else "detected",
-                "effort": "custom" if role in efforts else "built-in",
-            }
-    return roles, sources, notes
+        if identity in models:
+            model = models[identity]
+            model_source = "custom"
+        elif backend == "codex":
+            model = detected_model
+            model_source = "detected"
+            if not model:
+                missing_models.append(identity)
+        else:
+            model = preset_model
+            model_source = "built-in"
+        identities[identity] = {
+            "backend": backend,
+            "model": model,
+            "effort": efforts.get(identity, preset_effort),
+            "verified": False,
+        }
+        sources[identity] = {
+            "backend": "custom" if identity in backends else "built-in",
+            "model": model_source,
+            "effort": "custom" if identity in efforts else "built-in",
+        }
+    if missing_models:
+        examples = " ".join(
+            f"--role-model {identity}=<model>" for identity in missing_models
+        )
+        raise SetupError(
+            "Codex model was not detected. Set top-level model in "
+            "${CODEX_HOME:-$HOME/.codex}/config.toml or pass "
+            f"{examples}; no model name is guessed."
+        )
+    return identities, sources, notes
 
-def preserve_verification(current: Mapping[str, Mapping[str, Any]], desired: Dict[str, Dict[str, Any]]) -> None:
-    for role in ROLES:
-        before = current.get(role, {})
-        after = desired[role]
-        if before.get("model") == after["model"] and before.get("effort") == after["effort"]:
+def preserve_verification(
+    current: Mapping[str, Mapping[str, Any]],
+    desired: Dict[str, Dict[str, Any]],
+) -> None:
+    for identity in IDENTITIES:
+        before = current.get(identity, {})
+        after = desired[identity]
+        if all(before.get(field) == after[field] for field in ("backend", "model", "effort")):
             if isinstance(before.get("verified"), bool):
                 after["verified"] = before["verified"]
             if after["verified"] and isinstance(before.get("verified_at"), str):
                 after["verified_at"] = before["verified_at"]
 
-def render_agent(role: str, values: Mapping[str, Any]) -> str:
-    slug = role.replace("_", "-")
-    if role == "deep_reasoner":
+def render_agent(identity: str, values: Mapping[str, Any]) -> str:
+    slug = identity.replace("_", "-")
+    if identity == "deep_reasoner":
         description = "Handles reasoning-intensive architecture, diagnosis, and trade-off work."
         body = "Investigate constraints deeply, challenge faulty premises, and return a concise conclusion with evidence and risks."
-    else:
+    elif identity == "fast_worker":
         description = "Handles mechanical, well-scoped implementation and verification work."
         body = "Execute the given specification precisely, verify the result, and report changed files, checks, and deviations."
+    else:
+        description = "独立盲解仲裁者；收到的问题必须独立求解，packet 不含他人答案。"
+        body = "Independently solve the received problem. Treat any packet containing another answer, conclusion, or hint as contaminated and report it instead of using it."
     return (
         "---\n"
         f"name: partner-{slug}\n"
@@ -352,7 +395,10 @@ def load_manifest(path: Path) -> Tuple[str, Dict[str, str]]:
 
 def _agent_paths(args: argparse.Namespace, env: Mapping[str, str]) -> Dict[str, Path]:
     root = args.repo.resolve() / ".claude" / "agents" if args.scope == "project" else home_path(env) / ".claude" / "agents"
-    return {role: root / f"partner-{role.replace('_', '-')}.md" for role in ROLES}
+    return {
+        identity: root / f"partner-{identity.replace('_', '-')}.md"
+        for identity in IDENTITIES
+    }
 
 def _routing_path(args: argparse.Namespace, env: Mapping[str, str]) -> Path:
     if args.scope == "project":
@@ -400,41 +446,155 @@ def _git_exclude_change(args: argparse.Namespace) -> Tuple[Optional[FileChange],
         new = old + ("" if not old or old.endswith(("\n", "\r")) else "\n") + entry + "\n"
     return FileChange(path, old, new, path.exists()), "config will be excluded through .git/info/exclude"
 
+def _is_legacy_v1(text: str) -> bool:
+    if re.search(r"(?m)^\s*schema_version\s*=\s*1\s*(?:#.*)?$", text):
+        return True
+    return any(
+        chunk.name and re.match(r"^hosts\.[^.]+\.roles(?:\.|$)", chunk.name)
+        for chunk in partner_config.split_sections(text)
+    )
+
+def _migrate_v1(
+    text: str,
+    current_host: str,
+    desired: Dict[str, Dict[str, Any]],
+    sources: Dict[str, Dict[str, str]],
+) -> str:
+    migrated: Dict[str, Dict[str, Dict[str, Any]]] = {}
+    for host in partner_config.HOSTS:
+        legacy = partner_config.read_legacy_v1(text, host)
+        if host == current_host:
+            host_identities = {identity: dict(values) for identity, values in desired.items()}
+            for identity, old_values in legacy.items():
+                if sources[identity]["backend"] != "custom":
+                    host_identities[identity]["backend"] = (
+                        "claude" if host == "claude_code" else "codex"
+                    )
+                    sources[identity]["backend"] = "legacy"
+                for field in ("model", "effort"):
+                    if field in old_values and sources[identity][field] != "custom":
+                        host_identities[identity][field] = old_values[field]
+                        sources[identity][field] = "legacy"
+            desired.clear()
+            desired.update(host_identities)
+        else:
+            default_backend = "claude" if host == "claude_code" else "codex"
+            host_identities = {
+                identity: {
+                    "backend": default_backend,
+                    "model": values["model"],
+                    "effort": values["effort"],
+                    "verified": False,
+                }
+                for identity, values in legacy.items()
+                if "model" in values and "effort" in values
+            }
+        if host_identities:
+            migrated[host] = host_identities
+
+    blocks = ["schema_version = 2\nrevision = 0\n"]
+    for host in partner_config.HOSTS:
+        emitted = partner_config.emit_host_sections(host, migrated.get(host, {}))
+        if emitted:
+            blocks.append(emitted)
+    blocks.append("[routing]\nalways_on_host_rules = false\n")
+    candidate = "\n".join(block.rstrip("\n") for block in blocks) + "\n"
+    for host in partner_config.HOSTS:
+        partner_config.validate_config(candidate, host)
+    return candidate
+
+def _cli_unavailable(
+    desired: Mapping[str, Mapping[str, Any]],
+    env: Mapping[str, str],
+) -> List[str]:
+    path = env.get("PATH")
+    available = {
+        backend: shutil.which(backend, path=path) is not None
+        for backend in BACKENDS
+    }
+    return [
+        identity
+        for identity in IDENTITIES
+        if not available[str(desired[identity]["backend"])]
+    ]
+
 def build_plan(args: argparse.Namespace, env: Mapping[str, str]) -> Plan:
-    desired, sources, notes = choose_roles(args, env)
-    for role in ROLES:
-        sources[role]["model_value"] = str(desired[role]["model"])
-        sources[role]["effort_value"] = str(desired[role]["effort"])
+    desired, sources, notes = choose_identities(args, env)
     path = config_path(args.scope, args.repo, env)
     old_config = read_text(path) if path.exists() else ""
-    current_roles: Mapping[str, Mapping[str, Any]] = {}
-    if old_config:
-        parsed = partner_config.validate_config(old_config, args.host)
-        current_roles = parsed["hosts"][args.host]["roles"]
-    preserve_verification(current_roles, desired)
-    new_config = partner_config.update_host(old_config, args.host, desired)
-    # A newly created base document has one transitional separator; converge it
-    # before the first write so the next identical apply is byte-idempotent.
-    new_config = partner_config.update_host(new_config, args.host, desired)
+    current_identities: Mapping[str, Mapping[str, Any]] = {}
+    legacy = bool(old_config and _is_legacy_v1(old_config))
+    if legacy:
+        new_config = _migrate_v1(old_config, args.host, desired, sources)
+        notes.append("v1 → v2 升级，旧值已保留为初值")
+    else:
+        if old_config:
+            parsed = partner_config.validate_config(old_config, args.host, path=path)
+            current_identities = parsed["hosts"][args.host]["identities"]
+        preserve_verification(current_identities, desired)
+        new_config = partner_config.update_host(old_config, args.host, desired, path=path)
+        # A newly created base document has one transitional separator; converge it
+        # before the first write so the next identical apply is byte-idempotent.
+        new_config = partner_config.update_host(new_config, args.host, desired, path=path)
+
+    unavailable = _cli_unavailable(desired, env)
+    for identity in IDENTITIES:
+        sources[identity]["backend_value"] = str(desired[identity]["backend"])
+        sources[identity]["model_value"] = str(desired[identity]["model"])
+        sources[identity]["effort_value"] = str(desired[identity]["effort"])
+        sources[identity]["availability"] = (
+            "unavailable" if identity in unavailable else "available"
+        )
+    if unavailable:
+        grouped = ", ".join(
+            f"{identity}({desired[identity]['backend']})" for identity in unavailable
+        )
+        notes.append(
+            f"CLI unavailable: {grouped}; install the corresponding CLI or change backend"
+        )
+    if desired["arbiter"]["backend"] == desired["deep_reasoner"]["backend"]:
+        notes.append("盲评价值下降（same-vendor）")
     changes = [FileChange(path, old_config, new_config, path.exists())]
 
     if args.host == "claude_code" and args.write_agents:
         mpath = manifest_path(args.repo)
         old_manifest, manifest = load_manifest(mpath)
         updated_manifest = dict(manifest)
-        for role, agent_path in _agent_paths(args, env).items():
+        for identity, agent_path in _agent_paths(args, env).items():
             old = read_text(agent_path) if agent_path.exists() else ""
             expected = manifest.get(str(agent_path))
-            blocked = None
-            if agent_path.exists() and (expected is None or sha256(old) != expected):
-                blocked = (
-                    "refusing to overwrite a user-owned or modified agent file; "
-                    "choose import, a different namespaced file, or skip in references/setup.md"
+            key = str(agent_path)
+            if desired[identity]["backend"] == "claude":
+                blocked = None
+                if agent_path.exists() and (expected is None or sha256(old) != expected):
+                    blocked = (
+                        "refusing to overwrite a user-owned or modified agent file; "
+                        "choose import, a different namespaced file, or skip in references/setup.md"
+                    )
+                rendered = render_agent(identity, desired[identity])
+                changes.append(
+                    FileChange(agent_path, old, rendered, agent_path.exists(), blocked)
                 )
-            rendered = render_agent(role, desired[role])
-            changes.append(FileChange(agent_path, old, rendered, agent_path.exists(), blocked))
-            if not blocked:
-                updated_manifest[str(agent_path)] = sha256(rendered)
+                if not blocked:
+                    updated_manifest[key] = sha256(rendered)
+            elif expected is not None:
+                if not agent_path.exists():
+                    updated_manifest.pop(key, None)
+                elif sha256(old) == expected:
+                    changes.append(
+                        FileChange(agent_path, old, "", True, delete=True)
+                    )
+                    updated_manifest.pop(key, None)
+                else:
+                    changes.append(
+                        FileChange(
+                            agent_path,
+                            old,
+                            old,
+                            True,
+                            "refusing to delete an agent file modified since generation",
+                        )
+                    )
         new_manifest = json.dumps(updated_manifest, ensure_ascii=False, indent=2, sort_keys=True) + "\n"
         changes.append(FileChange(mpath, old_manifest, new_manifest, mpath.exists()))
 
@@ -452,7 +612,7 @@ def build_plan(args: argparse.Namespace, env: Mapping[str, str]) -> Plan:
         changes.append(exclude)
     if note:
         notes.append(note)
-    return Plan(changes, notes, sources)
+    return Plan(changes, notes, sources, unavailable)
 
 def unified_diff(change: FileChange) -> str:
     before = change.old.splitlines(keepends=True)
@@ -463,17 +623,23 @@ def unified_diff(change: FileChange) -> str:
 
 def print_plan(plan: Plan) -> None:
     print("Selections:")
-    for role in ROLES:
-        selected = plan.choices[role]
+    for identity in IDENTITIES:
+        selected = plan.choices[identity]
         print(
-            f"  {role}: model={selected['model_value']} [{selected['model']}], "
-            f"effort={selected['effort_value']} [{selected['effort']}]"
+            f"  {identity}: backend={selected['backend_value']} [{selected['backend']}], "
+            f"model={selected['model_value']} [{selected['model']}], "
+            f"effort={selected['effort_value']} [{selected['effort']}], "
+            f"availability={selected['availability']}"
         )
     for note in plan.notes:
         print(f"NOTE: {note}")
     print("Files:")
     for change in plan.changes:
-        state = "REFUSED" if change.blocked else ("WRITE" if change.changed else "UNCHANGED")
+        state = "REFUSED" if change.blocked else (
+            "DELETE" if change.delete and change.changed else (
+                "WRITE" if change.changed else "UNCHANGED"
+            )
+        )
         print(f"  [{state}] {change.path}")
     for change in plan.changes:
         print(f"\nDiff: {change.path}")
@@ -511,17 +677,38 @@ def create_backup(repo: Path, changes: Sequence[FileChange], timestamp: Optional
         shutil.rmtree(str(old))
     return candidate
 
-def apply_plan(args: argparse.Namespace, env: Mapping[str, str]) -> int:
+def _require_available(plan: Plan) -> None:
+    if not plan.unavailable:
+        return
+    details = ", ".join(
+        f"{identity}({plan.choices[identity]['backend_value']})"
+        for identity in plan.unavailable
+    )
+    raise SetupError(
+        f"required backend CLI unavailable: {details}; install the CLI or change backend"
+    )
+
+def apply_plan(
+    args: argparse.Namespace,
+    env: Mapping[str, str],
+    preflight: Optional[Plan] = None,
+) -> int:
+    _require_available(preflight or build_plan(args, env))
     lock_path = config_path(args.scope, args.repo, env)
     with partner_config.ConfigLock(lock_path, owner_host=args.host):
         plan = build_plan(args, env)
+        _require_available(plan)
         backup = create_backup(args.repo, plan.changes, args.timestamp)
         for change in plan.changes:
             if change.blocked:
                 print(f"REFUSED {change.path}: {change.blocked}", file=sys.stderr)
             elif change.changed:
-                partner_config.atomic_write(change.path, change.new)
-                print(f"APPLIED {change.path}")
+                if change.delete:
+                    change.path.unlink(missing_ok=True)
+                    print(f"REMOVED {change.path}")
+                else:
+                    partner_config.atomic_write(change.path, change.new)
+                    print(f"APPLIED {change.path}")
             else:
                 print(f"UNCHANGED {change.path}")
         if backup:
@@ -559,11 +746,12 @@ def rollback(args: argparse.Namespace, env: Mapping[str, str]) -> int:
 def show_status(args: argparse.Namespace, env: Mapping[str, str]) -> int:
     resolved = partner_config.resolve_config(args.repo, args.host, env=env)
     print(f"host={args.host} config_source={resolved['source']}")
-    roles = resolved["hosts"][args.host]["roles"]
-    for role in ROLES:
-        values = roles.get(role, {})
+    identities = resolved["hosts"][args.host]["identities"]
+    for identity in IDENTITIES:
+        values = identities.get(identity, {})
         print(
-            f"{role}: model={values.get('model', '<unset>')} "
+            f"{identity}: backend={values.get('backend', '<unset>')} "
+            f"model={values.get('model', '<unset>')} "
             f"effort={values.get('effort', '<unset>')} "
             f"verified={str(values.get('verified', False)).lower()} "
             f"verified_at={values.get('verified_at', '<unset>')}"
@@ -572,55 +760,71 @@ def show_status(args: argparse.Namespace, env: Mapping[str, str]) -> int:
 
 def smoke(args: argparse.Namespace, env: Mapping[str, str]) -> int:
     resolved = partner_config.resolve_config(args.repo, args.host, env=env)
-    configured = resolved["hosts"][args.host]["roles"]
-    missing = [role for role in ROLES if role not in configured]
+    configured = resolved["hosts"][args.host]["identities"]
+    missing = [identity for identity in IDENTITIES if identity not in configured]
     if missing:
-        raise SetupError(f"roles are not configured: {', '.join(missing)}; run --apply first")
-    if args.host == "claude_code":
-        for role in ROLES:
-            print(f"{role}: needs_new_session; verified remains false")
-        print("Start a new Claude Code session, invoke the partner-* agents, and verify their reported agent/model metadata.")
-        return 0
+        raise SetupError(
+            f"identities are not configured: {', '.join(missing)}; run --apply first"
+        )
 
     successes: List[str] = []
     failures = False
     with tempfile.NamedTemporaryFile("w", encoding="utf-8", suffix=".md") as prompt:
-        prompt.write("Resolve the configured role only; this is a dry-run smoke check.\n")
+        prompt.write("Resolve the configured identity only; this is a dry-run smoke check.\n")
         prompt.flush()
-        for role in ROLES:
+        for identity in IDENTITIES:
+            if configured[identity]["backend"] == "claude":
+                print(f"{identity}: needs_new_session; verified remains false")
+                continue
             result = subprocess.run(
                 [
                     "bash", str(SCRIPT_DIR / "delegate-codex.sh"), "submit",
                     "--repo", str(args.repo), "--prompt-file", prompt.name,
-                    "--role", role, "--read-only", "--dry-run",
+                    "--role", identity, "--host", args.host,
+                    "--read-only", "--dry-run",
                 ],
                 cwd=ROOT, env=dict(env), text=True, capture_output=True, check=False,
             )
             if result.returncode == 0:
-                successes.append(role)
-                print(f"{role}: PASS")
+                successes.append(identity)
+                print(f"{identity}: PASS")
+            elif identity == "arbiter" and re.search(
+                r"(?:invalid|unknown|unsupported).*(?:--role|arbiter)|"
+                r"(?:--role|arbiter).*(?:invalid|unknown|unsupported)",
+                result.stderr,
+                re.IGNORECASE,
+            ):
+                print("arbiter: SKIP delegate does not support --role arbiter yet")
             else:
                 failures = True
-                print(f"{role}: FAIL\n{result.stderr.rstrip()}", file=sys.stderr)
+                print(f"{identity}: FAIL\n{result.stderr.rstrip()}", file=sys.stderr)
     if successes:
         timestamp = args.timestamp or utc_now()
         path = config_path(args.scope, args.repo, env)
         with partner_config.ConfigLock(path, owner_host=args.host):
             old = read_text(path) if path.exists() else ""
-            parsed_roles = partner_config.validate_config(old, args.host)["hosts"][args.host]["roles"] if old else {}
-            roles = {role: dict(values) for role, values in parsed_roles.items()}
-            for role in ROLES:
-                roles.setdefault(role, dict(configured[role]))
-            for role in successes:
-                roles[role]["verified"] = True
-                roles[role]["verified_at"] = timestamp
-            partner_config.atomic_write(path, partner_config.update_host(old, args.host, roles))
+            parsed_identities = (
+                partner_config.validate_config(old, args.host)["hosts"][args.host]["identities"]
+                if old else {}
+            )
+            identities = {
+                identity: dict(values)
+                for identity, values in parsed_identities.items()
+            }
+            for identity in IDENTITIES:
+                identities.setdefault(identity, dict(configured[identity]))
+            for identity in successes:
+                identities[identity]["verified"] = True
+                identities[identity]["verified_at"] = timestamp
+            partner_config.atomic_write(
+                path, partner_config.update_host(old, args.host, identities)
+            )
     return 1 if failures else 0
 
 def uninstall(args: argparse.Namespace, env: Mapping[str, str]) -> int:
     """Remove only what this host generated: manifest-matched agent files,
     a structurally valid managed routing block, and (opt-in) this host's
-    config roles. A file that drifted from its recorded hash is treated as
+    config identities. A file that drifted from its recorded hash is treated as
     user-owned and left in place, reported as skipped."""
 
     removed: List[str] = []
@@ -671,7 +875,7 @@ def uninstall(args: argparse.Namespace, env: Mapping[str, str]) -> int:
                 if cleared != old:
                     if not args.dry_run:
                         partner_config.atomic_write(cpath, cleared)
-                    removed.append(f"{cpath} (hosts.{args.host}.roles cleared)")
+                    removed.append(f"{cpath} (hosts.{args.host}.identities cleared)")
 
     prefix = "WOULD_REMOVE" if args.dry_run else "REMOVED"
     for line in removed:
@@ -682,8 +886,7 @@ def uninstall(args: argparse.Namespace, env: Mapping[str, str]) -> int:
         print("nothing to remove")
     return 0
 
-
-
+def _detected_host(env: Mapping[str, str]) -> Optional[str]:
     if env.get("CLAUDECODE") or env.get("CLAUDE_CODE_ENTRYPOINT"):
         return "claude_code"
     if env.get("CODEX_THREAD_ID") or env.get("CODEX_SANDBOX") or env.get("CODEX_HOME"):
@@ -696,19 +899,50 @@ def interactive(args: argparse.Namespace, env: Mapping[str, str]) -> int:
     host = args.host or _detected_host(env)
     if not host:
         raise SetupError("host could not be detected; rerun --interactive --host claude_code|codex")
-    print(f"Detected host: {host}; paired CLI: claude={bool(shutil.which('claude'))}, codex={bool(shutil.which('codex'))}")
+    search_path = env.get("PATH")
+    print(
+        f"Detected host: {host}; paired CLI: "
+        f"claude={bool(shutil.which('claude', path=search_path))}, "
+        f"codex={bool(shutil.which('codex', path=search_path))}"
+    )
     native = detect_claude(env) if host == "claude_code" else detect_codex(env)
     print(
         "Detected native values: "
         + (", ".join(f"{key}={value} [detected]" for key, value in sorted(native.items())) or "none")
     )
     peer = "codex" if host == "claude_code" else "claude_code"
-    peer_config = partner_config.resolve_config(args.repo, peer, env=env)
-    peer_roles = peer_config["hosts"][peer]["roles"]
-    if peer_roles:
+    try:
+        peer_config = partner_config.resolve_config(args.repo, peer, env=env)
+        peer_identities = peer_config["hosts"][peer]["identities"]
+    except partner_config.ConfigError:
+        peer_identities = {}
+        peer_source = "legacy-v1"
+        for candidate in (
+            partner_config.project_config_path(args.repo),
+            partner_config.global_config_path(env),
+        ):
+            if not candidate.is_file():
+                continue
+            candidate_text = read_text(candidate)
+            if not _is_legacy_v1(candidate_text):
+                continue
+            default_backend = "claude" if peer == "claude_code" else "codex"
+            peer_identities = {
+                identity: {"backend": default_backend, **values}
+                for identity, values in partner_config.read_legacy_v1(
+                    candidate_text, peer
+                ).items()
+            }
+            peer_source = f"legacy-v1:{candidate}"
+            break
+        if not peer_identities:
+            raise
+        peer_config = {"source": peer_source}
+    if peer_identities:
         summary = ", ".join(
-            f"{role}={values.get('model', '<unset>')}/{values.get('effort', '<unset>')}"
-            for role, values in sorted(peer_roles.items())
+            f"{identity}={values.get('backend', '<unset>')}/"
+            f"{values.get('model', '<unset>')}/{values.get('effort', '<unset>')}"
+            for identity, values in sorted(peer_identities.items())
         )
         print(f"Existing {peer} config ({peer_config['source']}): {summary}")
         join = input("Second host [1 add this host/2 shared Goal-Loop only/3 return] (1): ").strip() or "1"
@@ -727,41 +961,51 @@ def interactive(args: argparse.Namespace, env: Mapping[str, str]) -> int:
     scope = "global" if (input("Scope [1 project/2 global] (1): ").strip() or "1") == "2" else "project"
     write_agents = host == "claude_code" and (input("Generate partner agents? [Y/n]: ").strip().lower() not in ("n", "no"))
     routing = input("Write managed routing block? [y/N]: ").strip().lower() in ("y", "yes")
-    role_models: List[str] = []
-    role_efforts: List[str] = []
+    identity_backends: List[str] = []
+    identity_models: List[str] = []
+    identity_efforts: List[str] = []
     if mode == "custom":
-        for role in ROLES:
-            role_models.append(f"{role}={input(f'{role} model: ').strip()}")
-            role_efforts.append(f"{role}={input(f'{role} effort: ').strip()}")
+        for identity in IDENTITIES:
+            identity_backends.append(
+                f"{identity}={input(f'{identity} backend [claude/codex]: ').strip()}"
+            )
+            identity_models.append(
+                f"{identity}={input(f'{identity} model: ').strip()}"
+            )
+            identity_efforts.append(
+                f"{identity}={input(f'{identity} effort: ').strip()}"
+            )
     selected = argparse.Namespace(**vars(args))
     selected.host, selected.mode, selected.scope = host, mode, scope
     selected.write_agents, selected.routing_block = write_agents, routing
-    selected.role_model, selected.role_effort = role_models, role_efforts
+    selected.role_backend = identity_backends
+    selected.role_model, selected.role_effort = identity_models, identity_efforts
     plan = build_plan(selected, env)
     print_plan(plan)
     if input("Apply these changes? [y/N]: ").strip().lower() not in ("y", "yes"):
         print("No changes applied.")
         return 0
-    status = apply_plan(selected, env)
+    status = apply_plan(selected, env, plan)
     print("Next: run partner-setup.py --smoke --host " + host + " --repo " + str(args.repo))
     return status
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Preview, apply, inspect, smoke-test, or roll back partner-skill setup.")
     action = parser.add_mutually_exclusive_group(required=True)
-    action.add_argument("--status", action="store_true", help="Show resolved role values and verification state.")
+    action.add_argument("--status", action="store_true", help="Show resolved identity values and verification state.")
     action.add_argument("--preview", action="store_true", help="Print exact target paths and unified diffs without writing.")
     action.add_argument("--apply", action="store_true", help="Atomically apply the same plan shown by --preview.")
     action.add_argument("--interactive", action="store_true", help="Run the pure-terminal fallback wizard.")
     action.add_argument("--rollback", action="store_true", help="Restore the newest apply backup.")
-    action.add_argument("--smoke", action="store_true", help="Smoke-check configured roles and record successful Codex checks.")
+    action.add_argument("--smoke", action="store_true", help="Smoke-check configured identities and record successful Codex checks.")
     action.add_argument("--uninstall", action="store_true", help="Remove manifest-tracked generated files, the managed routing block, and optionally this host's config.")
     parser.add_argument("--host", choices=("claude_code", "codex"), help="Host namespace (required for preview/apply; otherwise auto-detected when possible).")
     parser.add_argument("--scope", choices=("project", "global"), default="project", help="Config/artifact scope (default: project).")
     parser.add_argument("--repo", type=Path, default=Path.cwd(), help="Repository root (default: current directory).")
-    parser.add_argument("--mode", choices=("balanced", "quality", "cost", "custom"), default="balanced", help="Role preset (default: balanced).")
-    parser.add_argument("--role-model", action="append", default=[], metavar="ROLE=MODEL", help="Override a role model; repeat per role.")
-    parser.add_argument("--role-effort", action="append", default=[], metavar="ROLE=EFFORT", help="Override a role effort; repeat per role.")
+    parser.add_argument("--mode", choices=("balanced", "quality", "cost", "custom"), default="balanced", help="Identity preset (default: balanced).")
+    parser.add_argument("--role-backend", action="append", default=[], metavar="IDENTITY=BACKEND", help="Override an identity backend; repeat per identity. Required for all identities in custom mode.")
+    parser.add_argument("--role-model", action="append", default=[], metavar="IDENTITY=MODEL", help="Override an identity model; repeat per identity. Required for all identities in custom mode.")
+    parser.add_argument("--role-effort", action="append", default=[], metavar="IDENTITY=EFFORT", help="Override an identity effort; repeat per identity. Required for all identities in custom mode.")
     agents = parser.add_mutually_exclusive_group()
     agents.add_argument("--write-agents", dest="write_agents", action="store_true", help="Generate namespaced Claude agents (default).")
     agents.add_argument("--no-write-agents", dest="write_agents", action="store_false", help="Skip Claude agent generation.")
@@ -772,7 +1016,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--force", action="store_true", help="Skip managed-content hash validation only; structural checks still apply.")
     parser.add_argument("--exclude-choice", choices=("git-exclude", "self", "track"), default="git-exclude", help="Project config Git handling (default: git-exclude).")
     parser.add_argument("--timestamp", help="Explicit smoke verified_at value; also gives deterministic backup IDs in tests.")
-    parser.add_argument("--remove-config", action="store_true", help="With --uninstall, also clear this host's roles from the config (other host and top-level fields untouched).")
+    parser.add_argument("--remove-config", action="store_true", help="With --uninstall, also clear this host's identities from the config (other host and top-level fields untouched).")
     parser.add_argument("--dry-run", action="store_true", help="With --uninstall, report what would be removed without writing anything.")
     return parser
 
@@ -814,7 +1058,7 @@ def main(argv: Optional[Sequence[str]] = None, env: Optional[Mapping[str, str]] 
         if args.preview:
             print_plan(plan)
             return 1 if any(change.blocked for change in plan.changes) else 0
-        return apply_plan(args, environ)
+        return apply_plan(args, environ, plan)
     except (SetupError, partner_config.ConfigError, OSError, ValueError) as error:
         print(f"error: {error}", file=sys.stderr)
         return 2

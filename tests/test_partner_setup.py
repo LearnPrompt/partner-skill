@@ -32,14 +32,22 @@ class SetupTests(unittest.TestCase):
         self.codex_home = self.root / "codex-home"
         self.repo.mkdir()
         self.home.mkdir()
+        self.bin = self.root / "bin"
+        self.bin.mkdir()
+        for name in ("claude", "codex"):
+            executable = self.bin / name
+            executable.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+            executable.chmod(0o755)
         self.env = os.environ.copy()
         self.env.update(
             {
                 "HOME": str(self.home),
                 "XDG_CONFIG_HOME": str(self.xdg),
                 "CODEX_HOME": str(self.codex_home),
+                "PATH": f"{self.bin}:/usr/bin:/bin",
             }
         )
+        self.write_codex_native()
 
     def run_cli(self, *arguments):
         stdout = io.StringIO()
@@ -72,6 +80,15 @@ class SetupTests(unittest.TestCase):
             *extra,
         )
 
+    def custom_args(self, choices, action="--apply"):
+        arguments = list(self.claude_args(action, "--mode", "custom"))
+        for identity in partner_setup.IDENTITIES:
+            backend, model, effort = choices[identity]
+            arguments.extend(("--role-backend", f"{identity}={backend}"))
+            arguments.extend(("--role-model", f"{identity}={model}"))
+            arguments.extend(("--role-effort", f"{identity}={effort}"))
+        return tuple(arguments)
+
     def write_codex_native(self, model="gpt-detected", effort="xhigh"):
         self.codex_home.mkdir(parents=True, exist_ok=True)
         (self.codex_home / "config.toml").write_text(
@@ -97,7 +114,6 @@ class SetupTests(unittest.TestCase):
         targets = (
             repo / ".partner" / "config.toml",
             repo / ".claude" / "agents" / "partner-deep-reasoner.md",
-            repo / ".claude" / "agents" / "partner-fast-worker.md",
             repo / ".partner" / ".generated-manifest",
             repo / "CLAUDE.md",
         )
@@ -121,7 +137,7 @@ class SetupTests(unittest.TestCase):
         agent_dir.mkdir(parents=True)
         protected = agent_dir / "partner-deep-reasoner.md"
         protected.write_text("user content\n", encoding="utf-8")
-        status, _, error = self.run_cli(*self.claude_args())
+        status, _, error = self.run_cli(*self.claude_args("--apply", "--mode", "quality"))
         self.assertEqual(1, status)
         self.assertIn("REFUSED", error)
         self.assertIn("references/setup.md", error)
@@ -141,14 +157,14 @@ class SetupTests(unittest.TestCase):
         codex_chunks = "".join(
             chunk.text
             for chunk in partner_setup.partner_config.split_sections(before)
-            if chunk.name and chunk.name.startswith("hosts.codex.roles.")
+            if chunk.name and chunk.name.startswith("hosts.codex.identities.")
         )
         self.assertEqual(0, self.run_cli(*self.claude_args())[0])
         after = partner_setup.read_text(config)
         after_codex_chunks = "".join(
             chunk.text
             for chunk in partner_setup.partner_config.split_sections(after)
-            if chunk.name and chunk.name.startswith("hosts.codex.roles.")
+            if chunk.name and chunk.name.startswith("hosts.codex.identities.")
         )
         self.assertEqual(codex_chunks, after_codex_chunks)
 
@@ -257,11 +273,157 @@ class SetupTests(unittest.TestCase):
         self.assertEqual(1, exclude.read_text(encoding="utf-8").splitlines().count(".partner/config.toml"))
 
     def test_codex_without_detected_or_explicit_model_fails_with_guidance(self):
+        (self.codex_home / "config.toml").unlink()
         status, _, error = self.run_cli(*self.codex_args("--preview"))
         self.assertEqual(2, status)
         self.assertIn("CODEX_HOME", error)
-        self.assertIn("--role-model deep_reasoner", error)
+        self.assertIn("--role-model fast_worker", error)
+        self.assertIn("--role-model arbiter", error)
         self.assertFalse((self.repo / ".partner").exists())
+
+    def test_balanced_preset_applies_three_identity_matrix(self):
+        self.write_codex_native(model="gpt-injected", effort="low")
+        status, _, error = self.run_cli(*self.claude_args())
+        self.assertEqual((0, ""), (status, error))
+        parsed = partner_setup.partner_config.validate_config(
+            partner_setup.read_text(self.repo / ".partner" / "config.toml"),
+            "claude_code",
+        )
+        identities = parsed["hosts"]["claude_code"]["identities"]
+        self.assertEqual(
+            ("claude", "opus", "high"),
+            tuple(identities["deep_reasoner"][field] for field in ("backend", "model", "effort")),
+        )
+        self.assertEqual(
+            ("codex", "gpt-injected", "medium"),
+            tuple(identities["fast_worker"][field] for field in ("backend", "model", "effort")),
+        )
+        self.assertEqual(
+            ("codex", "gpt-injected", "xhigh"),
+            tuple(identities["arbiter"][field] for field in ("backend", "model", "effort")),
+        )
+
+    def test_arbiter_agent_is_generated_only_for_claude_backend(self):
+        arbiter = self.repo.resolve() / ".claude" / "agents" / "partner-arbiter.md"
+        self.assertEqual(0, self.run_cli(*self.claude_args())[0])
+        self.assertFalse(arbiter.exists())
+        choices = {
+            "deep_reasoner": ("claude", "opus", "high"),
+            "fast_worker": ("codex", "gpt-injected", "medium"),
+            "arbiter": ("claude", "sonnet", "high"),
+        }
+        self.assertEqual(0, self.run_cli(*self.custom_args(choices))[0])
+        self.assertTrue(arbiter.is_file())
+        rendered = arbiter.read_text(encoding="utf-8")
+        self.assertIn("独立盲解仲裁者", rendered)
+        self.assertIn("packet 不含他人答案", rendered)
+
+    def test_v1_preview_and_apply_migrate_both_hosts_without_losing_values(self):
+        config = self.repo / ".partner" / "config.toml"
+        config.parent.mkdir()
+        original = """schema_version = 1
+revision = 7
+
+[hosts.claude_code.roles.deep_reasoner]
+model = "claude-old-deep"
+effort = "high"
+
+[hosts.claude_code.roles.fast_worker]
+model = "claude-old-fast"
+effort = "low"
+
+[hosts.codex.roles.deep_reasoner]
+model = "codex-old-deep"
+effort = "xhigh"
+
+[hosts.codex.roles.fast_worker]
+model = "codex-old-fast"
+effort = "medium"
+
+[routing]
+always_on_host_rules = false
+"""
+        config.write_text(original, encoding="utf-8")
+        status, output, error = self.run_cli(*self.claude_args("--preview"))
+        self.assertEqual((0, ""), (status, error))
+        self.assertIn("NOTE: v1 → v2 升级，旧值已保留为初值", output)
+        self.assertEqual(original, config.read_text(encoding="utf-8"))
+
+        status, _, error = self.run_cli(*self.claude_args())
+        self.assertEqual((0, ""), (status, error))
+        migrated = config.read_text(encoding="utf-8")
+        self.assertIn("schema_version = 2", migrated)
+        for host, backend, prefix in (
+            ("claude_code", "claude", "claude-old"),
+            ("codex", "codex", "codex-old"),
+        ):
+            parsed = partner_setup.partner_config.validate_config(migrated, host)
+            identities = parsed["hosts"][host]["identities"]
+            self.assertEqual(backend, identities["deep_reasoner"]["backend"])
+            self.assertEqual(f"{prefix}-deep", identities["deep_reasoner"]["model"])
+            self.assertEqual(backend, identities["fast_worker"]["backend"])
+            self.assertEqual(f"{prefix}-fast", identities["fast_worker"]["model"])
+        claude_identities = partner_setup.partner_config.validate_config(
+            migrated, "claude_code"
+        )["hosts"]["claude_code"]["identities"]
+        codex_identities = partner_setup.partner_config.validate_config(
+            migrated, "codex"
+        )["hosts"]["codex"]["identities"]
+        self.assertEqual("high", claude_identities["deep_reasoner"]["effort"])
+        self.assertEqual("low", claude_identities["fast_worker"]["effort"])
+        self.assertEqual("xhigh", codex_identities["deep_reasoner"]["effort"])
+        self.assertEqual("medium", codex_identities["fast_worker"]["effort"])
+
+    def test_missing_codex_cli_refuses_apply_without_writing(self):
+        claude_only = self.root / "claude-only-bin"
+        claude_only.mkdir()
+        executable = claude_only / "claude"
+        executable.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+        executable.chmod(0o755)
+        self.env["PATH"] = f"{claude_only}:/usr/bin:/bin"
+        before = self.snapshot()
+        status, output, error = self.run_cli(*self.claude_args("--preview"))
+        self.assertEqual((0, ""), (status, error))
+        self.assertIn("fast_worker: backend=codex", output)
+        self.assertIn("availability=unavailable", output)
+        self.assertEqual(before, self.snapshot())
+        status, _, error = self.run_cli(*self.claude_args())
+        self.assertEqual(2, status)
+        self.assertIn("required backend CLI unavailable", error)
+        self.assertIn("codex", error)
+        self.assertEqual(before, self.snapshot())
+
+    def test_same_vendor_note_is_shown(self):
+        choices = {
+            "deep_reasoner": ("claude", "opus", "high"),
+            "fast_worker": ("claude", "sonnet", "medium"),
+            "arbiter": ("claude", "opus", "high"),
+        }
+        status, output, error = self.run_cli(*self.custom_args(choices, "--preview"))
+        self.assertEqual((0, ""), (status, error))
+        self.assertIn("NOTE: 盲评价值下降（same-vendor）", output)
+
+    def test_switching_agent_backend_to_codex_deletes_tracked_file(self):
+        all_claude = {
+            "deep_reasoner": ("claude", "opus", "high"),
+            "fast_worker": ("claude", "sonnet", "medium"),
+            "arbiter": ("claude", "opus", "high"),
+        }
+        self.assertEqual(0, self.run_cli(*self.custom_args(all_claude))[0])
+        arbiter = self.repo.resolve() / ".claude" / "agents" / "partner-arbiter.md"
+        self.assertTrue(arbiter.is_file())
+        switched = dict(all_claude)
+        switched["arbiter"] = ("codex", "gpt-injected", "xhigh")
+        status, preview, error = self.run_cli(*self.custom_args(switched, "--preview"))
+        self.assertEqual((0, ""), (status, error))
+        self.assertIn(f"[DELETE] {arbiter}", preview)
+        status, _, error = self.run_cli(*self.custom_args(switched))
+        self.assertEqual((0, ""), (status, error))
+        self.assertFalse(arbiter.exists())
+        manifest = json.loads(
+            (self.repo / ".partner" / ".generated-manifest").read_text(encoding="utf-8")
+        )
+        self.assertNotIn(str(arbiter), manifest)
 
     def test_codex_smoke_records_exact_timestamp(self):
         self.write_codex_native()
@@ -281,10 +443,11 @@ class SetupTests(unittest.TestCase):
         parsed = partner_setup.partner_config.validate_config(
             partner_setup.read_text(self.repo / ".partner" / "config.toml"), "codex"
         )
-        for role in partner_setup.ROLES:
-            values = parsed["hosts"]["codex"]["roles"][role]
-            self.assertTrue(values["verified"])
-            self.assertEqual(timestamp, values["verified_at"])
+        identities = parsed["hosts"]["codex"]["identities"]
+        self.assertFalse(identities["deep_reasoner"]["verified"])
+        for identity in ("fast_worker", "arbiter"):
+            self.assertTrue(identities[identity]["verified"])
+            self.assertEqual(timestamp, identities[identity]["verified_at"])
 
         status, status_output, error = self.run_cli(
             "--status", "--host", "codex", "--repo", str(self.repo)
@@ -301,14 +464,13 @@ class SetupTests(unittest.TestCase):
         deep_agent = self.repo.resolve() / ".claude" / "agents" / "partner-deep-reasoner.md"
         fast_agent = self.repo.resolve() / ".claude" / "agents" / "partner-fast-worker.md"
         self.assertTrue(deep_agent.is_file())
-        self.assertTrue(fast_agent.is_file())
+        self.assertFalse(fast_agent.exists())
 
         status, output, error = self.run_cli(
             "--uninstall", "--host", "claude_code", "--repo", str(self.repo)
         )
         self.assertEqual((0, ""), (status, error))
         self.assertIn(f"REMOVED {deep_agent}", output)
-        self.assertIn(f"REMOVED {fast_agent}", output)
         self.assertFalse(deep_agent.exists())
         self.assertFalse(fast_agent.exists())
         manifest = json.loads(
@@ -361,7 +523,7 @@ class SetupTests(unittest.TestCase):
         self.assertIn("managed routing block", output)
         self.assertEqual(original, target.read_text(encoding="utf-8"))
 
-    def test_uninstall_remove_config_clears_only_this_hosts_roles(self):
+    def test_uninstall_remove_config_clears_only_this_hosts_identities(self):
         self.write_codex_native()
         self.assertEqual(0, self.run_cli(*self.codex_args())[0])
         self.assertEqual(0, self.run_cli(*self.claude_args())[0])
@@ -369,22 +531,22 @@ class SetupTests(unittest.TestCase):
         codex_before = "".join(
             chunk.text
             for chunk in partner_setup.partner_config.split_sections(partner_setup.read_text(config))
-            if chunk.name and chunk.name.startswith("hosts.codex.roles.")
+            if chunk.name and chunk.name.startswith("hosts.codex.identities.")
         )
 
         status, output, error = self.run_cli(
             "--uninstall", "--host", "claude_code", "--repo", str(self.repo), "--remove-config"
         )
         self.assertEqual((0, ""), (status, error))
-        self.assertIn("roles cleared", output)
+        self.assertIn("identities cleared", output)
         parsed = partner_setup.partner_config.validate_config(
             partner_setup.read_text(config), "claude_code"
         )
-        self.assertEqual({}, parsed["hosts"]["claude_code"]["roles"])
+        self.assertEqual({}, parsed["hosts"]["claude_code"]["identities"])
         codex_after = "".join(
             chunk.text
             for chunk in partner_setup.partner_config.split_sections(partner_setup.read_text(config))
-            if chunk.name and chunk.name.startswith("hosts.codex.roles.")
+            if chunk.name and chunk.name.startswith("hosts.codex.identities.")
         )
         self.assertEqual(codex_before, codex_after)
 
@@ -405,8 +567,10 @@ class SetupTests(unittest.TestCase):
             partner_setup.read_text(self.repo / ".partner" / "config.toml"),
             "claude_code",
         )
-        for role in partner_setup.ROLES:
-            self.assertFalse(parsed["hosts"]["claude_code"]["roles"][role]["verified"])
+        identities = parsed["hosts"]["claude_code"]["identities"]
+        self.assertFalse(identities["deep_reasoner"]["verified"])
+        self.assertTrue(identities["fast_worker"]["verified"])
+        self.assertTrue(identities["arbiter"]["verified"])
 
 
 if __name__ == "__main__":
