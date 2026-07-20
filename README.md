@@ -41,7 +41,7 @@ bash install.sh --target codex
 bash install.sh --target claude
 ```
 
-装完第一次用之前，说一句「搭子，配置」跑向导：均衡/质量/成本三选一（或自定义），选项目还是全局生效，Claude 侧要不要生成 `partner-*` agent 文件——预览 diff 再落盘，绝不覆盖你已有的 agent。Codex 那边不会替你瞎猜模型名，探测不到就直接问你。
+装完第一次用之前，说一句「搭子，配置」：搭子会打开只监听 `127.0.0.1` 的本地单页 UI。均衡/质量/成本/自定义、三个身份的具体 CLI/模型/effort、项目或全局、生成项都在一页选完；页面先展示精确 diff，确认后才落盘。Codex 模型只读本机检测值或你的明确输入，绝不瞎猜。
 
 ## Showcase
 
@@ -69,6 +69,12 @@ bash install.sh --target claude
 
 ```text
 搭子，配置
+```
+
+也可以从仓库直接打开：
+
+```bash
+bash install.sh --configure --host codex --repo /path/to/project
 ```
 
 ## 分宿主用法
@@ -245,9 +251,11 @@ scripts/run-test-prompts.py      行为回归 prompt 的静态检查与实验性
 scripts/delegate-codex.sh        Codex 后台任务原语：submit / status / result / resume / cancel
 scripts/partner-config.py        配置引擎：TOML 子集解析、确定性写回、锁与原子写（schema v1）
 scripts/partner-setup.py         向导落盘引擎：--preview/--apply/--rollback/--smoke/--status/--interactive
+scripts/partner-setup-ui.py      localhost 单页配置 UI：完整模型矩阵、精确预览、确认写入
 scripts/goal-sync.py             .partner/goal.md 哈希校验读写：并发写入不静默丢更新，冲突即 abort
 tests/test_partner_config.py     配置引擎单元测试（round-trip / 锁 / 优先级链）
 tests/test_partner_setup.py      向导引擎单元测试（幂等 / 防覆盖 / managed block / 回滚）
+tests/test_partner_setup_ui.py   本地 UI 状态、预览绑定与写入门单元测试
 tests/test_delegate_role.py      --role 注入与覆盖链单元测试
 tests/test_goal_sync.py          goal.md 并发写入单元测试（哈希不符即拒绝，证明无静默丢更新）
 idea-king/SKILL.md               点子王：第一性原理拆解 + 对抗式审查（随 Partner 一起安装）

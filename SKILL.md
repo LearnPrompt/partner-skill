@@ -36,10 +36,12 @@ Both directions end with the same Partner Session Receipt; `direction` records w
 ## Configuration
 
 On "搭子，配置", or when a Partner flow needs an identity with no
-configuration yet, run the setup wizard in `references/setup.md`: the
-current host renders the questions natively and every write goes through
-`python3 "$PARTNER_DIR/scripts/partner-setup.py"` (preview → atomic apply →
-optional smoke test). Three identities — deep_reasoner, fast_worker, and
+configuration yet, run the local setup UI in `references/setup.md` with
+`python3 "$PARTNER_DIR/scripts/partner-setup-ui.py" --host <host> --repo <repo>`.
+Do not collect the matrix through repeated chat questions when a browser is
+available. The single page shows every backend, concrete model, and effort,
+then delegates every preview/write to `partner-setup.py` (preview → atomic
+apply → optional smoke test). Three identities — deep_reasoner, fast_worker, and
 arbiter (the blind second solver for contentious calls) — each carry their
 own backend (which CLI executes: claude or codex), model, and effort,
 freely mixed across vendors. Their values live only in

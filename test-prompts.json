@@ -248,15 +248,15 @@
     "prompt": "搭子，配置",
     "should_trigger": true,
     "expected_behavior": [
-      "Run the setup wizard from references/setup.md instead of hand-editing .partner/config.toml.",
-      "Detect and display the current host, paired CLI, and any existing configuration before asking anything.",
-      "Ask one screen at a time: work mode (balanced/quality/cost/custom), then scope and write items.",
-      "Preview the exact file paths and diffs and get confirmation before running --apply."
+      "Open the localhost single-page UI from references/setup.md instead of hand-editing .partner/config.toml.",
+      "Display the current host, both CLIs, existing configuration, and all three concrete model/effort values in the UI.",
+      "Let the user select work mode, full identity matrix, scope, and write items without repeated chat questions.",
+      "Preview the exact file paths and diffs in the UI and require confirmation before running --apply."
     ],
     "must_not": [
       "Write to .partner/config.toml directly instead of going through scripts/partner-setup.py.",
       "Apply changes without a preview step.",
-      "Ask more than one question per screen."
+      "Collect setup choices through a sequence of chat questions when the local UI is available."
     ]
   },
   {

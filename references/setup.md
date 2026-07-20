@@ -1,56 +1,58 @@
 # Partner Setup Wizard (搭子，配置)
 
 First-run configuration for the dual-host Partner. Triggered by "搭子，配置"
-(or when a Partner flow needs a role that has no configuration yet). The
-wizard is a *conversation rendered by the current host*; every actual state
-change goes through `python3 "$PARTNER_DIR/scripts/partner-setup.py"` — one
-engine, no second implementation. Never edit `.partner/config.toml` by hand
-in this flow.
+(or when a Partner flow needs a role that has no configuration yet). Open the
+localhost-only single-page UI so the user can see and change every concrete
+backend/model/effort without repeated chat questions. Every preview and state
+change still goes through `python3 "$PARTNER_DIR/scripts/partner-setup.py"` —
+one engine, no second implementation. Never edit `.partner/config.toml` by
+hand in this flow.
 
 ## Render paths
 
-Pick exactly one, by host:
+Pick exactly one:
 
-- **Claude Code**: ask each screen with the native question UI
-  (AskUserQuestion), one screen at a time, options prefilled from the
-  engine's detection output.
-- **Codex**: ask the same screens conversationally — one question per turn,
-  each with a recommended answer the user can just confirm.
-- **No interactive user (plain CLI)**: run
+- **Claude Code or Codex with a browser**: run
+  `python3 "$PARTNER_DIR/scripts/partner-setup-ui.py" --host <claude_code|codex> --repo <repo>`.
+  Report the printed localhost URL. The UI binds only to `127.0.0.1`, uses a
+  per-run token, shows the full matrix on one page, and cannot apply a payload
+  that no longer matches its latest preview.
+- **No browser (plain CLI)**: run
   `python3 "$PARTNER_DIR/scripts/partner-setup.py" --interactive` in the
-  terminal and step back; do not re-implement the questions.
+  terminal and step back. Conversational questions are a last-resort fallback,
+  not the default setup experience.
 
-## Screens (balanced path ≤3 steps)
+## Single-page UI
 
-1. **Detection (display, don't ask)** — run `partner-setup.py --status` and
-   show: current host, both CLIs' availability (`claude` and `codex` on
+1. **Detection (display)** — show current host, both CLIs' availability
+   (`claude` and `codex` on
    PATH — an identity can only use a backend whose CLI is installed),
    existing config (if any), and detected model/effort values with their
    source tag (`detected` from host config | `built-in` alias |
    `custom (unverified)`). If a config with another host's namespace
    already exists, jump to *Second host joining* below.
-2. **Work mode** — one choice: 均衡 balanced (default) / 质量 quality /
+2. **Work mode and full matrix** — offer 均衡 balanced (default) / 质量 quality /
    成本 cost / 自定义 custom. Each preset carries a full identity matrix —
    three identities (deep_reasoner / fast_worker / arbiter), each with its
    own backend (which CLI executes), model, and effort, freely mixed across
    vendors. Only custom expands the per-identity backend → model → effort
-   questions (one identity per screen). Codex-backend models are never
-   offered from a hardcoded list: offer the detected value or ask for an
-   explicit string. If arbiter and deep_reasoner end up on the same
+   controls in the same page. Codex-backend models are never offered from a
+   hardcoded list: fill the detected value or require an explicit string. If
+   arbiter and deep_reasoner end up on the same
    backend, warn that the blind cross-check loses independence — allow it,
    but say it.
-3. **Scope & writes** — scope: 当前项目 project (default) / 所有项目
+3. **Scope & writes** — include scope: 当前项目 project (default) / 所有项目
    global. Write items: generate Claude agent files ☑ (only for identities
    whose backend is claude) / persistent routing block ☐ (default OFF —
    plain "no" is the right answer unless the user asked for always-on
    routing rules).
 
-Then, without asking further questions:
-
-4. **Preview** — `partner-setup.py --preview ...` with the collected
-   choices; show the exact file paths and diffs to the user; one
-   confirm/cancel question.
-5. **Apply** — same arguments with `--apply`. Report exactly what was
+4. **Preview** — the UI runs `partner-setup.py --preview ...` with the current
+   controls and shows exact file paths and diffs inline. Any control change
+   invalidates the preview.
+5. **Apply** — enable apply only after the user checks the inline confirmation.
+   Re-run preview and reject if its output changed, then pass the same arguments
+   to `--apply`. Report exactly what was
    written. If the repo-scope config is not git-ignored, the engine handles
    the exclude choice (default: one line in `.git/info/exclude`); relay its
    report.
@@ -94,8 +96,8 @@ a path (exists, not in the manifest), offer the three-way:
 
 ## Rules
 
-- One question per screen; every question ships with a recommended answer.
-- Values the engine detected are shown, not re-asked.
+- Show all setup choices and all three concrete models in one local page.
+- Values the engine detected are filled and source-labelled, not re-asked.
 - Preview before every write; the user sees paths + diffs, not a summary.
 - No silent fallback: if a model/effort combination fails at apply or
   smoke, surface the engine's original error and offer to re-run setup —

@@ -2,6 +2,7 @@
 
 ## Unreleased — feat/v1.5-dual-host
 
+- feat: localhost single-page setup UI — complete concrete model matrix, exact diff preview, preview-bound confirmation, and smoke test without repeated chat questions
 - feat: identity matrix — three cross-vendor identities (deep_reasoner / fast_worker / arbiter), each with its own backend/model/effort; schema v2 with fail-closed v1 migration (`5a1f3d7`, `52ad950`, `da269ce`)
 - feat: arbiter blind-solve protocol + 搭子，试跑 first-run tryout; goal.md task table drops owner in favor of identity (`f329daf`)
 - feat: idea-king adds 分工 (Assignment) section to Partner work-split reviews (`18dd247`)

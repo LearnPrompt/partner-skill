@@ -41,7 +41,7 @@ bash install.sh --target codex
 bash install.sh --target claude
 ```
 
-Before first real use, say "搭子，配置" (Partner, configure) to run the setup wizard: balanced/quality/cost presets or custom, project or global scope, and whether to generate `partner-*` agent files on the Claude side — preview the diff before anything is written, and your existing agent files are never touched. On the Codex side, no model name is ever guessed; if detection fails, it just asks.
+Before first real use, say "搭子，配置" (Partner, configure). Partner opens a local single-page UI bound only to `127.0.0.1`: balanced/quality/cost/custom, every identity's concrete CLI/model/effort, scope, and generated items are selected in one place. The page shows the exact diff before confirmation. Codex models come only from local detection or explicit input; they are never guessed.
 
 ## Showcase
 
@@ -70,6 +70,12 @@ First run, configure first:
 
 ```text
 搭子，配置
+```
+
+Or open it directly from the repository:
+
+```bash
+bash install.sh --configure --host codex --repo /path/to/project
 ```
 
 ## Per-Host Usage
@@ -246,9 +252,11 @@ scripts/run-test-prompts.py             Static checks plus experimental live mod
 scripts/delegate-codex.sh               Codex background-job primitive: submit / status / result / resume / cancel
 scripts/partner-config.py               Config engine: TOML-subset parsing, deterministic writes, locking (schema v1)
 scripts/partner-setup.py                Setup wizard engine: --preview/--apply/--rollback/--smoke/--status/--interactive
+scripts/partner-setup-ui.py             Localhost single-page setup UI: full model matrix, exact preview, confirmed apply
 scripts/goal-sync.py                    Hash-checked .partner/goal.md read/write: concurrent writes abort instead of silently losing updates
 tests/test_partner_config.py            Config engine unit tests (round-trip / lock / precedence chain)
 tests/test_partner_setup.py             Setup engine unit tests (idempotence / overwrite refusal / managed block / rollback)
+tests/test_partner_setup_ui.py          Local UI state, preview binding, and write-gate unit tests
 tests/test_delegate_role.py             Unit tests for --role injection and the override chain
 tests/test_goal_sync.py                 goal.md concurrency unit tests (stale-hash writes rejected, no silent lost update)
 idea-king/SKILL.md                      Idea King: first-principles decomposition + adversarial review (installs with Partner)
