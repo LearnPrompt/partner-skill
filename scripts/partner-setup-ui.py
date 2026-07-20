@@ -519,7 +519,7 @@ HTML = r'''<!doctype html>
     }
   </style>
   <style>
-    /* Reading this as a local Agent setup tool for first-time users, with a kinetic instrument-panel language. Variance 8, motion 6, density 5. */
+    /* Reading this as a precise local Agent setup tool for first-time users, with a kinetic instrument-panel language. Variance 6, motion 6, density 5. */
     :root {
       color-scheme:light;
       --canvas:#f0f1ec;
@@ -600,18 +600,19 @@ HTML = r'''<!doctype html>
     .mode.active { color:var(--paper); background:transparent; }
     .mode.active::before { transform:scale(1); opacity:1; }
     .config-grid { display:grid; grid-template-columns:minmax(0,1.55fr) minmax(300px,.7fr); gap:22px; align-items:start; margin-top:22px; }
-    .matrix-panel,.settings-panel { border:1px solid var(--line-v2); border-radius:24px; background:rgba(250,250,247,.82); box-shadow:var(--shadow-v2); }
-    .matrix-panel { min-width:0; padding:24px; }
-    .main-heading { align-items:flex-start; padding:0 0 18px; border:0; }
+    .matrix-panel,.settings-panel { overflow:hidden; border:1px solid var(--line-v2); border-radius:24px; background:rgba(250,250,247,.82); box-shadow:var(--shadow-v2); }
+    .matrix-panel { min-width:0; padding:0; }
+    .main-heading,.settings-head { box-sizing:border-box; min-height:81px; padding:20px 22px 16px; border-bottom:1px solid var(--line-v2); }
+    .main-heading { align-items:flex-start; }
     .main-heading h2 { color:var(--ink); font:700 23px/1.15 var(--display); letter-spacing:-.035em; }
     .main-heading p { max-width:530px; color:var(--muted-v2); font-size:12px; }
     .current-mode { color:var(--accent-deep); font:10px var(--mono-v2); }
-    .matrix { display:grid; gap:12px; }
-    .identity { display:grid; grid-template-columns:minmax(145px,.8fr) minmax(130px,.7fr) minmax(210px,1.2fr) minmax(120px,.62fr); gap:12px; align-items:start; position:relative; overflow:hidden; padding:17px; border:1px solid var(--line-v2); border-radius:17px; background:var(--paper-strong); box-shadow:0 10px 26px rgba(66,54,43,.06); }
+    .matrix { display:grid; gap:12px; padding:18px 20px 20px; }
+    .identity { display:grid; grid-template-columns:minmax(155px,.82fr) minmax(130px,.7fr) minmax(220px,1.2fr) minmax(120px,.62fr); gap:12px; align-items:start; position:relative; min-height:110px; overflow:hidden; padding:17px; border:1px solid var(--line-v2); border-radius:17px; background:var(--paper-strong); box-shadow:0 10px 26px rgba(66,54,43,.06); }
     .identity:first-child { border-top:1px solid var(--line-v2); }
     .identity:nth-child(1) { --row:0; }
-    .identity:nth-child(2) { --row:1; margin-left:clamp(0px,2.7vw,34px); }
-    .identity:nth-child(3) { --row:2; margin-right:clamp(0px,1.4vw,18px); }
+    .identity:nth-child(2) { --row:1; }
+    .identity:nth-child(3) { --row:2; }
     .identity::before { content:""; position:absolute; left:0; top:13px; bottom:13px; width:3px; border-radius:3px; background:var(--accent-v2); transform:scaleY(0); }
     .identity:hover { background:var(--paper-strong); box-shadow:0 18px 38px rgba(66,54,43,.12); }
     .identity:hover::before { transform:scaleY(1); }
@@ -625,17 +626,17 @@ HTML = r'''<!doctype html>
     select:focus-visible,input:focus-visible,button:focus-visible { outline:3px solid rgba(231,91,56,.3); outline-offset:2px; border-color:var(--accent-v2); }
     .source { color:#888d82; }
     .settings-panel { position:sticky; top:18px; overflow:hidden; }
-    .settings-head { padding:23px 22px 18px; background:var(--accent-soft); }
+    .settings-head { background:var(--accent-soft); }
     .settings-head h2 { color:var(--ink); font:700 21px/1.15 var(--display); letter-spacing:-.03em; }
     .settings-head p { margin-top:7px; color:#765c53; font-size:12px; }
-    .settings-body { padding:20px 22px 8px; }
-    .setting-block + .setting-block { margin-top:18px; padding-top:18px; border-top:1px solid var(--line-v2); }
+    .settings-body { padding:18px 22px 6px; }
+    .setting-block + .setting-block { margin-top:16px; padding-top:16px; border-top:1px solid var(--line-v2); }
     .choice { color:var(--ink-soft); }
     .choice input { accent-color:var(--accent-v2); }
     .choice:has(input:disabled) { color:#9a9d95; }
     .peer { margin:0; padding:18px 22px; border:0; border-bottom:1px solid var(--line-v2); border-radius:0; background:#fff5e3; box-shadow:none; }
     .peer h2 { color:#7d5617; }
-    .actions { display:grid; gap:12px; margin:14px 22px 22px; padding:17px 0 0; border-top:1px solid var(--line-v2); background:transparent; }
+    .actions { display:grid; gap:10px; margin:12px 22px 18px; padding:14px 0 0; border-top:1px solid var(--line-v2); background:transparent; }
     .status { width:100%; margin:0; color:var(--muted-v2); text-align:left; font-size:11px; }
     .status::before { content:""; display:inline-block; width:7px; height:7px; margin-right:8px; border-radius:50%; background:#aeb2a6; vertical-align:1px; }
     [aria-busy="true"] .status::before { background:var(--accent-v2); }
@@ -700,7 +701,7 @@ HTML = r'''<!doctype html>
       .detect .item:nth-child(odd) { border-left:0; }
       .detect .item:first-child,.detect .item:nth-child(2) { border-top:0; }
       .modes { grid-template-columns:1fr 1fr; }
-      .identity,.identity:nth-child(2),.identity:nth-child(3) { grid-template-columns:1fr 1fr; margin:0; }
+      .identity { grid-template-columns:1fr 1fr; }
       .identity-head,.field.model-field { grid-column:1 / -1; }
       .settings-body { display:block; }
       .setting-block + .setting-block { margin-top:18px; padding:18px 0 0; border-top:1px solid var(--line-v2); border-left:0; }
@@ -724,7 +725,10 @@ HTML = r'''<!doctype html>
       .identity-head,.field.model-field { grid-column:1; }
       .main-heading { display:block; }
       .current-mode { display:block; margin-top:10px; }
-      .matrix-panel,.output-section { padding:18px; }
+      .matrix-panel { padding:0; }
+      .main-heading { min-height:auto; padding:18px; }
+      .matrix { padding:14px; }
+      .output-section { padding:18px; }
     }
     @media (prefers-reduced-motion:reduce) {
       html { scroll-behavior:auto; }

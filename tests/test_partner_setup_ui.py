@@ -135,9 +135,13 @@ class SetupUITests(unittest.TestCase):
 
     def test_ui_keeps_the_taste_design_and_accessibility_contract(self):
         html = partner_setup_ui.HTML
-        self.assertIn("Variance 8, motion 6, density 5", html)
+        self.assertIn("Variance 6, motion 6, density 5", html)
         self.assertIn('class="hero-map"', html)
         self.assertIn('class="matrix" id="identities"', html)
+        self.assertIn(".main-heading,.settings-head", html)
+        self.assertIn(".identity:nth-child(2) { --row:1; }", html)
+        self.assertNotIn("margin-left:clamp", html)
+        self.assertNotIn("margin-right:clamp", html)
         self.assertIn("@keyframes signal-run", html)
         self.assertIn("syncHeroMap()", html)
         self.assertIn("renderIdentities();\n      syncHeroMap();", html)
