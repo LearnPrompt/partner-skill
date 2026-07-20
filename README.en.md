@@ -41,7 +41,7 @@ bash install.sh --target codex
 bash install.sh --target claude
 ```
 
-Before first real use, say "搭子，配置" (Partner, configure). Partner opens a local single-page UI bound only to `127.0.0.1`: balanced/quality/cost/custom, every identity's concrete CLI/model/effort, scope, and generated items are selected in one place. The page shows the exact diff before confirmation. Codex models come only from local detection or explicit input; they are never guessed.
+Before first real use, say "搭子，配置" (Partner, configure). Partner opens a local single-page UI bound only to `127.0.0.1`: balanced/quality/cost starting points plus every identity's concrete CLI/model/effort are handled in one place. The beginner flow fixes project scope, local Git exclusion, and post-install checks to safe defaults instead of asking advanced questions. The page shows the exact diff before confirmation. Codex models and per-model efforts come from the local CLI `model/list`; Claude aliases and efforts come from `claude --help`. Neither side is guessed.
 
 ## Showcase
 
@@ -210,7 +210,7 @@ Chinese triggers such as `搭子` and `搭子.skill` are also first-class trigge
 - A Session Receipt: proof of session reuse, fresh `claude -p` count, checks, anomalies, and monitoring level — machine-checkable via `scripts/validate-receipt.py`.
 - Supporting tools: `scripts/make-handoff.sh` generates bounded handoffs and can persist them under `.partner/`; `references/failure-playbook.md` gives every anomaly a fixed recovery path; `references/scenarios.md` covers review-only, debugging, non-UI, non-git, monorepo, and multi-day tasks.
 - A Darwin-style ratchet: improve one workflow dimension at a time and keep only verified gains.
-- A first-run setup wizard (`搭子，配置`): balanced/quality/cost presets or custom; `.partner/config.toml` is the single dual-host source of truth; previews the diff before writing anything and never touches your existing agent files; the Codex side never guesses a model name — detection failure is a clear error, not a silent fallback.
+- A first-run setup wizard (`搭子，配置`): balanced/quality/cost presets remain editable per identity; `.partner/config.toml` is the single dual-host source of truth; beginner-safe defaults remove advanced setup questions; the exact diff is previewed before writing; models and efforts come from each CLI's real capability list; post-install verification uses a tool-free fresh Claude session plus the Codex delegate dry-run chain.
 - Partner Session Receipt v2: adds `host`/`scope`/`config_source`/`roles_used` fields, so the receipt proves which model and effort actually ran a role, not just "Claude was used."
 - An opt-in full protocol (`references/goal-to-pr.md`): Plan→Goal→PR→Verification, running unattended up through merge-ready + preview verified; merge, production, tags, force-push, deletion, destructive migration, and external publish each still need their own explicit imperative.
 

@@ -41,7 +41,9 @@ configuration yet, run the local setup UI in `references/setup.md` with
 Do not collect the matrix through repeated chat questions when a browser is
 available. The single page shows every backend, concrete model, and effort,
 then delegates every preview/write to `partner-setup.py` (preview → atomic
-apply → optional smoke test). Three identities — deep_reasoner, fast_worker, and
+apply → automatic smoke test). It uses beginner-safe project defaults instead
+of asking scope/Git/routing questions in chat; the terminal engine remains
+available for explicit advanced overrides. Three identities — deep_reasoner, fast_worker, and
 arbiter (the blind second solver for contentious calls) — each carry their
 own backend (which CLI executes: claude or codex), model, and effort,
 freely mixed across vendors. Their values live only in

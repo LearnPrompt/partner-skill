@@ -5,8 +5,11 @@ been applied. Each configured identity runs one small, self-contained
 micro-task; the result is a report that lets a first-time user conclude in
 one glance: my identities are actually live, on the models I chose. This is
 a real end-to-end run (it spends real quota, minutes not seconds at high
-effort tiers) — `partner-setup.py --smoke` remains the free, instant
-config-chain check; the tryout is the one that proves execution.
+effort tiers). `partner-setup.py --smoke` is the bounded installation check:
+Codex identities use the delegate dry-run chain, while each Claude identity
+uses one minimal tool-free fresh session so model/effort/auth are genuinely
+checked. The tryout remains the proof that all three identities can complete
+their intended work, not merely answer the installation probe.
 
 ## The three micro-tasks
 

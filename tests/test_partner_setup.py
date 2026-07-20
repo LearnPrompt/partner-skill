@@ -34,10 +34,19 @@ class SetupTests(unittest.TestCase):
         self.home.mkdir()
         self.bin = self.root / "bin"
         self.bin.mkdir()
-        for name in ("claude", "codex"):
-            executable = self.bin / name
-            executable.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
-            executable.chmod(0o755)
+        claude = self.bin / "claude"
+        claude.write_text(
+            "#!/bin/sh\n"
+            "if [ -n \"${PARTNER_TEST_CLAUDE_ARGS:-}\" ]; then\n"
+            "  printf '%s\\n' \"$@\" > \"$PARTNER_TEST_CLAUDE_ARGS\"\n"
+            "fi\n"
+            "printf 'PARTNER_SMOKE_OK\\n'\n",
+            encoding="utf-8",
+        )
+        claude.chmod(0o755)
+        codex = self.bin / "codex"
+        codex.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+        codex.chmod(0o755)
         self.env = os.environ.copy()
         self.env.update(
             {
@@ -121,6 +130,26 @@ class SetupTests(unittest.TestCase):
             self.assertIn(str(target), output)
             self.assertIn(f"Diff: {target}", output)
         self.assertGreaterEqual(output.count("--- /dev/null"), len(targets))
+
+    def test_custom_effort_must_match_selected_backend(self):
+        choices = {
+            "deep_reasoner": ("claude", "opus", "max"),
+            "fast_worker": ("codex", "gpt-detected", "high"),
+            "arbiter": ("codex", "gpt-detected", "xhigh"),
+        }
+        status, _, error = self.run_cli(*self.custom_args(choices, action="--preview"))
+        self.assertEqual((0, ""), (status, error))
+
+        choices["deep_reasoner"] = ("claude", "opus", "minimal")
+        status, _, error = self.run_cli(*self.custom_args(choices, action="--preview"))
+        self.assertEqual(2, status)
+        self.assertIn("backend=claude", error)
+
+        choices["deep_reasoner"] = ("claude", "opus", "high")
+        choices["fast_worker"] = ("codex", "gpt-detected", "max")
+        status, _, error = self.run_cli(*self.custom_args(choices, action="--preview"))
+        self.assertEqual(2, status)
+        self.assertIn("backend=codex", error)
 
     def test_apply_is_idempotent_for_config_and_agents(self):
         self.assertEqual(0, self.run_cli(*self.claude_args())[0])
@@ -439,13 +468,12 @@ always_on_host_rules = false
             timestamp,
         )
         self.assertEqual((0, ""), (status, error))
-        self.assertEqual(2, output.count("PASS"))
+        self.assertEqual(3, output.count("PASS"))
         parsed = partner_setup.partner_config.validate_config(
             partner_setup.read_text(self.repo / ".partner" / "config.toml"), "codex"
         )
         identities = parsed["hosts"]["codex"]["identities"]
-        self.assertFalse(identities["deep_reasoner"]["verified"])
-        for identity in ("fast_worker", "arbiter"):
+        for identity in partner_setup.IDENTITIES:
             self.assertTrue(identities[identity]["verified"])
             self.assertEqual(timestamp, identities[identity]["verified_at"])
 
@@ -550,8 +578,10 @@ always_on_host_rules = false
         )
         self.assertEqual(codex_before, codex_after)
 
-    def test_claude_smoke_never_guesses_verified_true(self):
+    def test_claude_smoke_uses_fresh_session_and_records_verified(self):
         self.assertEqual(0, self.run_cli(*self.claude_args())[0])
+        arguments_log = self.root / "claude-smoke-args.txt"
+        self.env["PARTNER_TEST_CLAUDE_ARGS"] = str(arguments_log)
         status, output, error = self.run_cli(
             "--smoke",
             "--host",
@@ -562,12 +592,48 @@ always_on_host_rules = false
             "2026-07-20T01:02:03Z",
         )
         self.assertEqual((0, ""), (status, error))
-        self.assertIn("needs_new_session", output)
+        self.assertIn("PASS (fresh Claude session)", output)
+        arguments = arguments_log.read_text(encoding="utf-8").splitlines()
+        self.assertIn("--no-session-persistence", arguments)
+        self.assertIn("--no-chrome", arguments)
+        self.assertIn("--tools", arguments)
+        self.assertIn("--agent", arguments)
+        self.assertIn("partner-deep-reasoner", arguments)
         parsed = partner_setup.partner_config.validate_config(
             partner_setup.read_text(self.repo / ".partner" / "config.toml"),
             "claude_code",
         )
         identities = parsed["hosts"]["claude_code"]["identities"]
+        for identity in partner_setup.IDENTITIES:
+            self.assertTrue(identities[identity]["verified"])
+            self.assertEqual(
+                "2026-07-20T01:02:03Z", identities[identity]["verified_at"]
+            )
+
+    def test_claude_smoke_failure_keeps_only_that_identity_unverified(self):
+        self.assertEqual(0, self.run_cli(*self.codex_args())[0])
+        claude = self.bin / "claude"
+        claude.write_text(
+            "#!/bin/sh\nprintf 'model unavailable\\n' >&2\nexit 3\n",
+            encoding="utf-8",
+        )
+        status, output, error = self.run_cli(
+            "--smoke",
+            "--host",
+            "codex",
+            "--repo",
+            str(self.repo),
+            "--timestamp",
+            "2026-07-20T01:02:03Z",
+        )
+        self.assertEqual(1, status)
+        self.assertIn("deep_reasoner: FAIL", error)
+        self.assertIn("model unavailable", error)
+        self.assertEqual(2, output.count("PASS"))
+        parsed = partner_setup.partner_config.validate_config(
+            partner_setup.read_text(self.repo / ".partner" / "config.toml"), "codex"
+        )
+        identities = parsed["hosts"]["codex"]["identities"]
         self.assertFalse(identities["deep_reasoner"]["verified"])
         self.assertTrue(identities["fast_worker"]["verified"])
         self.assertTrue(identities["arbiter"]["verified"])

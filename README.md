@@ -41,7 +41,7 @@ bash install.sh --target codex
 bash install.sh --target claude
 ```
 
-装完第一次用之前，说一句「搭子，配置」：搭子会打开只监听 `127.0.0.1` 的本地单页 UI。均衡/质量/成本/自定义、三个身份的具体 CLI/模型/effort、项目或全局、生成项都在一页选完；页面先展示精确 diff，确认后才落盘。Codex 模型只读本机检测值或你的明确输入，绝不瞎猜。
+装完第一次用之前，说一句「搭子，配置」：搭子会打开只监听 `127.0.0.1` 的本地单页 UI。均衡/质量/成本三个起点和三个身份的具体 CLI/模型/effort 都在一页完成；页面先展示精确 diff，确认后才落盘。小白流程固定使用当前项目、本机 Git 忽略、安装后自动检查等安全默认值，不再追问高级选项。Codex 模型和每个模型支持的 effort 来自本机 CLI `model/list`，Claude 别名与 effort 来自 `claude --help`，绝不瞎猜。
 
 ## Showcase
 
@@ -208,7 +208,7 @@ Claude 里跑 Codex Review 验收当前 diff，发现问题你来修。
 - Session Receipt：把是否复用会话、是否新开 `claude -p`、检查、异常和监控等级写清楚，可用 `scripts/validate-receipt.py` 机器校验。
 - 配套工具：`scripts/make-handoff.sh` 自动生成 bounded handoff 并可持久化到 `.partner/`；`references/failure-playbook.md` 给每种异常固定恢复路径；`references/scenarios.md` 覆盖 review-only、debugging、非 UI、非 git、monorepo、跨天任务。
 - Darwin-style 验证门：一次只改一个协作维度，过检查才保留。
-- 首次配置向导（`搭子，配置`）：均衡/质量/成本预设或自定义，`.partner/config.toml` 是双宿主共享的单一事实源，预览 diff 再落盘，绝不覆盖你已有的 agent 文件；Codex 侧模型不硬编码猜测，探测不到就明确报错。
+- 首次配置向导（`搭子，配置`）：均衡/质量/成本预设可继续逐角色调整，`.partner/config.toml` 是双宿主共享的单一事实源；小白流程使用安全默认值，预览 diff 再落盘，绝不覆盖已有 agent 文件；模型和 effort 从两个 CLI 的真实能力列表读取，安装后自动启动无工具的新 Claude session 和 Codex dry-run 做验证。
 - Partner Session Receipt v2：新增 `host`/`scope`/`config_source`/`roles_used` 字段，能证明这次跑的到底是哪个模型、哪个 effort，而不只是"用了 Claude"。
 - 可选的完整协议（`references/goal-to-pr.md`）：Plan→Goal→PR→Verification，一路跑到 merge-ready + preview verified 为止；merge、上生产、打 tag、force-push、删除、破坏性迁移、对外发布，每一个都要单独一句祈使句授权。
 

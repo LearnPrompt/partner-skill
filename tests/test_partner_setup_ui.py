@@ -29,10 +29,46 @@ class SetupUITests(unittest.TestCase):
         self.bin = self.root / "bin"
         for path in (self.repo, self.home, self.codex_home, self.xdg, self.bin):
             path.mkdir()
-        for name, version in (("claude", "Claude Code 9.9"), ("codex", "codex-cli 8.8")):
-            executable = self.bin / name
-            executable.write_text(f"#!/bin/sh\nprintf '%s\\n' '{version}'\n", encoding="utf-8")
-            executable.chmod(0o755)
+        claude = self.bin / "claude"
+        claude.write_text(
+            "#!/bin/sh\n"
+            "if [ \"$1\" = \"--help\" ]; then\n"
+            "  printf '%s\\n' '--effort <level>  Effort level for the current session'\n"
+            "  printf '%s\\n' '                  (low, medium, high, xhigh, max)'\n"
+            "  printf \"Provide\\n  an alias for the latest model (e.g.\\n  'fable', 'opus', or 'sonnet').\\n\"\n"
+            "else\n"
+            "  printf 'Claude Code 9.9\\n'\n"
+            "fi\n",
+            encoding="utf-8",
+        )
+        claude.chmod(0o755)
+        codex = self.bin / "codex"
+        codex.write_text(
+            f"#!{sys.executable}\n"
+            "import json\n"
+            "import sys\n"
+            "if '--version' in sys.argv:\n"
+            "    print('codex-cli 8.8')\n"
+            "elif len(sys.argv) > 1 and sys.argv[1] == 'app-server':\n"
+            "    for line in sys.stdin:\n"
+            "        message = json.loads(line)\n"
+            "        if message.get('id') == 1:\n"
+            "            print(json.dumps({'id': 1, 'result': {'userAgent': 'test'}}), flush=True)\n"
+            "        elif message.get('id') == 2:\n"
+            "            models = [\n"
+            "                {'model': 'gpt-catalog', 'displayName': 'GPT Catalog', "
+            "'description': 'Account model', 'isDefault': True, "
+            "'supportedReasoningEfforts': [{'reasoningEffort': 'low'}, "
+            "{'reasoningEffort': 'high'}, {'reasoningEffort': 'ultra'}]},\n"
+            "                {'model': 'gpt-catalog-fast', 'displayName': 'GPT Catalog Fast', "
+            "'description': 'Fast model', 'isDefault': False, "
+            "'supportedReasoningEfforts': [{'reasoningEffort': 'medium'}]},\n"
+            "            ]\n"
+            "            print(json.dumps({'id': 2, 'result': {'data': models, "
+            "'nextCursor': None}}), flush=True)\n",
+            encoding="utf-8",
+        )
+        codex.chmod(0o755)
         (self.codex_home / "config.toml").write_text(
             'model = "gpt-detected"\nmodel_reasoning_effort = "xhigh"\n',
             encoding="utf-8",
@@ -87,6 +123,44 @@ class SetupUITests(unittest.TestCase):
                 for field in ("backend", "model", "effort")
             ),
         )
+        self.assertEqual(
+            ["gpt-catalog", "gpt-catalog-fast", "gpt-detected"],
+            [option["value"] for option in state["model_options"]["codex"]],
+        )
+        self.assertEqual(
+            ["low", "high"], state["model_options"]["codex"][0]["efforts"]
+        )
+        self.assertEqual(
+            ["fable", "opus", "sonnet", "haiku"],
+            [option["value"] for option in state["model_options"]["claude"]],
+        )
+        self.assertEqual(
+            ["low", "medium", "high", "xhigh", "max"],
+            state["model_options"]["claude"][0]["efforts"],
+        )
+        self.assertEqual(
+            {
+                "claude": ["low", "medium", "high", "xhigh", "max"],
+                "codex": ["minimal", "low", "medium", "high", "xhigh"],
+            },
+            state["efforts_by_backend"],
+        )
+        self.assertEqual("Codex CLI 自动获取", state["model_discovery"]["codex"])
+
+    def test_claude_context_variants_are_normalized_and_deduplicated(self):
+        options, _ = partner_setup_ui._claude_model_options(
+            str(self.bin / "claude"),
+            self.env,
+            {
+                "opus": "claude-opus-4-6[1m] 1M",
+                "opus_duplicate": "claude-opus-4-6",
+                "haiku": "haiku 1M",
+            },
+        )
+        values = [option["value"] for option in options]
+        self.assertEqual(1, values.count("haiku"))
+        self.assertEqual(1, values.count("claude-opus-4-6"))
+        self.assertNotIn("claude-opus-4-6[1m] 1M", values)
 
     def test_preview_is_zero_write_and_apply_requires_the_same_payload(self):
         controller = partner_setup_ui.SetupController("codex", self.repo, self.env)
@@ -133,9 +207,36 @@ class SetupUITests(unittest.TestCase):
         )
         self.assertEqual("low", normalized["identities"]["fast_worker"]["effort"])
 
+    def test_payload_rejects_effort_not_supported_by_backend_or_model(self):
+        controller = partner_setup_ui.SetupController("codex", self.repo, self.env)
+        payload = self.payload(controller)
+        payload["mode"] = "custom"
+        payload["identities"]["deep_reasoner"]["effort"] = "minimal"
+        with self.assertRaisesRegex(partner_setup_ui.UIError, "claude/opus"):
+            partner_setup_ui.normalize_payload(
+                payload,
+                host="codex",
+                repo=self.repo,
+                env=self.env,
+                model_options=controller.initial_state["model_options"],
+            )
+
+        payload = self.payload(controller)
+        payload["mode"] = "custom"
+        payload["identities"]["fast_worker"]["model"] = "gpt-catalog-fast"
+        payload["identities"]["fast_worker"]["effort"] = "high"
+        with self.assertRaisesRegex(partner_setup_ui.UIError, "可选值：medium"):
+            partner_setup_ui.normalize_payload(
+                payload,
+                host="codex",
+                repo=self.repo,
+                env=self.env,
+                model_options=controller.initial_state["model_options"],
+            )
+
     def test_ui_keeps_the_taste_design_and_accessibility_contract(self):
         html = partner_setup_ui.HTML
-        self.assertIn("Variance 6, motion 6, density 5", html)
+        self.assertIn("Variance 4, motion 5, density 4", html)
         self.assertIn('class="hero-map"', html)
         self.assertIn('class="matrix" id="identities"', html)
         self.assertIn(".main-heading,.settings-head", html)
@@ -149,6 +250,26 @@ class SetupUITests(unittest.TestCase):
         self.assertIn("prefers-reduced-motion:reduce", html)
         self.assertIn('role="status" aria-live="polite"', html)
         self.assertIn('aria-describedby="${identity}-source"', html)
+        self.assertIn('<select id="${identity}-model" data-field="model"', html)
+        self.assertNotIn('type="text" data-field="model"', html)
+        self.assertIn("Codex 模型从本机账户自动读取", html)
+        self.assertIn('id="technicalDetails"', html)
+        self.assertIn("查看完整路径和技术 diff", html)
+        self.assertIn("我确认安装到当前项目", html)
+        self.assertIn("scope: 'project'", html)
+        self.assertIn("exclude_choice: 'git-exclude'", html)
+        self.assertIn("function effortCatalog(backend, model)", html)
+        self.assertIn("syncEffort(matrix[identity])", html)
+        self.assertIn("安装完成，但自动检查未通过", html)
+        for advanced_label in (
+            "写入与验证",
+            "写入范围",
+            "所有项目",
+            "项目配置的 Git 处理",
+            "常驻路由块",
+            "smoke test",
+        ):
+            self.assertNotIn(advanced_label, html)
         for forbidden in ("backdrop-filter", "—", "–", " · "):
             self.assertNotIn(forbidden, html)
 

@@ -24,28 +24,27 @@ Pick exactly one:
 
 ## Single-page UI
 
-1. **Detection (display)** — show current host, both CLIs' availability
-   (`claude` and `codex` on
-   PATH — an identity can only use a backend whose CLI is installed),
-   existing config (if any), and detected model/effort values with their
-   source tag (`detected` from host config | `built-in` alias |
-   `custom (unverified)`). If a config with another host's namespace
-   already exists, jump to *Second host joining* below.
+1. **Detection (display)** — show current host, both CLIs' availability,
+   versions, existing config (if any), and every model/effort source. Codex
+   models and each model's supported effort values come from the account-aware
+   CLI `model/list`; the current config value is preserved if absent from that
+   response. Claude aliases come from `claude --help` plus the stable
+   `fable`/`opus`/`sonnet`/`haiku` aliases, with `[1m]`/`1M` context variants
+   normalized and deduplicated. Claude effort values come from the same help
+   output. Never render one shared effort enum for both CLIs.
 2. **Work mode and full matrix** — offer 均衡 balanced (default) / 质量 quality /
-   成本 cost / 自定义 custom. Each preset carries a full identity matrix —
-   three identities (deep_reasoner / fast_worker / arbiter), each with its
-   own backend (which CLI executes), model, and effort, freely mixed across
-   vendors. Only custom expands the per-identity backend → model → effort
-   controls in the same page. Codex-backend models are never offered from a
-   hardcoded list: fill the detected value or require an explicit string. If
-   arbiter and deep_reasoner end up on the same
-   backend, warn that the blind cross-check loses independence — allow it,
-   but say it.
-3. **Scope & writes** — include scope: 当前项目 project (default) / 所有项目
-   global. Write items: generate Claude agent files ☑ (only for identities
-   whose backend is claude) / persistent routing block ☐ (default OFF —
-   plain "no" is the right answer unless the user asked for always-on
-   routing rules).
+   成本 cost as starting points. The three identity rows (deep_reasoner /
+   fast_worker / arbiter) always keep their backend → model → effort controls
+   visible. Changing any row makes the matrix custom internally. Switching a
+   backend or model immediately constrains effort to that exact selection's
+   supported values and falls back to the nearest safe value (prefer `high`)
+   when the old value is invalid.
+3. **Beginner-safe write policy** — do not ask first-time users to choose
+   scope, Git treatment, routing blocks, generated files, or whether to run a
+   smoke test. The UI fixes these to: current project, `.git/info/exclude`, no
+   persistent routing block, host-appropriate generated Claude agents, and
+   automatic smoke. Advanced callers can still use `partner-setup.py` directly
+   for global scope or explicit overrides.
 
 4. **Preview** — the UI runs `partner-setup.py --preview ...` with the current
    controls and shows exact file paths and diffs inline. Any control change
@@ -56,13 +55,15 @@ Pick exactly one:
    written. If the repo-scope config is not git-ignored, the engine handles
    the exclude choice (default: one line in `.git/info/exclude`); relay its
    report.
-6. **Smoke test (recommended, skippable, never blocking)** —
-   `partner-setup.py --smoke`. Codex-backend identities verify through the
-   delegate dry-run chain and get `verified=true` written back.
-   Claude-backend agent files are only visible to *new* sessions: the
-   engine reports `needs_new_session`; tell the user verification completes
-   automatically on first real use in a fresh session. Never claim verified
-   without engine evidence.
+6. **Automatic smoke test** — run `partner-setup.py --smoke` after apply.
+   Codex-backend identities verify through the delegate dry-run chain.
+   Claude-backend identities start a fresh, tool-free, non-persistent Claude
+   CLI session using the selected model and effort; a generated namespaced
+   agent is selected when the Claude Code host wrote one. Only a successful
+   backend check writes `verified=true` and one shared `verified_at` timestamp.
+   Apply remains a completed write if smoke fails, but the UI must visibly say
+   `安装完成，但自动检查未通过` and preserve `verified=false` for the failed
+   identity.
 7. Point the user at "搭子，试跑" (`references/tryout.md`) — the real
    end-to-end proof pass where every identity runs a micro-task and a
    report shows each one live on its configured model. Close with a normal
@@ -71,15 +72,11 @@ Pick exactly one:
 ## Second host joining (incremental merge)
 
 When a config already exists with the other host's namespace, show a short
-summary of the existing host's roles, then one three-way choice:
-
-- **接入并添加本宿主配置** (default) — continue the wizard; only
-  `hosts.<self>` sections are added, the other host's bytes are untouched
-  (show the engine preview as proof).
-- **仅用共享 Goal/Loop，不生成配置** — stop; nothing is written.
-- **返回，不做修改** — stop.
-
-Never re-run an overwrite-style initialization on an existing config.
+summary and use the beginner-safe incremental path automatically: add only
+`hosts.<self>` sections and byte-preserve the peer namespace. The preview is
+the proof. Never re-run an overwrite-style initialization on an existing
+config. Advanced callers who want shared Goal/Loop without another host config
+can stop the UI and use the terminal workflow explicitly.
 
 ## Existing user agents (claude_code host)
 
@@ -96,12 +93,13 @@ a path (exists, not in the manifest), offer the three-way:
 
 ## Rules
 
-- Show all setup choices and all three concrete models in one local page.
+- Show all three identities and their concrete backend/model/effort selections
+  in one local page.
 - Values the engine detected are filled and source-labelled, not re-asked.
 - Preview before every write; the user sees paths + diffs, not a summary.
-- No silent fallback: if a model/effort combination fails at apply or
-  smoke, surface the engine's original error and offer to re-run setup —
-  never swap models quietly.
+- No silent model fallback. Effort may only be adjusted to an advertised value
+  while the user is changing backend/model in the UI; apply and smoke surface
+  unsupported combinations and never swap models quietly.
 - `--rollback` restores the last-apply backup; offer it if the user is
   unhappy right after an apply.
 - User-owned files (their agents, hand-written CLAUDE.md/AGENTS.md content)

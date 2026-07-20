@@ -31,7 +31,13 @@ SPEC.loader.exec_module(partner_config)
 
 IDENTITIES = partner_config.IDENTITIES
 BACKENDS = partner_config.BACKENDS
-EFFORTS = ("minimal", "low", "medium", "high", "xhigh")
+CLAUDE_EFFORTS = ("low", "medium", "high", "xhigh", "max")
+CODEX_EFFORTS = ("minimal", "low", "medium", "high", "xhigh")
+BACKEND_EFFORTS = {
+    "claude": CLAUDE_EFFORTS,
+    "codex": CODEX_EFFORTS,
+}
+EFFORTS = tuple(dict.fromkeys((*CODEX_EFFORTS, *CLAUDE_EFFORTS)))
 BEGIN_MARKER = "<!-- BEGIN PARTNER MANAGED ROUTING (do not edit; managed by partner-skill) -->"
 END_MARKER = "<!-- END PARTNER MANAGED ROUTING -->"
 HASH_PREFIX = "<!-- partner-content-hash:sha256:"
@@ -63,6 +69,18 @@ PRESETS: Dict[str, Dict[str, Tuple[str, Optional[str], str]]] = {
 
 class SetupError(Exception):
     """A user-actionable setup failure."""
+
+
+def validate_backend_efforts(identities: Mapping[str, Mapping[str, Any]]) -> None:
+    for identity, values in identities.items():
+        backend = values["backend"]
+        effort = values["effort"]
+        supported = BACKEND_EFFORTS[backend]
+        if effort not in supported:
+            raise SetupError(
+                f"--role-effort for {identity} with backend={backend} must be one of "
+                f"{', '.join(supported)}"
+            )
 
 @dataclass
 class FileChange:
@@ -240,6 +258,7 @@ def choose_identities(
                 "verified": False,
             }
             sources[identity] = {field: "custom" for field in ("backend", "model", "effort")}
+        validate_backend_efforts(identities)
         return identities, sources, notes
 
     codex_detected = detect_codex(env)
@@ -289,6 +308,7 @@ def choose_identities(
             "${CODEX_HOME:-$HOME/.codex}/config.toml or pass "
             f"{examples}; no model name is guessed."
         )
+    validate_backend_efforts(identities)
     return identities, sources, notes
 
 def preserve_verification(
@@ -758,6 +778,59 @@ def show_status(args: argparse.Namespace, env: Mapping[str, str]) -> int:
         )
     return 0
 
+
+def smoke_claude_identity(
+    args: argparse.Namespace,
+    env: Mapping[str, str],
+    identity: str,
+    values: Mapping[str, Any],
+) -> Tuple[bool, str]:
+    claude = shutil.which("claude", path=env.get("PATH"))
+    if not claude:
+        return False, "Claude CLI not found"
+    command = [
+        claude,
+        "--print",
+        "--no-session-persistence",
+        "--no-chrome",
+        "--permission-mode",
+        "plan",
+        "--tools",
+        "",
+        "--model",
+        str(values["model"]),
+        "--effort",
+        str(values["effort"]),
+    ]
+    agent_path = _agent_paths(args, env)[identity]
+    if args.host == "claude_code" and agent_path.is_file():
+        command.extend(("--agent", f"partner-{identity.replace('_', '-')}"))
+    command.append(
+        "This is a configuration smoke test. Reply with exactly "
+        "PARTNER_SMOKE_OK and nothing else. Do not use tools."
+    )
+    try:
+        result = subprocess.run(
+            command,
+            cwd=args.repo,
+            env=dict(env),
+            text=True,
+            capture_output=True,
+            check=False,
+            timeout=120,
+        )
+    except subprocess.TimeoutExpired:
+        return False, "fresh Claude session timed out after 120 seconds"
+    except OSError as error:
+        return False, f"fresh Claude session could not start: {error}"
+    if result.returncode != 0:
+        detail = (result.stderr or result.stdout).strip()
+        return False, detail or f"Claude CLI exited {result.returncode}"
+    if "PARTNER_SMOKE_OK" not in result.stdout:
+        return False, "fresh Claude session returned an unexpected response"
+    return True, ""
+
+
 def smoke(args: argparse.Namespace, env: Mapping[str, str]) -> int:
     resolved = partner_config.resolve_config(args.repo, args.host, env=env)
     configured = resolved["hosts"][args.host]["identities"]
@@ -774,7 +847,15 @@ def smoke(args: argparse.Namespace, env: Mapping[str, str]) -> int:
         prompt.flush()
         for identity in IDENTITIES:
             if configured[identity]["backend"] == "claude":
-                print(f"{identity}: needs_new_session; verified remains false")
+                passed, detail = smoke_claude_identity(
+                    args, env, identity, configured[identity]
+                )
+                if passed:
+                    successes.append(identity)
+                    print(f"{identity}: PASS (fresh Claude session)")
+                else:
+                    failures = True
+                    print(f"{identity}: FAIL\n{detail}", file=sys.stderr)
                 continue
             result = subprocess.run(
                 [
@@ -997,7 +1078,7 @@ def build_parser() -> argparse.ArgumentParser:
     action.add_argument("--apply", action="store_true", help="Atomically apply the same plan shown by --preview.")
     action.add_argument("--interactive", action="store_true", help="Run the pure-terminal fallback wizard.")
     action.add_argument("--rollback", action="store_true", help="Restore the newest apply backup.")
-    action.add_argument("--smoke", action="store_true", help="Smoke-check configured identities and record successful Codex checks.")
+    action.add_argument("--smoke", action="store_true", help="Smoke-check configured identities and record successful backend checks.")
     action.add_argument("--uninstall", action="store_true", help="Remove manifest-tracked generated files, the managed routing block, and optionally this host's config.")
     parser.add_argument("--host", choices=("claude_code", "codex"), help="Host namespace (required for preview/apply; otherwise auto-detected when possible).")
     parser.add_argument("--scope", choices=("project", "global"), default="project", help="Config/artifact scope (default: project).")

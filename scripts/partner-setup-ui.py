@@ -9,16 +9,19 @@ import hmac
 import importlib.util
 import json
 import os
+import re
 import secrets
+import selectors
 import shutil
 import subprocess
 import sys
 import threading
+import time
 import webbrowser
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from typing import Any, Dict, Mapping, Optional, Sequence
+from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple
 from urllib.parse import parse_qs, urlparse
 
 
@@ -35,6 +38,9 @@ MODES = ("balanced", "quality", "cost", "custom")
 SCOPES = ("project", "global")
 EXCLUDE_CHOICES = ("git-exclude", "self", "track")
 ROUTING_ACTIONS = ("none", "write", "remove")
+CLAUDE_MODEL_ALIASES = ("fable", "opus", "sonnet", "haiku")
+CLAUDE_EFFORTS = ("low", "medium", "high", "xhigh", "max")
+CODEX_EFFORTS = ("minimal", "low", "medium", "high", "xhigh")
 IDENTITY_META = {
     "deep_reasoner": {
         "label": "深度推理",
@@ -77,19 +83,236 @@ def _version(name: str, env: Mapping[str, str]) -> Dict[str, Any]:
     return _binary_version(shutil.which(name, path=env.get("PATH")), env, "PATH")
 
 
-def _codex_version(env: Mapping[str, str]) -> Dict[str, Any]:
+def _codex_path(env: Mapping[str, str]) -> Tuple[Optional[str], str]:
     configured = env.get("PARTNER_CODEX_BIN")
     if configured:
         path = configured if "/" in configured else shutil.which(configured, path=env.get("PATH"))
-        return _binary_version(path, env, "PARTNER_CODEX_BIN")
+        return path, "PARTNER_CODEX_BIN"
     if sys.platform == "darwin":
         for candidate in (
             "/Applications/ChatGPT.app/Contents/Resources/codex",
             "/Applications/Codex.app/Contents/Resources/codex",
         ):
             if os.access(candidate, os.X_OK):
-                return _binary_version(candidate, env, "app")
-    return _version("codex", env)
+                return candidate, "app"
+    return shutil.which("codex", path=env.get("PATH")), "PATH"
+
+
+def _codex_version(env: Mapping[str, str]) -> Dict[str, Any]:
+    path, source = _codex_path(env)
+    return _binary_version(path, env, source)
+
+
+def _send_json_line(process: subprocess.Popen[str], payload: Mapping[str, Any]) -> None:
+    if process.stdin is None:
+        raise OSError("Codex app-server stdin is unavailable")
+    process.stdin.write(json.dumps(payload, ensure_ascii=False, separators=(",", ":")) + "\n")
+    process.stdin.flush()
+
+
+def _read_json_response(
+    process: subprocess.Popen[str], request_id: int, *, timeout: float
+) -> Dict[str, Any]:
+    if process.stdout is None:
+        raise OSError("Codex app-server stdout is unavailable")
+    deadline = time.monotonic() + timeout
+    selector = selectors.DefaultSelector()
+    selector.register(process.stdout, selectors.EVENT_READ)
+    try:
+        while True:
+            remaining = deadline - time.monotonic()
+            if remaining <= 0 or not selector.select(remaining):
+                raise subprocess.TimeoutExpired(process.args, timeout)
+            line = process.stdout.readline()
+            if not line:
+                raise OSError("Codex app-server closed before returning the model list")
+            try:
+                message = json.loads(line)
+            except ValueError:
+                continue
+            if message.get("id") == request_id:
+                if "error" in message:
+                    raise OSError(str(message["error"]))
+                result = message.get("result")
+                if not isinstance(result, dict):
+                    raise OSError("Codex app-server returned an invalid response")
+                return result
+    finally:
+        selector.close()
+
+
+def _codex_model_options(
+    path: Optional[str], env: Mapping[str, str]
+) -> Tuple[List[Dict[str, Any]], str]:
+    if not path:
+        return [], "Codex CLI 未安装"
+    process: Optional[subprocess.Popen[str]] = None
+    try:
+        process = subprocess.Popen(
+            [path, "app-server", "--listen", "stdio://"],
+            env=dict(env),
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+            text=True,
+            bufsize=1,
+        )
+        _send_json_line(
+            process,
+            {
+                "id": 1,
+                "method": "initialize",
+                "params": {
+                    "clientInfo": {"name": "partner-setup", "version": "1"},
+                    "capabilities": {"experimentalApi": True},
+                },
+            },
+        )
+        _read_json_response(process, 1, timeout=5)
+        _send_json_line(process, {"method": "initialized", "params": {}})
+        _send_json_line(
+            process,
+            {
+                "id": 2,
+                "method": "model/list",
+                "params": {"includeHidden": False, "limit": 100},
+            },
+        )
+        response = _read_json_response(process, 2, timeout=5)
+        data = response.get("data")
+        if not isinstance(data, list):
+            raise OSError("Codex model/list did not return a list")
+        options: List[Dict[str, Any]] = []
+        for item in data:
+            if not isinstance(item, dict) or not isinstance(item.get("model"), str):
+                continue
+            value = item["model"].strip()
+            if not value:
+                continue
+            effort_items = item.get("supportedReasoningEfforts", [])
+            efforts = [
+                entry["reasoningEffort"]
+                for entry in effort_items
+                if isinstance(entry, dict)
+                and entry.get("reasoningEffort") in CODEX_EFFORTS
+            ]
+            options.append(
+                {
+                    "value": value,
+                    "label": item.get("displayName") or value,
+                    "description": item.get("description") or "",
+                    "source": "codex model/list",
+                    "efforts": efforts,
+                    "is_default": bool(item.get("isDefault")),
+                }
+            )
+        return options, "Codex CLI 自动获取" if options else "Codex CLI 未返回可选模型"
+    except (OSError, ValueError, subprocess.TimeoutExpired):
+        return [], "Codex CLI 模型列表读取失败"
+    finally:
+        if process is not None and process.poll() is None:
+            process.terminate()
+            try:
+                process.wait(timeout=1)
+            except subprocess.TimeoutExpired:
+                process.kill()
+                process.wait(timeout=1)
+        if process is not None:
+            for stream in (process.stdin, process.stdout):
+                if stream is not None:
+                    stream.close()
+
+
+def _canonical_claude_model(value: str) -> str:
+    """Collapse Claude context-window variants into one model choice."""
+    normalized = re.sub(r"\[1m\]", "", value.strip(), flags=re.IGNORECASE)
+    return re.sub(r"\s+1m$", "", normalized, flags=re.IGNORECASE).strip()
+
+
+def _claude_model_options(
+    path: Optional[str], env: Mapping[str, str], detected: Mapping[str, str]
+) -> Tuple[List[Dict[str, Any]], str]:
+    aliases: List[str] = []
+    efforts = list(CLAUDE_EFFORTS)
+    if path:
+        try:
+            result = subprocess.run(
+                [path, "--help"],
+                env=dict(env),
+                text=True,
+                capture_output=True,
+                check=False,
+                timeout=5,
+            )
+            help_text = result.stdout or result.stderr
+            example = re.search(
+                r"Provide\s+an\s+alias.*?\(e\.g\.(.*?)\)", help_text, flags=re.DOTALL
+            )
+            if example:
+                aliases = re.findall(r"'([^']+)'", example.group(1))
+            effort_help = re.search(
+                r"--effort\s+<level>.*?\(([^)\n]+)\)", help_text, flags=re.DOTALL
+            )
+            if effort_help:
+                detected_efforts = [
+                    value.strip() for value in effort_help.group(1).split(",")
+                ]
+                if detected_efforts and all(
+                    value in engine.CLAUDE_EFFORTS for value in detected_efforts
+                ):
+                    efforts = detected_efforts
+        except (OSError, subprocess.TimeoutExpired):
+            pass
+    aliases = [
+        normalized
+        for alias in (*aliases, *CLAUDE_MODEL_ALIASES)
+        if (normalized := _canonical_claude_model(alias))
+    ]
+    options = [
+        {
+            "value": alias,
+            "label": alias.capitalize(),
+            "description": "Claude Code 官方滚动别名",
+            "source": "claude --help",
+            "efforts": efforts,
+            "is_default": alias == "opus",
+        }
+        for alias in dict.fromkeys(aliases)
+    ]
+    known = {option["value"] for option in options}
+    for detected_value in detected.values():
+        value = _canonical_claude_model(detected_value)
+        if value and value not in known:
+            options.append(
+                {
+                    "value": value,
+                    "label": value,
+                    "description": "本机 Claude 配置中已使用",
+                    "source": "local claude config",
+                    "efforts": efforts,
+                    "is_default": False,
+                }
+            )
+            known.add(value)
+    source = "Claude CLI 官方别名" if path else "Claude 官方别名兜底"
+    return options, source
+
+
+def _ensure_model_option(
+    options: List[Dict[str, Any]], value: str, source: str, backend: str
+) -> None:
+    if not value or any(option["value"] == value for option in options):
+        return
+    options.append(
+        {
+            "value": value,
+            "label": value,
+            "description": "当前配置中已使用",
+            "source": source,
+            "efforts": list(engine.BACKEND_EFFORTS[backend]),
+            "is_default": False,
+        }
+    )
 
 
 def _preset_matrices(env: Mapping[str, str]) -> Dict[str, Dict[str, Dict[str, str]]]:
@@ -135,6 +358,24 @@ def build_state(host: str, repo: Path, env: Mapping[str, str]) -> Dict[str, Any]
     peer_identities = peer_resolved["hosts"][peer]["identities"]
     codex_detected = engine.detect_codex(env)
     claude_detected = engine.detect_claude(env)
+    claude_cli = _version("claude", env)
+    codex_cli = _codex_version(env)
+    codex_options, codex_discovery = _codex_model_options(codex_cli["path"], env)
+    claude_options, claude_discovery = _claude_model_options(
+        claude_cli["path"], env, claude_detected
+    )
+    option_sets = {"claude": claude_options, "codex": codex_options}
+    for matrix in (*presets.values(), current, peer_identities):
+        for values in matrix.values():
+            backend = values.get("backend")
+            model = values.get("model")
+            if backend in option_sets and isinstance(model, str):
+                _ensure_model_option(
+                    option_sets[backend],
+                    model,
+                    values.get("model_source", "existing config"),
+                    backend,
+                )
     initial_mode = "custom" if current else "balanced"
     initial_matrix = current or presets["balanced"]
     return {
@@ -142,18 +383,26 @@ def build_state(host: str, repo: Path, env: Mapping[str, str]) -> Dict[str, Any]
         "repo": str(repo),
         "config_source": resolved["source"],
         "clis": {
-            "claude": _version("claude", env),
-            "codex": _codex_version(env),
+            "claude": claude_cli,
+            "codex": codex_cli,
         },
         "detected": {
             "codex_model": codex_detected.get("model"),
             "codex_effort": codex_detected.get("model_reasoning_effort"),
             "claude_models": claude_detected,
         },
+        "model_options": option_sets,
+        "model_discovery": {
+            "claude": claude_discovery,
+            "codex": codex_discovery,
+        },
         "presets": presets,
         "initial_mode": initial_mode,
         "initial_matrix": initial_matrix,
-        "efforts": list(engine.EFFORTS),
+        "efforts_by_backend": {
+            "claude": list(CLAUDE_EFFORTS),
+            "codex": list(CODEX_EFFORTS),
+        },
         "identity_meta": IDENTITY_META,
         "peer": {
             "host": peer,
@@ -179,6 +428,7 @@ def normalize_payload(
     host: str,
     repo: Path,
     env: Mapping[str, str],
+    model_options: Optional[Mapping[str, Sequence[Mapping[str, Any]]]] = None,
 ) -> Dict[str, Any]:
     if not isinstance(raw, dict):
         raise UIError("请求必须是 JSON 对象")
@@ -213,12 +463,28 @@ def normalize_payload(
         backend = values.get("backend")
         if backend not in engine.BACKENDS:
             raise UIError(f"{identity} 的 CLI 无效")
+        model = _clean_string(values.get("model"), f"{identity} model")
         effort = values.get("effort")
-        if effort not in engine.EFFORTS:
-            raise UIError(f"{identity} 的 effort 无效")
+        supported_efforts = engine.BACKEND_EFFORTS[backend]
+        if model_options:
+            option = next(
+                (
+                    candidate
+                    for candidate in model_options.get(backend, ())
+                    if candidate.get("value") == model
+                ),
+                None,
+            )
+            if option and option.get("efforts"):
+                supported_efforts = tuple(option["efforts"])
+        if effort not in supported_efforts:
+            raise UIError(
+                f"{identity} 的思考深度 {effort} 不受 {backend}/{model} 支持；"
+                f"可选值：{', '.join(supported_efforts)}"
+            )
         identities[identity] = {
             "backend": backend,
-            "model": _clean_string(values.get("model"), f"{identity} model"),
+            "model": model,
             "effort": effort,
         }
     if mode != "custom":
@@ -305,7 +571,13 @@ class SetupController:
         )
 
     def preview(self, raw: Any) -> Dict[str, Any]:
-        payload = normalize_payload(raw, host=self.host, repo=self.repo, env=self.env)
+        payload = normalize_payload(
+            raw,
+            host=self.host,
+            repo=self.repo,
+            env=self.env,
+            model_options=self.initial_state["model_options"],
+        )
         with self.lock:
             result = self._run(engine_arguments(payload, "--preview"))
             self.preview_digest = _digest(payload) if result.returncode == 0 else None
@@ -320,10 +592,16 @@ class SetupController:
         }
 
     def apply(self, raw: Any) -> Dict[str, Any]:
-        payload = normalize_payload(raw, host=self.host, repo=self.repo, env=self.env)
+        payload = normalize_payload(
+            raw,
+            host=self.host,
+            repo=self.repo,
+            env=self.env,
+            model_options=self.initial_state["model_options"],
+        )
         with self.lock:
             if self.preview_digest != _digest(payload) or self.preview_code != 0:
-                raise UIError("当前选择还没有通过精确预览，请先点击“生成精确预览”")
+                raise UIError("当前选择还没有通过精确预览，请先点击“预览安装内容”")
             fresh = self._run(engine_arguments(payload, "--preview"))
             if (
                 fresh.returncode != self.preview_code
@@ -519,7 +797,7 @@ HTML = r'''<!doctype html>
     }
   </style>
   <style>
-    /* Reading this as a precise local Agent setup tool for first-time users, with a kinetic instrument-panel language. Variance 6, motion 6, density 5. */
+    /* Reading this as a calm local Agent installer for first-time users. Variance 4, motion 5, density 4. */
     :root {
       color-scheme:light;
       --canvas:#f0f1ec;
@@ -547,8 +825,7 @@ HTML = r'''<!doctype html>
     .brand { display:flex; align-items:center; gap:11px; font-weight:680; letter-spacing:-.025em; }
     .brand-mark { width:32px; height:32px; display:grid; place-items:center; border-radius:10px; background:var(--ink); color:var(--paper); font-weight:760; }
     .brand small { display:block; color:var(--muted-v2); font:10px/1.2 var(--mono-v2); letter-spacing:.03em; }
-    .local-state { display:flex; align-items:center; gap:8px; color:var(--muted-v2); font:11px var(--mono-v2); }
-    .local-state::before { content:""; width:7px; height:7px; border-radius:50%; background:var(--accent-v2); box-shadow:0 0 0 4px rgba(231,91,56,.12); }
+    .local-state { color:var(--muted-v2); font:11px var(--mono-v2); }
     .hero { min-height:430px; display:grid; grid-template-columns:minmax(0,1fr) minmax(440px,.85fr); gap:clamp(36px,7vw,100px); align-items:center; padding:42px 0 54px; }
     .hero-copy { align-self:center; }
     .hero h1 { max-width:760px; margin:0; color:var(--ink); font:760 clamp(46px,6vw,78px)/.98 var(--display); letter-spacing:-.065em; text-wrap:balance; }
@@ -591,7 +868,7 @@ HTML = r'''<!doctype html>
     .config-heading { max-width:680px; margin-bottom:24px; }
     .config-heading h2 { color:var(--ink); font:720 clamp(30px,4vw,48px)/1.05 var(--display); letter-spacing:-.045em; }
     .config-heading p { max-width:570px; margin-top:10px; color:var(--muted-v2); font-size:14px; }
-    .modes { display:grid; grid-template-columns:repeat(4,1fr); gap:5px; padding:5px; border-radius:18px; background:var(--ink); box-shadow:0 20px 45px rgba(66,54,43,.14); }
+    .modes { display:grid; grid-template-columns:repeat(3,1fr); gap:5px; padding:5px; border-radius:18px; background:var(--ink); box-shadow:0 20px 45px rgba(66,54,43,.14); }
     .mode { appearance:none; width:100%; min-height:86px; display:block; position:relative; overflow:hidden; padding:15px 16px; border:0; border-radius:13px; background:transparent; color:#b8bbb2; text-align:left; cursor:pointer; }
     .mode strong { position:relative; z-index:1; display:block; margin:0 0 6px; color:inherit; font:680 15px var(--body); }
     .mode small { position:relative; z-index:1; display:block; color:inherit; font:10px/1.45 var(--mono-v2); opacity:.75; }
@@ -629,8 +906,13 @@ HTML = r'''<!doctype html>
     .settings-head { background:var(--accent-soft); }
     .settings-head h2 { color:var(--ink); font:700 21px/1.15 var(--display); letter-spacing:-.03em; }
     .settings-head p { margin-top:7px; color:#765c53; font-size:12px; }
-    .settings-body { padding:18px 22px 6px; }
-    .setting-block + .setting-block { margin-top:16px; padding-top:16px; border-top:1px solid var(--line-v2); }
+    .settings-body { padding:8px 22px 4px; }
+    .setup-summary { list-style:none; margin:0; padding:0; }
+    .setup-item { display:grid; grid-template-columns:28px 1fr; gap:11px; padding:15px 0; border-bottom:1px solid var(--line-v2); }
+    .setup-item:last-child { border-bottom:0; }
+    .setup-check { width:28px; height:28px; display:grid; place-items:center; border-radius:9px; background:var(--ink); color:var(--paper); font:700 13px var(--body); }
+    .setup-item strong { display:block; color:var(--ink); font-size:13px; }
+    .setup-item small { display:block; margin-top:3px; color:var(--muted-v2); font-size:11px; line-height:1.45; }
     .choice { color:var(--ink-soft); }
     .choice input { accent-color:var(--accent-v2); }
     .choice:has(input:disabled) { color:#9a9d95; }
@@ -638,8 +920,6 @@ HTML = r'''<!doctype html>
     .peer h2 { color:#7d5617; }
     .actions { display:grid; gap:10px; margin:12px 22px 18px; padding:14px 0 0; border-top:1px solid var(--line-v2); background:transparent; }
     .status { width:100%; margin:0; color:var(--muted-v2); text-align:left; font-size:11px; }
-    .status::before { content:""; display:inline-block; width:7px; height:7px; margin-right:8px; border-radius:50%; background:#aeb2a6; vertical-align:1px; }
-    [aria-busy="true"] .status::before { background:var(--accent-v2); }
     button.primary,button.apply { min-height:48px; border:1px solid var(--ink); border-radius:13px; padding:11px 17px; background:var(--ink); color:var(--paper); font-weight:700; }
     button.primary { width:100%; position:relative; overflow:hidden; }
     button.primary::after { content:""; position:absolute; inset:-80% -35%; background:linear-gradient(90deg,transparent,rgba(255,255,255,.22),transparent); transform:translateX(-70%) rotate(12deg); }
@@ -651,6 +931,12 @@ HTML = r'''<!doctype html>
     .output-section h2 { color:var(--ink); font:700 22px var(--display); }
     .output-section.stale { opacity:.5; transform:scale(.99); }
     .output-section.has-error { border-left:4px solid var(--accent-v2); padding-left:24px; }
+    .preview-plan { margin:15px 0; padding:4px 18px; border:1px solid var(--line-v2); border-radius:16px; background:var(--paper-strong); }
+    .preview-plan .setup-item { grid-template-columns:24px 1fr; padding:12px 0; }
+    .preview-plan .setup-check { width:24px; height:24px; border-radius:8px; font-size:12px; }
+    .technical-details { margin-top:12px; }
+    .technical-details summary { width:max-content; max-width:100%; color:var(--accent-deep); font-size:12px; font-weight:650; cursor:pointer; }
+    .technical-details pre { margin-top:12px; }
     pre { border:0; border-radius:16px; background:var(--ink); color:#e8eadf; box-shadow:inset 0 1px rgba(255,255,255,.08); }
     .confirm { justify-content:flex-end; }
     .confirm label { color:var(--ink); }
@@ -670,7 +956,6 @@ HTML = r'''<!doctype html>
       .identity { animation:row-enter .48s cubic-bezier(.16,1,.3,1) both; animation-delay:calc(var(--row,0) * .07s); }
       .identity:hover { transform:translateY(-3px); }
       .output-section[style*="block"] { animation:output-enter .5s cubic-bezier(.16,1,.3,1) both; }
-      [aria-busy="true"] .status::before { animation:busy-pulse 1s ease-in-out infinite; }
       [aria-busy="true"] button.primary::after { animation:button-scan 1.3s ease-in-out infinite; }
     }
     @keyframes rise-in { from { opacity:0; transform:translateY(22px); } to { opacity:1; transform:translateY(0); } }
@@ -679,14 +964,11 @@ HTML = r'''<!doctype html>
     @keyframes output-enter { from { opacity:0; transform:translateY(18px) scale(.985); } to { opacity:1; transform:none; } }
     @keyframes signal-run { 0% { opacity:0; transform:translateX(0) scale(.75); } 18% { opacity:1; } 80% { opacity:1; } 100% { opacity:0; transform:translateX(150px) scale(1); } }
     @keyframes core-breathe { 0%,100% { opacity:.35; transform:scale(.96); } 50% { opacity:1; transform:scale(1.04); } }
-    @keyframes busy-pulse { 0%,100% { transform:scale(.8); opacity:.5; } 50% { transform:scale(1.35); opacity:1; } }
     @keyframes button-scan { from { transform:translateX(-70%) rotate(12deg); } to { transform:translateX(70%) rotate(12deg); } }
     @media (max-width:1040px) {
       .hero { grid-template-columns:1fr 1fr; gap:34px; }
       .config-grid { grid-template-columns:1fr; }
       .settings-panel { position:static; }
-      .settings-body { display:grid; grid-template-columns:1fr 1fr; gap:22px; }
-      .setting-block + .setting-block { margin:0; padding:0 0 0 22px; border-top:0; border-left:1px solid var(--line-v2); }
       .actions { grid-template-columns:1fr auto; align-items:center; }
       .status { width:auto; }
       button.primary { width:auto; }
@@ -703,8 +985,6 @@ HTML = r'''<!doctype html>
       .modes { grid-template-columns:1fr 1fr; }
       .identity { grid-template-columns:1fr 1fr; }
       .identity-head,.field.model-field { grid-column:1 / -1; }
-      .settings-body { display:block; }
-      .setting-block + .setting-block { margin-top:18px; padding:18px 0 0; border-top:1px solid var(--line-v2); border-left:0; }
       .actions { grid-template-columns:1fr; }
       button.primary { width:100%; }
       .confirm { align-items:stretch; }
@@ -766,78 +1046,54 @@ HTML = r'''<!doctype html>
     </section>
 
     <section class="config-section" id="configWorkspace" aria-busy="true">
-      <div class="config-heading"><h2>先选工作模式</h2><p>预设只负责给出起点。三个角色的 CLI、具体模型和 reasoning effort 都能继续修改。</p></div>
+      <div class="config-heading"><h2>先选工作模式</h2><p>先选一个推荐组合，也可以直接调整每个角色使用的 CLI、模型和思考深度。</p></div>
       <div class="modes" id="modes"><p class="loading-copy">正在生成模式...</p></div>
 
       <div class="config-grid">
         <section class="matrix-panel" aria-labelledby="matrixTitle">
           <div class="main-heading">
-            <div><h2 id="matrixTitle">模型矩阵</h2><p>页面只使用本机检测值、内置别名或你的明确输入，不猜模型。</p></div>
+            <div><h2 id="matrixTitle">三个搭子角色</h2><p>Codex 模型从本机账户自动读取，Claude 模型使用 CLI 官方别名。</p></div>
             <span class="current-mode" id="currentMode">当前模式：读取中</span>
           </div>
           <div class="matrix" id="identities"><p class="loading-copy">正在读取具体模型...</p></div>
         </section>
 
-        <aside class="settings-panel" aria-label="写入与验证设置">
-          <div class="settings-head"><h2>写入与验证</h2><p>所有选择会先进入精确预览，不会直接修改文件。</p></div>
+        <aside class="settings-panel" aria-label="安装前确认">
+          <div class="settings-head"><h2>准备安装</h2><p>这里不用再选，搭子会按安全默认值处理。</p></div>
 
           <section class="peer" id="peerWrap">
-            <h2>检测到另一宿主已有配置</h2>
+            <h2>会保留另一端的搭子配置</h2>
             <p class="muted" id="peerSummary"></p>
-            <div class="field-stack">
-              <div>
-                <label for="join">这次怎么处理</label>
-                <select id="join">
-                  <option value="add">接入并添加本宿主配置（推荐）</option>
-                  <option value="shared">仅用共享 Goal/Loop，不生成配置</option>
-                  <option value="cancel">返回，不做修改</option>
-                </select>
-              </div>
-            </div>
           </section>
 
           <div class="settings-body">
-            <div class="setting-block">
-              <div class="section-heading"><h2>写入范围</h2><p>项目配置优先于全局配置。</p></div>
-              <div class="choice-row">
-                <label class="choice"><input type="radio" name="scope" value="project" checked> 当前项目</label>
-                <label class="choice"><input type="radio" name="scope" value="global"> 所有项目</label>
-              </div>
-            </div>
-            <div class="setting-block field-stack">
-              <div>
-                <label for="exclude">项目配置的 Git 处理</label>
-                <select id="exclude">
-                  <option value="git-exclude">仅本机忽略（推荐）</option>
-                  <option value="track">提交到仓库</option>
-                  <option value="self">写入 .gitignore</option>
-                </select>
-              </div>
-              <label class="choice"><input type="checkbox" id="agents"> 生成或刷新 Claude partner-* agents</label>
-              <label class="choice"><input type="checkbox" id="smoke" checked> 写入后运行 smoke test</label>
-              <div>
-                <label for="routing">常驻路由块</label>
-                <select id="routing">
-                  <option value="none">不修改（推荐）</option>
-                  <option value="write">写入或刷新</option>
-                  <option value="remove">移除已生成的路由块</option>
-                </select>
-              </div>
-            </div>
+            <ul class="setup-summary">
+              <li class="setup-item"><span class="setup-check" aria-hidden="true">✓</span><span><strong>只配置当前项目</strong><small>不会影响你电脑上的其他项目。</small></span></li>
+              <li class="setup-item"><span class="setup-check" aria-hidden="true">✓</span><span><strong>配置只保留在本机</strong><small>不会把个人模型设置提交到 Git。</small></span></li>
+              <li class="setup-item"><span class="setup-check" aria-hidden="true">✓</span><span><strong>安装完成后自动检查</strong><small>确认搭子能读取新配置，失败会显示原因。</small></span></li>
+            </ul>
           </div>
           <div class="actions">
-            <span class="status" id="status" role="status" aria-live="polite">尚未写入任何配置</span>
-            <button class="primary" id="previewBtn">生成精确预览</button>
+            <span class="status" id="status" role="status" aria-live="polite">还没有修改任何文件</span>
+            <button class="primary" id="previewBtn">预览安装内容</button>
           </div>
         </aside>
       </div>
 
       <div class="output-section" id="previewWrap" aria-live="polite">
-        <h2>精确预览</h2>
-        <pre id="preview"></pre>
+        <h2>将要修改的文件</h2>
+        <ul class="preview-plan" id="previewPlan">
+          <li class="setup-item"><span class="setup-check" aria-hidden="true">1</span><span><strong>保存三个角色的模型设置</strong><small>写入当前项目的 .partner/config.toml。</small></span></li>
+          <li class="setup-item"><span class="setup-check" aria-hidden="true">2</span><span><strong>让配置只留在本机</strong><small>把配置加入这个仓库的本机 Git 忽略列表。</small></span></li>
+          <li class="setup-item"><span class="setup-check" aria-hidden="true">3</span><span><strong>安装后自动检查</strong><small>确认搭子能读取刚写入的设置。</small></span></li>
+        </ul>
+        <details class="technical-details" id="technicalDetails">
+          <summary id="technicalSummary">查看完整路径和技术 diff</summary>
+          <pre id="preview"></pre>
+        </details>
         <div class="confirm" id="confirm">
-          <label class="choice"><input type="checkbox" id="confirmed"> 我确认按上面的路径和 diff 写入</label>
-          <button class="apply" id="apply" disabled>确认并写入</button>
+          <label class="choice"><input type="checkbox" id="confirmed"> 我确认安装到当前项目</label>
+          <button class="apply" id="apply" disabled>安装并自动检查</button>
         </div>
       </div>
 
@@ -854,11 +1110,20 @@ HTML = r'''<!doctype html>
     let matrix = {};
     let previewValid = false;
     const MODE_LABELS = {balanced:'均衡',quality:'质量',cost:'成本',custom:'自定义'};
+    const PRESET_MODES = ['balanced','quality','cost'];
     const MODE_DESCRIPTIONS = {
       balanced:'Claude 主理，Codex 执行',
       quality:'更多任务交给 Claude',
       cost:'Codex 主跑，Claude 兜底',
       custom:'逐个角色手动设置',
+    };
+    const EFFORT_LABELS = {
+      minimal:'最少 (minimal)',
+      low:'低 (low)',
+      medium:'中 (medium)',
+      high:'高 (high)',
+      xhigh:'极高 (xhigh)',
+      max:'最高 (max)',
     };
     const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     const $ = (id) => document.getElementById(id);
@@ -875,10 +1140,42 @@ HTML = r'''<!doctype html>
         'detected':'本机检测',
         'built-in alias':'内置别名',
         'existing config':'现有配置',
-        'custom (required)':'需要填写',
-        'custom (unverified)':'自定义，未验证',
+        'codex model/list':'Codex CLI 自动获取',
+        'claude --help':'Claude CLI 官方别名',
+        'local claude config':'本机 Claude 配置',
+        'custom (required)':'尚未读取到',
         'built-in':'内置值',
       })[source] || source;
+    }
+    function modelCatalog(backend, current, source) {
+      const options = clone(state.model_options[backend] || []);
+      if (current && !options.some(option => option.value === current)) {
+        options.unshift({value:current,label:current,source:source || 'existing config'});
+      }
+      return options;
+    }
+    function modelOption(backend, value) {
+      return modelCatalog(backend, value, 'existing config').find(option => option.value === value);
+    }
+    function modelOptionLabel(option) {
+      return option.label === option.value ? option.label : `${option.label} (${option.value})`;
+    }
+    function effortCatalog(backend, model) {
+      const option = modelOption(backend, model);
+      if (option && option.efforts && option.efforts.length) return option.efforts;
+      return state.efforts_by_backend[backend] || [];
+    }
+    function syncEffort(values) {
+      const efforts = effortCatalog(values.backend, values.model);
+      if (!efforts.includes(values.effort)) {
+        values.effort = efforts.includes('high') ? 'high' : (efforts[0] || '');
+      }
+      return efforts;
+    }
+    function syncReadiness() {
+      const ready = Object.values(matrix).every(values => values.model);
+      $('previewBtn').disabled = !ready;
+      if (!ready) $('status').textContent = '没有读取到可用模型，请检查 CLI 登录状态后刷新';
     }
     function syncModeControls() {
       document.querySelectorAll('.mode').forEach(el => {
@@ -907,7 +1204,9 @@ HTML = r'''<!doctype html>
       $('apply').disabled = true;
       $('confirm').style.display = 'none';
       if ($('previewWrap').style.display === 'block') $('previewWrap').classList.add('stale');
+      $('technicalDetails').open = false;
       $('status').textContent = '选择已变化，请重新生成预览';
+      syncReadiness();
     }
     function selectMode(next) {
       mode = next;
@@ -920,23 +1219,41 @@ HTML = r'''<!doctype html>
     function renderIdentities() {
       $('identities').innerHTML = Object.entries(state.identity_meta).map(([identity, meta]) => {
         const values = matrix[identity];
-        const source = values.model_source || (mode === 'custom' ? 'custom (unverified)' : 'built-in');
+        const efforts = syncEffort(values);
+        const verified = modelOption(values.backend, values.model);
+        const source = verified ? verified.source : (values.model_source || 'existing config');
+        const models = modelCatalog(values.backend, values.model, source);
+        const modelOptions = models.length
+          ? models.map(option => `<option value="${esc(option.value)}" ${values.model === option.value ? 'selected' : ''}>${esc(modelOptionLabel(option))}</option>`).join('')
+          : '<option value="">未读取到可用模型</option>';
         return `<article class="identity" data-identity="${identity}">
           <div class="identity-head"><h3>${esc(meta.label)}</h3><small>${esc(meta.hint)}</small><code class="identity-code">${identity}</code></div>
-          <div class="field"><label for="${identity}-backend">执行 CLI</label><select id="${identity}-backend" data-field="backend"><option value="claude" ${values.backend === 'claude' ? 'selected' : ''}>Claude Code</option><option value="codex" ${values.backend === 'codex' ? 'selected' : ''}>Codex</option></select></div>
-          <div class="field model-field"><label for="${identity}-model">具体模型</label><input id="${identity}-model" type="text" data-field="model" value="${esc(values.model)}" placeholder="填写真实模型或别名" aria-describedby="${identity}-source"><div class="source" id="${identity}-source">来源：${esc(sourceLabel(source))}</div></div>
-          <div class="field"><label for="${identity}-effort">Reasoning effort</label><select id="${identity}-effort" data-field="effort">${state.efforts.map(e => `<option value="${e}" ${values.effort === e ? 'selected' : ''}>${e}</option>`).join('')}</select></div>
+          <div class="field"><label for="${identity}-backend">由谁执行</label><select id="${identity}-backend" data-field="backend"><option value="claude" ${values.backend === 'claude' ? 'selected' : ''}>Claude Code</option><option value="codex" ${values.backend === 'codex' ? 'selected' : ''}>Codex</option></select></div>
+          <div class="field model-field"><label for="${identity}-model">模型</label><select id="${identity}-model" data-field="model" aria-describedby="${identity}-source" ${models.length ? '' : 'disabled'}>${modelOptions}</select><div class="source" id="${identity}-source">来自：${esc(sourceLabel(source))}</div></div>
+          <div class="field"><label for="${identity}-effort">思考深度</label><select id="${identity}-effort" data-field="effort">${efforts.map(e => `<option value="${e}" ${values.effort === e ? 'selected' : ''}>${esc(EFFORT_LABELS[e] || e)}</option>`).join('')}</select></div>
         </article>`;
       }).join('');
-      document.querySelectorAll('.identity select,.identity input').forEach(control => control.addEventListener('input', event => {
+      document.querySelectorAll('.identity select').forEach(control => control.addEventListener('input', event => {
         const card = event.target.closest('.identity');
         const identity = card.dataset.identity;
-        matrix[identity][event.target.dataset.field] = event.target.value;
-        matrix[identity].model_source = 'custom (unverified)';
+        const field = event.target.dataset.field;
+        matrix[identity][field] = event.target.value;
+        if (field === 'backend') {
+          const options = modelCatalog(event.target.value, '', '');
+          const selected = options.find(option => option.is_default) || options[0];
+          matrix[identity].model = selected ? selected.value : '';
+          matrix[identity].model_source = selected ? selected.source : 'custom (required)';
+          syncEffort(matrix[identity]);
+        } else if (field === 'model') {
+          const selected = modelOption(matrix[identity].backend, event.target.value);
+          matrix[identity].model_source = selected ? selected.source : 'existing config';
+          syncEffort(matrix[identity]);
+        }
         mode = 'custom';
         syncModeControls();
+        if (field === 'backend') renderIdentities();
         syncHeroMap();
-        card.querySelector('.source').textContent = '来源：自定义，未验证';
+        if (field === 'model') card.querySelector('.source').textContent = `来自：${sourceLabel(matrix[identity].model_source)}`;
         invalidate();
       }));
     }
@@ -952,12 +1269,12 @@ HTML = r'''<!doctype html>
       return {
         mode,
         identities,
-        scope: document.querySelector('input[name=scope]:checked').value,
-        exclude_choice: $('exclude').value,
-        write_agents: $('agents').checked,
-        smoke: $('smoke').checked,
-        routing_action: $('routing').value,
-        join_action: $('join').value,
+        scope: 'project',
+        exclude_choice: 'git-exclude',
+        write_agents: state.write_agents_available,
+        smoke: true,
+        routing_action: 'none',
+        join_action: 'add',
       };
     }
     async function api(path, body) {
@@ -982,79 +1299,78 @@ HTML = r'''<!doctype html>
         <div class="item"><div class="k">Claude CLI</div><div class="v ${state.clis.claude.available ? 'ok':'bad'}">${esc(state.clis.claude.version || '未安装')}</div></div>
         <div class="item" title="${esc(state.clis.codex.path || '')}"><div class="k">Codex CLI (${esc(state.clis.codex.source)})</div><div class="v ${state.clis.codex.available ? 'ok':'bad'}">${esc(state.clis.codex.version || '未安装')}</div></div>
         <div class="item"><div class="k">Codex 检测值</div><div class="v ${state.detected.codex_model ? 'ok':'warn'}">${esc(codex)}</div></div>`;
-      $('modes').innerHTML = Object.entries(MODE_LABELS).map(([name,label]) => `<button type="button" class="mode ${name === mode ? 'active':''}" data-mode="${name}" aria-pressed="${name === mode}"><strong>${label}</strong><small>${modeSummary(name)}</small></button>`).join('');
+      $('modes').innerHTML = PRESET_MODES.map(name => `<button type="button" class="mode ${name === mode ? 'active':''}" data-mode="${name}" aria-pressed="${name === mode}"><strong>${MODE_LABELS[name]}</strong><small>${modeSummary(name)}</small></button>`).join('');
       document.querySelectorAll('.mode').forEach(el => el.addEventListener('click', () => selectMode(el.dataset.mode)));
-      $('agents').disabled = !state.write_agents_available;
-      $('agents').checked = state.write_agents_available;
-      if (!state.write_agents_available) $('agents').parentElement.title = 'Codex 宿主不生成 Claude Code 专属 agent 文件';
       renderIdentities();
       syncModeControls();
       syncHeroMap();
       const peerEntries = Object.entries(state.peer.identities || {});
       if (peerEntries.length) {
-        $('peerSummary').textContent = `${state.peer.host} / ${state.peer.source} / ` + peerEntries.map(([name,v]) => `${name}: ${v.backend}/${v.model}/${v.effort}`).join('；');
+        $('peerSummary').textContent = '已有配置不会被覆盖，这次只补充当前宿主。';
         $('peerWrap').style.display = 'block';
       }
+      syncReadiness();
       $('configWorkspace').setAttribute('aria-busy', 'false');
     }
-    document.querySelectorAll('input[name=scope],#exclude,#agents,#smoke,#routing,#join').forEach(el => el.addEventListener('change', () => {
-      invalidate();
-      const blocked = $('join').value !== 'add';
-      $('previewBtn').disabled = blocked;
-      if (blocked) $('status').textContent = '已选择不写入配置，可以直接关闭页面';
-    }));
     $('confirmed').addEventListener('change', () => $('apply').disabled = !$('confirmed').checked || !previewValid);
     $('previewBtn').addEventListener('click', async () => {
       $('previewBtn').disabled = true;
-      $('previewBtn').textContent = '正在生成...';
+      $('previewBtn').textContent = '正在准备...';
       $('configWorkspace').setAttribute('aria-busy', 'true');
       $('previewWrap').classList.remove('stale');
-      $('status').textContent = '正在生成精确 diff...';
+      $('status').textContent = '正在核对将要修改的文件';
       try {
         const data = await api('/api/preview', payload());
         $('preview').textContent = [data.output, data.error].filter(Boolean).join('\n');
         $('previewWrap').style.display = 'block';
         $('previewWrap').classList.toggle('has-error', !data.ok);
+        $('previewPlan').style.display = data.ok ? 'block' : 'none';
+        $('technicalDetails').open = !data.ok;
+        $('technicalSummary').textContent = data.ok ? '查看完整路径和技术 diff' : '查看失败原因';
         previewValid = data.ok;
         $('confirm').style.display = data.ok ? 'flex' : 'none';
-        $('status').textContent = data.ok ? '预览完成，尚未写入' : '预览失败，没有写入';
+        $('status').textContent = data.ok ? '预览完成，还没有修改文件' : '预览失败，没有修改文件';
         $('previewWrap').scrollIntoView({behavior:reduceMotion ? 'auto' : 'smooth',block:'start'});
       } catch (error) {
         $('preview').textContent = error.message;
         $('previewWrap').style.display = 'block';
         $('previewWrap').classList.add('has-error');
+        $('previewPlan').style.display = 'none';
+        $('technicalDetails').open = true;
+        $('technicalSummary').textContent = '查看失败原因';
         $('confirm').style.display = 'none';
-        $('status').textContent = '预览失败，没有写入';
+        $('status').textContent = '预览失败，没有修改文件';
         $('previewWrap').scrollIntoView({behavior:reduceMotion ? 'auto' : 'smooth',block:'start'});
       } finally {
-        $('previewBtn').textContent = '生成精确预览';
-        $('previewBtn').disabled = false;
+        $('previewBtn').textContent = '预览安装内容';
+        syncReadiness();
         $('configWorkspace').setAttribute('aria-busy', 'false');
       }
     });
     $('apply').addEventListener('click', async () => {
       $('apply').disabled = true;
-      $('apply').textContent = '正在写入...';
+      $('apply').textContent = '正在安装...';
       $('previewBtn').disabled = true;
       $('configWorkspace').setAttribute('aria-busy', 'true');
-      $('status').textContent = '正在写入并验证...';
+      $('status').textContent = '正在安装并自动检查';
       try {
         const data = await api('/api/apply', payload());
         const smoke = data.smoke ? `\nSmoke test:\n${data.smoke.output}${data.smoke.error}` : '';
         $('result').textContent = `${data.output}${data.error}${smoke}`;
         $('resultWrap').style.display = 'block';
-        $('resultWrap').classList.toggle('has-error', !data.ok);
-        $('status').textContent = data.ok ? '配置已写入' : '写入失败';
+        const checksOk = !data.smoke || data.smoke.ok;
+        $('resultWrap').classList.toggle('has-error', !data.ok || !checksOk);
+        $('status').textContent = !data.ok ? '安装失败' : (checksOk ? '搭子安装完成' : '安装完成，但自动检查未通过');
         previewValid = false;
         $('resultWrap').scrollIntoView({behavior:reduceMotion ? 'auto' : 'smooth',block:'start'});
       } catch (error) {
         $('result').textContent = error.message;
         $('resultWrap').style.display = 'block';
         $('resultWrap').classList.add('has-error');
-        $('status').textContent = '写入失败';
+        $('status').textContent = '安装失败';
         $('resultWrap').scrollIntoView({behavior:reduceMotion ? 'auto' : 'smooth',block:'start'});
       } finally {
-        $('apply').textContent = '确认并写入';
+        $('apply').textContent = '安装并自动检查';
         $('previewBtn').disabled = false;
         $('configWorkspace').setAttribute('aria-busy', 'false');
       }
