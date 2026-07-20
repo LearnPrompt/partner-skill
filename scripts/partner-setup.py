@@ -46,7 +46,7 @@ MANAGED_COMMENT = '<!-- managed by partner-skill - edit via "搭子，配置" --
 PRESETS: Dict[str, Dict[str, Tuple[str, Optional[str], str]]] = {
     "balanced": {
         "deep_reasoner": ("claude", "opus", "high"),
-        "fast_worker": ("codex", None, "medium"),
+        "fast_worker": ("codex", None, "high"),
         "arbiter": ("codex", None, "xhigh"),
     },
     "quality": {

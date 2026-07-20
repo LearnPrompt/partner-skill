@@ -295,7 +295,7 @@ class SetupTests(unittest.TestCase):
             tuple(identities["deep_reasoner"][field] for field in ("backend", "model", "effort")),
         )
         self.assertEqual(
-            ("codex", "gpt-injected", "medium"),
+            ("codex", "gpt-injected", "high"),
             tuple(identities["fast_worker"][field] for field in ("backend", "model", "effort")),
         )
         self.assertEqual(

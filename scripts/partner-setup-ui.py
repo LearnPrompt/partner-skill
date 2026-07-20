@@ -369,134 +369,251 @@ HTML = r'''<!doctype html>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>搭子配置</title>
   <style>
-    :root { color-scheme: dark; --bg:#090b10; --panel:#11151d; --panel2:#171c26; --line:#293141; --text:#f5f7fb; --muted:#98a2b3; --blue:#6ea8fe; --green:#62d9a0; --amber:#f7c76b; --red:#ff7b86; }
+    /* Taste read: targeted developer-tool redesign. Variance 6, motion 3, density 6. */
+    :root {
+      color-scheme:dark;
+      --bg:#0b0d0f;
+      --surface:#111417;
+      --surface-raised:#171b1f;
+      --surface-input:#0d1012;
+      --line:#2a3035;
+      --line-strong:#3a4249;
+      --text:#f2f3ef;
+      --muted:#9ba3a8;
+      --quiet:#727b81;
+      --accent:#9befbd;
+      --accent-ink:#0b2415;
+      --amber:#efc878;
+      --red:#ff8d92;
+      --panel-radius:16px;
+      --control-radius:9px;
+      --sans:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",sans-serif;
+      --mono:"SFMono-Regular",Consolas,"Liberation Mono",Menlo,monospace;
+    }
     * { box-sizing:border-box; }
-    body { margin:0; background:radial-gradient(circle at 15% 0%,#172033 0,transparent 36%),var(--bg); color:var(--text); font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
-    .shell { width:min(1120px,calc(100% - 32px)); margin:36px auto 72px; }
-    header { display:flex; justify-content:space-between; gap:24px; align-items:end; margin-bottom:22px; }
-    h1 { font-size:34px; line-height:1.1; margin:0 0 7px; letter-spacing:-.04em; }
-    h2 { font-size:16px; margin:0 0 14px; }
+    html { background:var(--bg); }
+    body { margin:0; min-width:320px; background:var(--bg); color:var(--text); font:15px/1.5 var(--sans); }
+    button,select,input { font:inherit; }
+    button { -webkit-tap-highlight-color:transparent; }
+    .shell { width:min(1240px,calc(100% - 40px)); margin:0 auto 64px; }
+    .topbar { display:flex; justify-content:space-between; gap:32px; align-items:flex-end; padding:42px 0 24px; border-bottom:1px solid var(--line); }
+    .title-block { max-width:610px; }
+    h1 { font-size:clamp(32px,4vw,52px); line-height:1.02; margin:0 0 12px; letter-spacing:-.055em; font-weight:720; }
+    h2 { font-size:15px; line-height:1.3; margin:0; letter-spacing:-.01em; }
+    h3 { margin:0; }
     p { margin:0; }
     .muted { color:var(--muted); }
-    .panel { background:color-mix(in srgb,var(--panel) 94%,transparent); border:1px solid var(--line); border-radius:18px; padding:20px; box-shadow:0 18px 60px rgba(0,0,0,.22); }
-    .detect { display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:10px; margin-bottom:18px; }
-    .detect .item { background:var(--panel2); border:1px solid var(--line); padding:12px 14px; border-radius:12px; min-width:0; }
-    .k { color:var(--muted); font-size:12px; margin-bottom:4px; }
-    .v { font-weight:650; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-    .ok { color:var(--green); } .warn { color:var(--amber); } .bad { color:var(--red); }
-    .section { margin-top:18px; }
-    .modes { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; }
-    .mode { appearance:none; text-align:left; color:var(--text); background:var(--panel2); border:1px solid var(--line); border-radius:13px; padding:13px; cursor:pointer; min-height:86px; }
-    .mode:hover { border-color:#44516a; }
-    .mode.active { border-color:var(--blue); box-shadow:0 0 0 2px rgba(110,168,254,.13) inset; }
-    .mode strong { display:block; margin-bottom:5px; }
-    .mode small { color:var(--muted); display:block; line-height:1.35; }
-    .grid { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; }
-    .identity { background:var(--panel2); border:1px solid var(--line); border-radius:14px; padding:16px; }
-    .identity-head { display:flex; justify-content:space-between; gap:8px; margin-bottom:14px; }
-    .identity h3 { margin:0; font-size:16px; }
-    .identity-head small { color:var(--muted); }
-    .tag { color:var(--blue); background:rgba(110,168,254,.1); border:1px solid rgba(110,168,254,.24); padding:3px 7px; border-radius:999px; font:11px ui-monospace,SFMono-Regular,Menlo,monospace; height:max-content; }
-    label { display:block; color:var(--muted); font-size:12px; margin:11px 0 5px; }
-    select,input[type=text] { width:100%; border:1px solid var(--line); border-radius:9px; background:#0d1118; color:var(--text); padding:9px 10px; font:13px ui-monospace,SFMono-Regular,Menlo,monospace; outline:none; }
-    select:focus,input:focus { border-color:var(--blue); }
-    .source { color:var(--muted); font-size:11px; margin-top:5px; }
-    .options { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
-    .option-group { background:var(--panel2); border:1px solid var(--line); border-radius:14px; padding:15px; }
-    .peer { display:none; margin:18px 0 0; border-color:rgba(247,199,107,.42); }
-    .choice-row { display:flex; gap:16px; flex-wrap:wrap; }
-    .choice { display:flex; align-items:center; gap:7px; color:var(--text); font-size:14px; cursor:pointer; }
-    .choice input { accent-color:var(--blue); }
-    .actions { display:flex; gap:10px; align-items:center; position:sticky; bottom:12px; padding:14px; margin-top:16px; background:rgba(17,21,29,.92); border:1px solid var(--line); border-radius:15px; backdrop-filter:blur(18px); }
-    button.primary,button.apply { border:0; border-radius:10px; padding:11px 16px; font-weight:700; cursor:pointer; }
-    button.primary { background:#e8eefb; color:#10131a; }
-    button.apply { background:var(--green); color:#07130d; }
-    button:disabled { opacity:.4; cursor:not-allowed; }
-    .status { margin-left:auto; color:var(--muted); font-size:13px; text-align:right; }
-    .preview { display:none; margin-top:16px; }
-    pre { white-space:pre-wrap; overflow-wrap:anywhere; background:#080a0f; border:1px solid var(--line); border-radius:12px; padding:16px; max-height:430px; overflow:auto; color:#d9e1ee; font:12px/1.55 ui-monospace,SFMono-Regular,Menlo,monospace; }
-    .confirm { display:none; align-items:center; gap:12px; margin-top:12px; }
-    .confirm label { margin:0; font-size:13px; color:var(--text); }
-    .result { display:none; margin-top:16px; border-left:3px solid var(--green); }
-    @media (max-width:850px) { .detect,.modes { grid-template-columns:1fr 1fr; } .grid { grid-template-columns:1fr; } .options { grid-template-columns:1fr; } }
-    @media (max-width:520px) { .shell { width:min(100% - 18px,1120px); margin-top:18px; } header { display:block; } .detect,.modes { grid-template-columns:1fr; } .actions { flex-wrap:wrap; } .status { width:100%; text-align:left; margin:0; } }
+    .subtitle { max-width:560px; color:var(--muted); font-size:16px; }
+    .repo-block { width:min(390px,42vw); text-align:right; }
+    .repo-block span { display:block; color:var(--quiet); font-size:11px; letter-spacing:.08em; margin-bottom:6px; text-transform:uppercase; }
+    .repo-block code { display:block; color:#d9ddd9; font:12px/1.45 var(--mono); overflow-wrap:anywhere; }
+    .detect { display:grid; grid-template-columns:.7fr .9fr 1fr 1fr 1.15fr; border-bottom:1px solid var(--line); }
+    .detect .item { min-width:0; padding:15px 14px 16px; border-left:1px solid var(--line); }
+    .detect .item:first-child { padding-left:0; border-left:0; }
+    .k { color:var(--quiet); font-size:11px; letter-spacing:.035em; margin-bottom:4px; }
+    .v { font-weight:620; font-size:13px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .ok { color:var(--accent); }
+    .warn { color:var(--amber); }
+    .bad { color:var(--red); }
+    .workspace { display:grid; grid-template-columns:minmax(270px,340px) minmax(0,1fr); gap:18px; align-items:start; margin-top:18px; }
+    .rail,.main-panel { border:1px solid var(--line); border-radius:var(--panel-radius); background:var(--surface); }
+    .rail { overflow:hidden; }
+    .rail-section { padding:19px; border-top:1px solid var(--line); }
+    .rail-section:first-child { border-top:0; }
+    .section-heading { margin-bottom:14px; }
+    .section-heading p { margin-top:5px; color:var(--muted); font-size:12px; }
+    .modes { display:grid; gap:2px; }
+    .mode { appearance:none; width:100%; position:relative; display:grid; grid-template-columns:78px 1fr; gap:12px; text-align:left; color:var(--text); background:transparent; border:0; border-left:2px solid transparent; border-radius:0; padding:11px 10px 11px 12px; cursor:pointer; }
+    .mode:hover { background:var(--surface-raised); }
+    .mode:active { transform:translateY(1px); }
+    .mode.active { border-left-color:var(--accent); background:var(--surface-raised); }
+    .mode strong { display:block; font-size:14px; }
+    .mode small { color:var(--muted); display:grid; gap:2px; font:10px/1.35 var(--mono); overflow-wrap:anywhere; }
+    .mode-line b { color:var(--quiet); font:inherit; display:inline-block; width:30px; }
+    .peer { display:none; border-top:1px solid rgba(239,200,120,.4); }
+    .peer h2 { color:var(--amber); }
+    .peer p { margin-top:7px; font-size:12px; overflow-wrap:anywhere; }
+    .peer .field-stack { margin-top:13px; }
+    .field-stack { display:grid; gap:13px; }
+    .setting-block + .setting-block { margin-top:18px; padding-top:18px; border-top:1px solid var(--line); }
+    label,.field-label { display:block; color:var(--muted); font-size:11px; letter-spacing:.02em; margin:0 0 6px; }
+    select,input[type=text] { width:100%; min-height:42px; border:1px solid var(--line); border-radius:var(--control-radius); background:var(--surface-input); color:var(--text); padding:9px 10px; font:13px var(--mono); outline:none; }
+    select:hover,input[type=text]:hover { border-color:var(--line-strong); }
+    select:focus-visible,input:focus-visible,button:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+    .choice-row { display:flex; gap:12px; flex-wrap:wrap; }
+    .choice { display:flex; align-items:flex-start; gap:8px; color:var(--text); font-size:13px; line-height:1.35; cursor:pointer; }
+    .choice input { margin:2px 0 0; accent-color:var(--accent); }
+    .choice:has(input:disabled) { color:var(--quiet); cursor:not-allowed; }
+    .main-panel { min-width:0; padding:22px; }
+    .main-heading { display:flex; align-items:flex-end; justify-content:space-between; gap:20px; padding-bottom:18px; border-bottom:1px solid var(--line); }
+    .main-heading h2 { font-size:20px; }
+    .main-heading p { color:var(--muted); margin-top:5px; font-size:13px; }
+    .current-mode { flex:0 0 auto; color:var(--accent); font:11px var(--mono); }
+    .matrix { display:grid; }
+    .identity { display:grid; grid-template-columns:minmax(155px,.85fr) minmax(130px,.7fr) minmax(210px,1.25fr) minmax(120px,.65fr); gap:12px; align-items:start; padding:17px 0; border-top:1px solid var(--line); }
+    .identity:first-child { border-top:0; }
+    .identity:hover { background:#13171a; box-shadow:18px 0 #13171a,-18px 0 #13171a; }
+    .identity-head { min-width:0; padding-top:2px; }
+    .identity h3 { font-size:15px; margin-bottom:4px; }
+    .identity-head small { display:block; color:var(--muted); font-size:11px; line-height:1.35; }
+    .identity-code { display:block; color:var(--quiet); margin-top:8px; font:10px var(--mono); overflow-wrap:anywhere; }
+    .field { min-width:0; }
+    .source { color:var(--quiet); font-size:10px; margin-top:5px; overflow-wrap:anywhere; }
+    .output-section { display:none; margin-top:18px; padding-top:18px; border-top:1px solid var(--line); }
+    .output-section h2 { margin-bottom:10px; }
+    .output-section.has-error { border-left:2px solid var(--red); padding-left:14px; }
+    pre { white-space:pre-wrap; overflow-wrap:anywhere; background:var(--surface-input); border:1px solid var(--line); border-radius:var(--control-radius); padding:15px; max-height:430px; overflow:auto; color:#d9ddd9; font:12px/1.55 var(--mono); }
+    .confirm { display:none; align-items:center; justify-content:flex-end; gap:14px; margin-top:12px; }
+    .confirm label { margin:0; color:var(--text); font-size:13px; }
+    .result { border-left:2px solid var(--accent); padding-left:14px; }
+    .actions { display:flex; gap:10px; align-items:center; padding:14px 0 0; margin-top:18px; border-top:1px solid var(--line); background:var(--surface); }
+    button.primary,button.apply { min-height:42px; border:1px solid var(--accent); border-radius:var(--control-radius); padding:10px 15px; font-weight:720; cursor:pointer; }
+    button.primary { background:var(--accent); color:var(--accent-ink); }
+    button.apply { background:transparent; color:var(--accent); }
+    button.primary:hover { filter:brightness(1.06); }
+    button.apply:hover { background:rgba(155,239,189,.08); }
+    button.primary:active,button.apply:active { transform:translateY(1px); }
+    button:disabled { opacity:.38; cursor:not-allowed; transform:none; }
+    .status { margin-left:auto; color:var(--muted); font-size:12px; text-align:right; }
+    .loading-copy { color:var(--quiet); font-size:12px; padding:12px 0; }
+    @media (max-width:980px) {
+      .detect { grid-template-columns:repeat(3,1fr); }
+      .detect .item:nth-child(4) { padding-left:0; border-left:0; border-top:1px solid var(--line); }
+      .detect .item:nth-child(5) { border-top:1px solid var(--line); }
+      .workspace { grid-template-columns:1fr; }
+      .rail { display:grid; grid-template-columns:1fr 1fr; }
+      .rail-section { border-top:0; border-left:1px solid var(--line); }
+      .rail-section:first-child { border-left:0; }
+      .peer { grid-column:1 / -1; border-left:0; }
+    }
+    @media (max-width:720px) {
+      .shell { width:min(100% - 24px,1240px); margin-bottom:32px; }
+      .topbar { display:block; padding-top:26px; }
+      .repo-block { width:100%; text-align:left; margin-top:20px; }
+      .detect { grid-template-columns:1fr 1fr; }
+      .detect .item,.detect .item:first-child,.detect .item:nth-child(4) { padding:12px 10px; border-left:1px solid var(--line); border-top:1px solid var(--line); }
+      .detect .item:nth-child(odd) { padding-left:0; border-left:0; }
+      .detect .item:first-child,.detect .item:nth-child(2) { border-top:0; }
+      .rail { display:block; }
+      .rail-section { border-left:0; border-top:1px solid var(--line); }
+      .rail-section:first-child { border-top:0; }
+      .main-panel { padding:18px; }
+      .identity { grid-template-columns:1fr 1fr; }
+      .identity-head { grid-column:1 / -1; }
+      .field.model-field { grid-column:1 / -1; grid-row:3; }
+      .actions { flex-wrap:wrap; }
+      .status { width:100%; margin:0; text-align:left; order:-1; }
+      .confirm { align-items:flex-start; flex-direction:column; }
+    }
+    @media (max-width:480px) {
+      .detect { grid-template-columns:1fr; }
+      .detect .item,.detect .item:first-child,.detect .item:nth-child(2),.detect .item:nth-child(4) { padding:11px 0; border-left:0; border-top:1px solid var(--line); }
+      .detect .item:first-child { border-top:0; }
+      .main-heading { align-items:flex-start; flex-direction:column; gap:10px; }
+      .identity { grid-template-columns:1fr; }
+      .identity-head,.field.model-field { grid-column:1; grid-row:auto; }
+      button.primary,button.apply { width:100%; }
+    }
+    @media (prefers-reduced-motion:reduce) {
+      *,*::before,*::after { scroll-behavior:auto!important; transition:none!important; animation:none!important; }
+    }
   </style>
 </head>
 <body>
   <main class="shell">
-    <header>
-      <div><h1>搭子配置</h1><p class="muted">一次选完，先看精确 diff，再写入。</p></div>
-      <div class="muted" id="repo"></div>
+    <header class="topbar">
+      <div class="title-block">
+        <h1>配置你的搭子</h1>
+        <p class="subtitle">三个角色一次定好。页面会先给出真实路径和精确 diff，只有确认后才写入。</p>
+      </div>
+      <div class="repo-block"><span>当前项目</span><code id="repo"></code></div>
     </header>
 
-    <section class="detect" id="detect"></section>
-
-    <section class="panel peer" id="peerWrap">
-      <h2>检测到另一宿主已有配置</h2>
-      <p class="muted" id="peerSummary"></p>
-      <label for="join">这次怎么处理</label>
-      <select id="join">
-        <option value="add">接入并添加本宿主配置（推荐）</option>
-        <option value="shared">仅用共享 Goal/Loop，不生成配置</option>
-        <option value="cancel">返回，不做修改</option>
-      </select>
+    <section class="detect" id="detect" aria-label="本机环境检测">
+      <p class="loading-copy">正在读取本机环境...</p>
     </section>
 
-    <section class="panel">
-      <h2>1 · 工作模式</h2>
-      <div class="modes" id="modes"></div>
+    <div class="workspace" id="configWorkspace" aria-busy="true">
+      <aside class="rail" aria-label="配置选项">
+        <section class="rail-section">
+          <div class="section-heading"><h2>工作模式</h2><p>先选一套起点，右侧可以逐项修改。</p></div>
+          <div class="modes" id="modes"><p class="loading-copy">正在生成模式...</p></div>
+        </section>
 
-      <div class="section">
-        <h2>2 · 具体模型</h2>
-        <div class="grid" id="identities"></div>
-      </div>
-
-      <div class="section options">
-        <div class="option-group">
-          <h2>3 · 写到哪里</h2>
-          <div class="choice-row">
-            <label class="choice"><input type="radio" name="scope" value="project" checked> 当前项目</label>
-            <label class="choice"><input type="radio" name="scope" value="global"> 所有项目</label>
+        <section class="rail-section">
+          <div class="setting-block">
+            <div class="section-heading"><h2>写入范围</h2><p>项目配置优先于全局配置。</p></div>
+            <div class="choice-row">
+              <label class="choice"><input type="radio" name="scope" value="project" checked> 当前项目</label>
+              <label class="choice"><input type="radio" name="scope" value="global"> 所有项目</label>
+            </div>
           </div>
-          <label for="exclude">项目配置的 Git 处理</label>
-          <select id="exclude">
-            <option value="git-exclude">仅本机忽略（推荐）</option>
-            <option value="track">提交到仓库</option>
-            <option value="self">写入 .gitignore</option>
-          </select>
-        </div>
-        <div class="option-group">
-          <h2>4 · 生成与验证</h2>
-          <label class="choice"><input type="checkbox" id="agents"> 生成或刷新 Claude partner-* agents</label>
-          <label class="choice"><input type="checkbox" id="smoke" checked> 写入后运行 smoke test</label>
-          <label for="routing">常驻路由块</label>
-          <select id="routing">
-            <option value="none">不修改（推荐）</option>
-            <option value="write">写入或刷新</option>
-            <option value="remove">移除已生成的路由块</option>
-          </select>
-        </div>
-      </div>
+          <div class="setting-block field-stack">
+            <div>
+              <label for="exclude">项目配置的 Git 处理</label>
+              <select id="exclude">
+                <option value="git-exclude">仅本机忽略（推荐）</option>
+                <option value="track">提交到仓库</option>
+                <option value="self">写入 .gitignore</option>
+              </select>
+            </div>
+            <label class="choice"><input type="checkbox" id="agents"> 生成或刷新 Claude partner-* agents</label>
+            <label class="choice"><input type="checkbox" id="smoke" checked> 写入后运行 smoke test</label>
+            <div>
+              <label for="routing">常驻路由块</label>
+              <select id="routing">
+                <option value="none">不修改（推荐）</option>
+                <option value="write">写入或刷新</option>
+                <option value="remove">移除已生成的路由块</option>
+              </select>
+            </div>
+          </div>
+        </section>
 
-      <div class="preview" id="previewWrap">
-        <h2>精确预览</h2>
-        <pre id="preview"></pre>
-        <div class="confirm" id="confirm">
-          <label class="choice"><input type="checkbox" id="confirmed"> 我确认按上面的路径和 diff 写入</label>
-          <button class="apply" id="apply" disabled>确认并写入</button>
+        <section class="rail-section peer" id="peerWrap">
+          <h2>检测到另一宿主已有配置</h2>
+          <p class="muted" id="peerSummary"></p>
+          <div class="field-stack">
+            <div>
+              <label for="join">这次怎么处理</label>
+              <select id="join">
+                <option value="add">接入并添加本宿主配置（推荐）</option>
+                <option value="shared">仅用共享 Goal/Loop，不生成配置</option>
+                <option value="cancel">返回，不做修改</option>
+              </select>
+            </div>
+          </div>
+        </section>
+      </aside>
+
+      <section class="main-panel" aria-labelledby="matrixTitle">
+        <div class="main-heading">
+          <div><h2 id="matrixTitle">模型矩阵</h2><p>每个角色都明确显示执行 CLI、具体模型和 reasoning effort。</p></div>
+          <span class="current-mode" id="currentMode">当前模式：读取中</span>
         </div>
-      </div>
 
-      <div class="result" id="resultWrap">
-        <h2>执行结果</h2>
-        <pre id="result"></pre>
-      </div>
+        <div class="matrix" id="identities"><p class="loading-copy">正在读取具体模型...</p></div>
 
-      <div class="actions">
-        <button class="primary" id="previewBtn">生成精确预览</button>
-        <span class="status" id="status">尚未写入任何配置</span>
-      </div>
-    </section>
+        <div class="output-section" id="previewWrap" aria-live="polite">
+          <h2>精确预览</h2>
+          <pre id="preview"></pre>
+          <div class="confirm" id="confirm">
+            <label class="choice"><input type="checkbox" id="confirmed"> 我确认按上面的路径和 diff 写入</label>
+            <button class="apply" id="apply" disabled>确认并写入</button>
+          </div>
+        </div>
+
+        <div class="output-section result" id="resultWrap" aria-live="polite">
+          <h2>执行结果</h2>
+          <pre id="result"></pre>
+        </div>
+
+        <div class="actions">
+          <button class="primary" id="previewBtn">生成精确预览</button>
+          <span class="status" id="status" role="status" aria-live="polite">尚未写入任何配置</span>
+        </div>
+      </section>
+    </div>
   </main>
   <script>
     const token = new URLSearchParams(location.search).get('token');
@@ -504,6 +621,8 @@ HTML = r'''<!doctype html>
     let mode = 'balanced';
     let matrix = {};
     let previewValid = false;
+    const MODE_LABELS = {balanced:'均衡',quality:'质量',cost:'成本',custom:'自定义'};
+    const SHORT_ROLE_LABELS = {deep_reasoner:'推理',fast_worker:'执行',arbiter:'仲裁'};
     const $ = (id) => document.getElementById(id);
     const clone = (value) => JSON.parse(JSON.stringify(value));
 
@@ -511,8 +630,28 @@ HTML = r'''<!doctype html>
       return String(value ?? '').replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
     }
     function modeSummary(name) {
-      if (name === 'custom') return '逐项选择 CLI、模型和 effort';
-      return Object.values(state.presets[name]).map(v => `${v.backend} · ${v.model || '需填写'} · ${v.effort}`).join('<br>');
+      if (name === 'custom') return '<span class="mode-line">逐项选择具体值</span>';
+      return Object.entries(state.presets[name]).map(([identity, values]) =>
+        `<span class="mode-line"><b>${esc(SHORT_ROLE_LABELS[identity])}</b>${esc(values.backend)} / ${esc(values.model || '需填写')} / ${esc(values.effort)}</span>`
+      ).join('');
+    }
+    function sourceLabel(source) {
+      return ({
+        'detected':'本机检测',
+        'built-in alias':'内置别名',
+        'existing config':'现有配置',
+        'custom (required)':'需要填写',
+        'custom (unverified)':'自定义，未验证',
+        'built-in':'内置值',
+      })[source] || source;
+    }
+    function syncModeControls() {
+      document.querySelectorAll('.mode').forEach(el => {
+        const active = el.dataset.mode === mode;
+        el.classList.toggle('active', active);
+        el.setAttribute('aria-pressed', String(active));
+      });
+      $('currentMode').textContent = `当前模式：${MODE_LABELS[mode]}`;
     }
     function invalidate() {
       previewValid = false;
@@ -524,7 +663,7 @@ HTML = r'''<!doctype html>
     function selectMode(next) {
       mode = next;
       if (next !== 'custom') matrix = clone(state.presets[next]);
-      document.querySelectorAll('.mode').forEach(el => el.classList.toggle('active', el.dataset.mode === next));
+      syncModeControls();
       renderIdentities();
       invalidate();
     }
@@ -533,14 +672,10 @@ HTML = r'''<!doctype html>
         const values = matrix[identity];
         const source = values.model_source || (mode === 'custom' ? 'custom (unverified)' : 'built-in');
         return `<article class="identity" data-identity="${identity}">
-          <div class="identity-head"><div><h3>${esc(meta.label)}</h3><small>${esc(meta.hint)}</small></div><span class="tag">${identity}</span></div>
-          <label>执行 CLI</label>
-          <select data-field="backend"><option value="claude" ${values.backend === 'claude' ? 'selected' : ''}>Claude Code</option><option value="codex" ${values.backend === 'codex' ? 'selected' : ''}>Codex</option></select>
-          <label>具体模型</label>
-          <input type="text" data-field="model" value="${esc(values.model)}" placeholder="必须填写真实模型或别名">
-          <div class="source">来源：${esc(source)}</div>
-          <label>Reasoning effort</label>
-          <select data-field="effort">${state.efforts.map(e => `<option value="${e}" ${values.effort === e ? 'selected' : ''}>${e}</option>`).join('')}</select>
+          <div class="identity-head"><h3>${esc(meta.label)}</h3><small>${esc(meta.hint)}</small><code class="identity-code">${identity}</code></div>
+          <div class="field"><label for="${identity}-backend">执行 CLI</label><select id="${identity}-backend" data-field="backend"><option value="claude" ${values.backend === 'claude' ? 'selected' : ''}>Claude Code</option><option value="codex" ${values.backend === 'codex' ? 'selected' : ''}>Codex</option></select></div>
+          <div class="field model-field"><label for="${identity}-model">具体模型</label><input id="${identity}-model" type="text" data-field="model" value="${esc(values.model)}" placeholder="填写真实模型或别名" aria-describedby="${identity}-source"><div class="source" id="${identity}-source">来源：${esc(sourceLabel(source))}</div></div>
+          <div class="field"><label for="${identity}-effort">Reasoning effort</label><select id="${identity}-effort" data-field="effort">${state.efforts.map(e => `<option value="${e}" ${values.effort === e ? 'selected' : ''}>${e}</option>`).join('')}</select></div>
         </article>`;
       }).join('');
       document.querySelectorAll('.identity select,.identity input').forEach(control => control.addEventListener('input', event => {
@@ -549,8 +684,8 @@ HTML = r'''<!doctype html>
         matrix[identity][event.target.dataset.field] = event.target.value;
         matrix[identity].model_source = 'custom (unverified)';
         mode = 'custom';
-        document.querySelectorAll('.mode').forEach(el => el.classList.toggle('active', el.dataset.mode === 'custom'));
-        card.querySelector('.source').textContent = '来源：custom (unverified)';
+        syncModeControls();
+        card.querySelector('.source').textContent = '来源：自定义，未验证';
         invalidate();
       }));
     }
@@ -594,20 +729,21 @@ HTML = r'''<!doctype html>
         <div class="item"><div class="k">当前宿主</div><div class="v">${esc(state.host)}</div></div>
         <div class="item"><div class="k">项目配置</div><div class="v">${esc(state.config_source)}</div></div>
         <div class="item"><div class="k">Claude CLI</div><div class="v ${state.clis.claude.available ? 'ok':'bad'}">${esc(state.clis.claude.version || '未安装')}</div></div>
-        <div class="item" title="${esc(state.clis.codex.path || '')}"><div class="k">Codex CLI · ${esc(state.clis.codex.source)}</div><div class="v ${state.clis.codex.available ? 'ok':'bad'}">${esc(state.clis.codex.version || '未安装')}</div></div>
+        <div class="item" title="${esc(state.clis.codex.path || '')}"><div class="k">Codex CLI (${esc(state.clis.codex.source)})</div><div class="v ${state.clis.codex.available ? 'ok':'bad'}">${esc(state.clis.codex.version || '未安装')}</div></div>
         <div class="item"><div class="k">Codex 检测值</div><div class="v ${state.detected.codex_model ? 'ok':'warn'}">${esc(codex)}</div></div>`;
-      const labels = {balanced:'均衡',quality:'质量',cost:'成本',custom:'自定义'};
-      $('modes').innerHTML = Object.entries(labels).map(([name,label]) => `<button class="mode ${name === mode ? 'active':''}" data-mode="${name}"><strong>${label}</strong><small>${modeSummary(name)}</small></button>`).join('');
+      $('modes').innerHTML = Object.entries(MODE_LABELS).map(([name,label]) => `<button class="mode ${name === mode ? 'active':''}" data-mode="${name}" aria-pressed="${name === mode}"><strong>${label}</strong><small>${modeSummary(name)}</small></button>`).join('');
       document.querySelectorAll('.mode').forEach(el => el.addEventListener('click', () => selectMode(el.dataset.mode)));
       $('agents').disabled = !state.write_agents_available;
       $('agents').checked = state.write_agents_available;
       if (!state.write_agents_available) $('agents').parentElement.title = 'Codex 宿主不生成 Claude Code 专属 agent 文件';
       renderIdentities();
+      syncModeControls();
       const peerEntries = Object.entries(state.peer.identities || {});
       if (peerEntries.length) {
-        $('peerSummary').textContent = `${state.peer.host} · ${state.peer.source} · ` + peerEntries.map(([name,v]) => `${name}: ${v.backend}/${v.model}/${v.effort}`).join('；');
+        $('peerSummary').textContent = `${state.peer.host} / ${state.peer.source} / ` + peerEntries.map(([name,v]) => `${name}: ${v.backend}/${v.model}/${v.effort}`).join('；');
         $('peerWrap').style.display = 'block';
       }
+      $('configWorkspace').setAttribute('aria-busy', 'false');
     }
     document.querySelectorAll('input[name=scope],#exclude,#agents,#smoke,#routing,#join').forEach(el => el.addEventListener('change', () => {
       invalidate();
@@ -618,39 +754,59 @@ HTML = r'''<!doctype html>
     $('confirmed').addEventListener('change', () => $('apply').disabled = !$('confirmed').checked || !previewValid);
     $('previewBtn').addEventListener('click', async () => {
       $('previewBtn').disabled = true;
-      $('status').textContent = '正在生成精确 diff…';
+      $('previewBtn').textContent = '正在生成...';
+      $('configWorkspace').setAttribute('aria-busy', 'true');
+      $('status').textContent = '正在生成精确 diff...';
       try {
         const data = await api('/api/preview', payload());
         $('preview').textContent = [data.output, data.error].filter(Boolean).join('\n');
         $('previewWrap').style.display = 'block';
+        $('previewWrap').classList.toggle('has-error', !data.ok);
         previewValid = data.ok;
         $('confirm').style.display = data.ok ? 'flex' : 'none';
         $('status').textContent = data.ok ? '预览完成，尚未写入' : '预览失败，没有写入';
       } catch (error) {
         $('preview').textContent = error.message;
         $('previewWrap').style.display = 'block';
+        $('previewWrap').classList.add('has-error');
         $('confirm').style.display = 'none';
         $('status').textContent = '预览失败，没有写入';
-      } finally { $('previewBtn').disabled = false; }
+      } finally {
+        $('previewBtn').textContent = '生成精确预览';
+        $('previewBtn').disabled = false;
+        $('configWorkspace').setAttribute('aria-busy', 'false');
+      }
     });
     $('apply').addEventListener('click', async () => {
       $('apply').disabled = true;
+      $('apply').textContent = '正在写入...';
       $('previewBtn').disabled = true;
-      $('status').textContent = '正在写入并验证…';
+      $('configWorkspace').setAttribute('aria-busy', 'true');
+      $('status').textContent = '正在写入并验证...';
       try {
         const data = await api('/api/apply', payload());
         const smoke = data.smoke ? `\nSmoke test:\n${data.smoke.output}${data.smoke.error}` : '';
         $('result').textContent = `${data.output}${data.error}${smoke}`;
         $('resultWrap').style.display = 'block';
+        $('resultWrap').classList.toggle('has-error', !data.ok);
         $('status').textContent = data.ok ? '配置已写入' : '写入失败';
         previewValid = false;
       } catch (error) {
         $('result').textContent = error.message;
         $('resultWrap').style.display = 'block';
+        $('resultWrap').classList.add('has-error');
         $('status').textContent = '写入失败';
-      } finally { $('previewBtn').disabled = false; }
+      } finally {
+        $('apply').textContent = '确认并写入';
+        $('previewBtn').disabled = false;
+        $('configWorkspace').setAttribute('aria-busy', 'false');
+      }
     });
-    load().catch(error => { $('status').textContent = error.message; });
+    load().catch(error => {
+      $('configWorkspace').setAttribute('aria-busy', 'false');
+      $('detect').innerHTML = `<div class="item"><div class="k">环境读取失败</div><div class="v bad">${esc(error.message)}</div></div>`;
+      $('status').textContent = error.message;
+    });
   </script>
 </body>
 </html>

@@ -74,7 +74,7 @@ class SetupUITests(unittest.TestCase):
         self.assertEqual("xhigh", state["detected"]["codex_effort"])
         self.assertEqual("Claude Code 9.9", state["clis"]["claude"]["version"])
         self.assertEqual(
-            ("codex", "gpt-detected", "medium", "detected"),
+            ("codex", "gpt-detected", "high", "detected"),
             tuple(
                 state["presets"]["balanced"]["fast_worker"][field]
                 for field in ("backend", "model", "effort", "model_source")
@@ -116,7 +116,7 @@ class SetupUITests(unittest.TestCase):
     def test_manual_matrix_requires_custom_mode(self):
         controller = partner_setup_ui.SetupController("codex", self.repo, self.env)
         payload = self.payload(controller)
-        payload["identities"]["fast_worker"]["effort"] = "high"
+        payload["identities"]["fast_worker"]["effort"] = "low"
         with self.assertRaisesRegex(partner_setup_ui.UIError, "自定义模式"):
             partner_setup_ui.normalize_payload(
                 payload,
@@ -131,7 +131,18 @@ class SetupUITests(unittest.TestCase):
             repo=self.repo,
             env=self.env,
         )
-        self.assertEqual("high", normalized["identities"]["fast_worker"]["effort"])
+        self.assertEqual("low", normalized["identities"]["fast_worker"]["effort"])
+
+    def test_ui_keeps_the_taste_design_and_accessibility_contract(self):
+        html = partner_setup_ui.HTML
+        self.assertIn("Variance 6, motion 3, density 6", html)
+        self.assertIn('class="workspace"', html)
+        self.assertIn('class="matrix" id="identities"', html)
+        self.assertIn("prefers-reduced-motion:reduce", html)
+        self.assertIn('role="status" aria-live="polite"', html)
+        self.assertIn('aria-describedby="${identity}-source"', html)
+        for forbidden in ("radial-gradient", "backdrop-filter", "—", "–", " · "):
+            self.assertNotIn(forbidden, html)
 
 
 if __name__ == "__main__":
