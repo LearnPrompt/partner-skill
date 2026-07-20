@@ -52,7 +52,10 @@ quality-critical step went cheap to save money and no mechanical step burned
 the expensive Claude seat; only the Codex channels move the meter to the
 subscription); and "the delegation prompt is ready" (attack the packet:
 vague goal, bundled tasks, over-constrained toolchain, review asked to also
-fix — a bad packet fails before the model does).
+fix — a bad packet fails before the model does). Close with `分工
+(Assignment)` in the output: restate the corrected task→owner→role mapping
+explicitly, covering every task in the split, not just the ones that
+changed.
 
 Output format (fixed):
 
@@ -70,6 +73,10 @@ Output format (fixed):
 
 ## 修改建议 (Changes)
 - [specific change, tied to the attack point it resolves]
+
+## 分工 (Assignment)
+- [task] → owner: [claude|codex], role: [deep_reasoner|fast_worker] — [one-line why]
+(only for Partner work-split reviews; omit for a general first-principles pass with no delegation attached)
 
 ## 未解疑问 (Open Questions)
 - [unasked/unanswered question] — impact: [how the answer could change the verdict]

@@ -94,6 +94,13 @@ When reviewing a Partner work split, always attack these claims:
   or a review job asked to also apply fixes. A bad packet fails before the
   model does.
 
+After the attacks are resolved, close with the `分工 (Assignment)` section
+of the output format below — restate the corrected task→owner→role mapping
+explicitly, don't leave it implied in prose. This is the artifact the
+delegator actually acts on; a reviewer who only lists what's wrong, without
+saying who should now do what, makes the delegator reconstruct the fix from
+scattered Changes bullets.
+
 ## Mode 3 — Grill (盘问)
 
 An adversarial *dialog* instead of a report, for when the user says "盘问"
@@ -130,9 +137,19 @@ shared understanding:
 ## 修改建议 (Changes)
 - [specific change, tied to the attack point it resolves]
 
+## 分工 (Assignment)
+- [task] → owner: [claude|codex], role: [deep_reasoner|fast_worker] — [one-line why, tying back to an attack point or fact when the split changed]
+
 ## 未解疑问 (Open Questions)
 - [question you could not ask or did not get answered] — impact: [how the answer could change the verdict]
 ```
+
+The `分工` section appears only when reviewing a Partner work split (a
+task/channel/role decision is actually in scope); omit it for a general
+first-principles pass or an adversarial review with no delegation attached.
+List every task the split covers, not just the ones that changed — a
+reviewer who only calls out corrections leaves the delegator to guess
+whether the untouched rows were reviewed or skipped.
 
 The `未解疑问` section appears only when unanswered questions remain
 (headless run, or the user was unavailable); omit it when clarification
