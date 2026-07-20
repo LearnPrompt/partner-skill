@@ -39,6 +39,10 @@ sandbox per the user's codex config. Use --read-only for review/adversarial
 jobs that must not touch the repo. --host selects the identity routing table;
 identities with backend=claude must be spawned as host subagents.
 
+Codex binary: set PARTNER_CODEX_BIN to an executable path or command name to
+override discovery. On macOS the ChatGPT/Codex app-bundled CLI is preferred
+when present so app-only models use a compatible client; otherwise PATH is used.
+
 Exit codes: status prints RUNNING/DONE/FAILED/CANCELLED; `status --wait`
 returns non-zero on timeout or failure so callers can branch on it.
 USAGE
@@ -69,6 +73,40 @@ require_job() {
 
 now_utc() {
   date -u +%Y-%m-%dT%H:%M:%SZ
+}
+
+resolve_codex_bin() {
+  local configured="${PARTNER_CODEX_BIN:-}"
+  local candidate=""
+
+  CODEX_BIN_SOURCE="path"
+  if [ -n "$configured" ]; then
+    CODEX_BIN_SOURCE="env"
+    if [[ "$configured" == */* ]]; then
+      candidate="$configured"
+    else
+      candidate="$(command -v "$configured" 2>/dev/null || true)"
+    fi
+    [ -n "$candidate" ] && [ -x "$candidate" ] || die "PARTNER_CODEX_BIN is not executable: $configured"
+  elif [ "$(uname -s)" = "Darwin" ]; then
+    for candidate in "/Applications/ChatGPT.app/Contents/Resources/codex" "/Applications/Codex.app/Contents/Resources/codex"; do
+      if [ -x "$candidate" ]; then
+        CODEX_BIN_SOURCE="app"
+        break
+      fi
+      candidate=""
+    done
+  fi
+
+  if [ -z "$candidate" ]; then
+    candidate="$(command -v codex 2>/dev/null || true)"
+    CODEX_BIN_SOURCE="path"
+  fi
+  [ -n "$candidate" ] && [ -x "$candidate" ] || die "codex CLI not found; install it or set PARTNER_CODEX_BIN"
+
+  CODEX_BIN="$candidate"
+  CODEX_VERSION="$("$CODEX_BIN" --version 2>/dev/null | head -1 || true)"
+  CODEX_VERSION="${CODEX_VERSION:-unknown}"
 }
 
 make_job_id() {
@@ -186,14 +224,15 @@ cmd_submit() {
   [ "$MODEL_EXPLICIT" = "false" ] || MODEL_SOURCE="explicit"
   [ "$EFFORT_EXPLICIT" = "false" ] || EFFORT_SOURCE="explicit"
   case "$EFFORT" in minimal|low|medium|high|xhigh) ;; *) die "invalid --effort: $EFFORT" ;; esac
+  resolve_codex_bin
 
   LABEL="$(echo "$LABEL" | tr -cs 'A-Za-z0-9_-' '-' | sed 's/^-//;s/-$//')"
   if [ "$DRY_RUN" = "true" ]; then
-    printf 'role=%s\nbackend=codex\nconfig_host=%s\nmodel=%s\neffort=%s\nmodel_source=%s\neffort_source=%s\n' \
-      "${ROLE:-none}" "$CONFIG_HOST" "${MODEL:-default}" "$EFFORT" "$MODEL_SOURCE" "$EFFORT_SOURCE"
+    printf 'role=%s\nbackend=codex\nconfig_host=%s\nmodel=%s\neffort=%s\nmodel_source=%s\neffort_source=%s\ncodex_bin=%s\ncodex_bin_source=%s\ncodex_version=%s\n' \
+      "${ROLE:-none}" "$CONFIG_HOST" "${MODEL:-default}" "$EFFORT" "$MODEL_SOURCE" "$EFFORT_SOURCE" \
+      "$CODEX_BIN" "$CODEX_BIN_SOURCE" "$CODEX_VERSION"
     return 0
   fi
-  command -v codex >/dev/null 2>&1 || die "codex CLI not found on PATH"
   local JOB_ID
   JOB_ID="$(make_job_id "$LABEL")"
   JOB="$(job_dir "$JOB_ID")"
@@ -202,8 +241,9 @@ cmd_submit() {
   cp "$PROMPT_FILE" "$JOB/prompt.md"
 
   {
-    printf 'label=%s\neffort=%s\nmodel=%s\nrole=%s\nbackend=codex\nconfig_host=%s\nmodel_source=%s\neffort_source=%s\nread_only=%s\nsubmitted_at=%s\nmode=fresh\n' \
-      "$LABEL" "$EFFORT" "${MODEL:-default}" "${ROLE:-none}" "$CONFIG_HOST" "$MODEL_SOURCE" "$EFFORT_SOURCE" "$READ_ONLY" "$(now_utc)"
+    printf 'label=%s\neffort=%s\nmodel=%s\nrole=%s\nbackend=codex\nconfig_host=%s\nmodel_source=%s\neffort_source=%s\ncodex_bin=%s\ncodex_bin_source=%s\ncodex_version=%s\nread_only=%s\nsubmitted_at=%s\nmode=fresh\n' \
+      "$LABEL" "$EFFORT" "${MODEL:-default}" "${ROLE:-none}" "$CONFIG_HOST" "$MODEL_SOURCE" "$EFFORT_SOURCE" \
+      "$CODEX_BIN" "$CODEX_BIN_SOURCE" "$CODEX_VERSION" "$READ_ONLY" "$(now_utc)"
   } >"$JOB/meta"
 
   write_run_script "$JOB" "$EFFORT" "$MODEL" "$READ_ONLY" ""
@@ -234,6 +274,14 @@ cmd_resume() {
 
   local EFFORT
   EFFORT="$(sed -n 's/^effort=//p' "$PARENT_JOB/meta")"
+  CODEX_BIN="$(sed -n 's/^codex_bin=//p' "$PARENT_JOB/meta")"
+  if [ -n "$CODEX_BIN" ] && [ -x "$CODEX_BIN" ]; then
+    CODEX_BIN_SOURCE="parent"
+    CODEX_VERSION="$("$CODEX_BIN" --version 2>/dev/null | head -1 || true)"
+    CODEX_VERSION="${CODEX_VERSION:-unknown}"
+  else
+    resolve_codex_bin
+  fi
   local ROUND=2
   case "$PARENT_ID" in *-r[0-9]*) ROUND=$(( ${PARENT_ID##*-r} + 1 )) ;; esac
   local JOB_ID="${PARENT_ID%-r[0-9]*}-r${ROUND}"
@@ -244,8 +292,8 @@ cmd_resume() {
   printf '%s' "$SESSION_ID" >"$JOB/session_id"
 
   {
-    printf 'label=resume\neffort=%s\nmodel=inherit\nread_only=%s\nsubmitted_at=%s\nmode=resume\nparent=%s\n' \
-      "${EFFORT:-high}" "$READ_ONLY" "$(now_utc)" "$PARENT_ID"
+    printf 'label=resume\neffort=%s\nmodel=inherit\ncodex_bin=%s\ncodex_bin_source=%s\ncodex_version=%s\nread_only=%s\nsubmitted_at=%s\nmode=resume\nparent=%s\n' \
+      "${EFFORT:-high}" "$CODEX_BIN" "$CODEX_BIN_SOURCE" "$CODEX_VERSION" "$READ_ONLY" "$(now_utc)" "$PARENT_ID"
   } >"$JOB/meta"
 
   write_run_script "$JOB" "${EFFORT:-high}" "" "$READ_ONLY" "$SESSION_ID"
@@ -260,6 +308,7 @@ write_run_script() {
     echo 'set -uo pipefail'
     printf 'JOB=%q\n' "$job"
     printf 'REPO=%q\n' "$REPO"
+    printf 'CODEX_BIN=%q\n' "$CODEX_BIN"
     echo 'PROMPT="$(cat "$JOB/prompt.md")"'
     # </dev/null: a long prompt can make codex exec also wait on stdin for
     # more input ("Reading additional input from stdin..."); the background
@@ -271,12 +320,12 @@ write_run_script() {
       local args="--json -c 'model_reasoning_effort=\"$effort\"'"
       [ "$read_only" = "true" ] && args="$args -c 'sandbox_mode=\"read-only\"'"
       echo 'cd "$REPO"'
-      printf 'codex exec resume %q "$PROMPT" %s >"$JOB/log.jsonl" 2>"$JOB/stderr.log" </dev/null\n' "$session_id" "$args"
+      printf '"$CODEX_BIN" exec resume %q "$PROMPT" %s >"$JOB/log.jsonl" 2>"$JOB/stderr.log" </dev/null\n' "$session_id" "$args"
     else
       local args="--json -C \"\$REPO\" -c 'model_reasoning_effort=\"$effort\"'"
       [ -n "$model" ] && args="$args -m \"$model\""
       [ "$read_only" = "true" ] && args="$args -s read-only"
-      printf 'codex exec "$PROMPT" %s >"$JOB/log.jsonl" 2>"$JOB/stderr.log" </dev/null\n' "$args"
+      printf '"$CODEX_BIN" exec "$PROMPT" %s >"$JOB/log.jsonl" 2>"$JOB/stderr.log" </dev/null\n' "$args"
     fi
     echo 'echo $? >"$JOB/exit_code"'
   } >"$job/run.sh"

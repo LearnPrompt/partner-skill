@@ -24,8 +24,20 @@ class DelegateRoleTests(unittest.TestCase):
             config_path = repo / ".partner" / "config.toml"
             config_path.parent.mkdir()
             config_path.write_text(config, encoding="utf-8")
+        fake_codex = root / "codex"
+        fake_codex.write_text(
+            "#!/usr/bin/env bash\nprintf 'codex-cli test-version\\n'\n",
+            encoding="utf-8",
+        )
+        fake_codex.chmod(0o755)
         env = os.environ.copy()
-        env.update({"HOME": str(root / "home"), "XDG_CONFIG_HOME": str(root / "xdg")})
+        env.update(
+            {
+                "HOME": str(root / "home"),
+                "XDG_CONFIG_HOME": str(root / "xdg"),
+                "PARTNER_CODEX_BIN": str(fake_codex),
+            }
+        )
         result = subprocess.run(
             [
                 "bash",
@@ -97,18 +109,17 @@ class DelegateRoleTests(unittest.TestCase):
     def test_deep_reasoner_uses_project_config(self):
         result, _ = self.run_submit(self.config(), "--role", "deep_reasoner")
         self.assertEqual((0, ""), (result.returncode, result.stderr))
-        self.assertEqual(
-            {
-                "role": "deep_reasoner",
-                "backend": "codex",
-                "config_host": "codex",
-                "model": "gpt-deep",
-                "effort": "xhigh",
-                "model_source": "config:project",
-                "effort_source": "config:project",
-            },
-            self.parsed(result.stdout),
-        )
+        parsed = self.parsed(result.stdout)
+        expected = {
+            "role": "deep_reasoner",
+            "backend": "codex",
+            "config_host": "codex",
+            "model": "gpt-deep",
+            "effort": "xhigh",
+            "model_source": "config:project",
+            "effort_source": "config:project",
+        }
+        self.assertEqual(expected, {key: parsed[key] for key in expected})
 
     def test_explicit_effort_overrides_fast_worker_config(self):
         result, _ = self.run_submit(
@@ -146,6 +157,14 @@ class DelegateRoleTests(unittest.TestCase):
         result, repo = self.run_submit(self.config(), "--role", "deep_reasoner")
         self.assertEqual(0, result.returncode, result.stderr)
         self.assertFalse((repo / ".partner" / "jobs").exists())
+
+    def test_dry_run_reports_selected_codex_binary(self):
+        result, _ = self.run_submit(self.config(), "--role", "deep_reasoner")
+        self.assertEqual(0, result.returncode, result.stderr)
+        parsed = self.parsed(result.stdout)
+        self.assertEqual("env", parsed["codex_bin_source"])
+        self.assertEqual("codex-cli test-version", parsed["codex_version"])
+        self.assertTrue(parsed["codex_bin"].endswith("/codex"))
 
     def test_arbiter_uses_codex_identity_config(self):
         result, _ = self.run_submit(
