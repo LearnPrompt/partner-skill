@@ -12,12 +12,19 @@ SCRIPT = Path("scripts/delegate-codex.sh")
 
 
 class DelegateRoleTests(unittest.TestCase):
-    def run_submit(self, config: str | None, *arguments: str):
+    def run_submit(self, config: str | None, *arguments: str, init_git: bool = False):
         temporary = tempfile.TemporaryDirectory()
         self.addCleanup(temporary.cleanup)
         root = Path(temporary.name)
         repo = root / "repo"
         repo.mkdir()
+        if init_git:
+            subprocess.run(
+                ["git", "init", "--quiet", str(repo)],
+                check=True,
+                capture_output=True,
+                text=True,
+            )
         prompt = root / "prompt.md"
         prompt.write_text("test prompt\n", encoding="utf-8")
         if config is not None:
@@ -210,6 +217,22 @@ class DelegateRoleTests(unittest.TestCase):
         parsed = self.parsed(result.stdout)
         self.assertEqual("gpt-deep", parsed["model"])
         self.assertEqual("codex", parsed["config_host"])
+
+    def test_non_git_repo_appends_skip_git_repo_check(self):
+        result, repo = self.run_submit(None)
+        self.assertFalse((repo / ".git").exists())
+        self.assertEqual((0, ""), (result.returncode, result.stderr))
+        parsed = self.parsed(result.stdout)
+        self.assertIn("--skip-git-repo-check", result.stdout)
+        self.assertEqual("--skip-git-repo-check", parsed["skip_git_repo_check"])
+
+    def test_git_repo_omits_skip_git_repo_check(self):
+        result, repo = self.run_submit(None, init_git=True)
+        self.assertTrue((repo / ".git").exists())
+        self.assertEqual((0, ""), (result.returncode, result.stderr))
+        parsed = self.parsed(result.stdout)
+        self.assertNotIn("--skip-git-repo-check", result.stdout)
+        self.assertEqual("", parsed["skip_git_repo_check"])
 
 
 if __name__ == "__main__":

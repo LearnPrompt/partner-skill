@@ -2,6 +2,7 @@
 
 ## Unreleased — feat/v1.5-dual-host
 
+- fix: restore delegate-codex.sh auto --skip-git-repo-check for non-git --repo targets, lost in the v1.5 rewrite (jobs against non-git dirs FAILed immediately)
 - fix: align the model matrix rows and synchronize the matrix/settings header grid without removing the routing motion
 - feat: rebuild the setup UI as a kinetic local Agent routing console with live role mapping, purposeful motion, responsive layout, and reduced-motion support
 - feat: localhost single-page setup UI with a taste-skill guided decision rail, concrete model matrix, exact diff preview, preview-bound confirmation, and smoke test without repeated chat questions

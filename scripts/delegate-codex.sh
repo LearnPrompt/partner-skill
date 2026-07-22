@@ -75,6 +75,14 @@ now_utc() {
   date -u +%Y-%m-%dT%H:%M:%SZ
 }
 
+is_git_repo() {
+  # `codex exec` refuses to run outside a trusted (git) directory unless
+  # --skip-git-repo-check is passed. Detect via rev-parse rather than a
+  # bare `-d "$1/.git"` check so worktrees/submodules (where .git is a
+  # file, not a directory) are still recognized as git repos.
+  git -C "$1" rev-parse --git-dir >/dev/null 2>&1
+}
+
 resolve_codex_bin() {
   local configured="${PARTNER_CODEX_BIN:-}"
   local candidate=""
@@ -228,9 +236,11 @@ cmd_submit() {
 
   LABEL="$(echo "$LABEL" | tr -cs 'A-Za-z0-9_-' '-' | sed 's/^-//;s/-$//')"
   if [ "$DRY_RUN" = "true" ]; then
-    printf 'role=%s\nbackend=codex\nconfig_host=%s\nmodel=%s\neffort=%s\nmodel_source=%s\neffort_source=%s\ncodex_bin=%s\ncodex_bin_source=%s\ncodex_version=%s\n' \
+    local SKIP_GIT_REPO_CHECK=""
+    is_git_repo "$REPO" || SKIP_GIT_REPO_CHECK="--skip-git-repo-check"
+    printf 'role=%s\nbackend=codex\nconfig_host=%s\nmodel=%s\neffort=%s\nmodel_source=%s\neffort_source=%s\ncodex_bin=%s\ncodex_bin_source=%s\ncodex_version=%s\nskip_git_repo_check=%s\n' \
       "${ROLE:-none}" "$CONFIG_HOST" "${MODEL:-default}" "$EFFORT" "$MODEL_SOURCE" "$EFFORT_SOURCE" \
-      "$CODEX_BIN" "$CODEX_BIN_SOURCE" "$CODEX_VERSION"
+      "$CODEX_BIN" "$CODEX_BIN_SOURCE" "$CODEX_VERSION" "$SKIP_GIT_REPO_CHECK"
     return 0
   fi
   local JOB_ID
@@ -323,6 +333,9 @@ write_run_script() {
       printf '"$CODEX_BIN" exec resume %q "$PROMPT" %s >"$JOB/log.jsonl" 2>"$JOB/stderr.log" </dev/null\n' "$session_id" "$args"
     else
       local args="--json -C \"\$REPO\" -c 'model_reasoning_effort=\"$effort\"'"
+      # Non-git --repo targets need --skip-git-repo-check or codex exec
+      # refuses to run ("Not inside a trusted directory").
+      is_git_repo "$REPO" || args="$args --skip-git-repo-check"
       [ -n "$model" ] && args="$args -m \"$model\""
       [ "$read_only" = "true" ] && args="$args -s read-only"
       printf '"$CODEX_BIN" exec "$PROMPT" %s >"$JOB/log.jsonl" 2>"$JOB/stderr.log" </dev/null\n' "$args"
