@@ -7,6 +7,7 @@
 > 我的 Claude Code 和 Codex 天下第一好。
 
 [![Agent Skills](https://img.shields.io/badge/Agent%20Skills-partner--skill-blueviolet)](SKILL.md)
+[![Version: 2.0.0](https://img.shields.io/badge/version-2.0.0-ef6f4f)](CHANGELOG.md)
 [![GitHub stars](https://img.shields.io/github/stars/LearnPrompt/partner-skill?style=flat-square&color=f5c542)](https://github.com/LearnPrompt/partner-skill/stargazers)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 

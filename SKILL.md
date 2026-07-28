@@ -1,6 +1,6 @@
 ---
 name: partner-skill
-version: 1.4.2
+version: 2.0.0
 description: |
   搭子.skill / Partner — two-direction cost-split workflow between Claude Code and Codex. Direction A (Codex-driven): Codex orchestrates and implements; Claude Code plans (/goal), polishes UI/interaction, and runs final /codex:review in one reused session. Direction B (Claude-driven): Claude plans and splits the work, runs the idea-king adversarial gate, delegates to Codex background jobs, monitors, and full-reviews before accepting. Use on "搭子" / "双向搭子" / "搭子，恢复" (resume from .partner/), "搭子，配置" (first-run setup wizard), "搭子，试跑" (identity tryout report), 分工给 codex / 让 codex 做 / codex 后台跑 / Claude 计划 Codex 实现 / 让 Claude skip 做完, or any request to split coding work between Claude Code and Codex to save quota. Not for ordinary code review without Claude Code; do not trigger on the bare English word "partner" in unrelated contexts.
 ---

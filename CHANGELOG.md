@@ -1,7 +1,10 @@
 # Changelog
 
-## Unreleased — feat/v1.5-dual-host
+## v2.0.0 (2026-07-29)
 
+### Setup, identity routing, and safety
+
+- fix: strip host-injected Claude Code environment markers before spawning the real Claude CLI, preserving first-party OAuth instead of triggering a nested-session/login failure
 - fix: restore delegate-codex.sh auto --skip-git-repo-check for non-git --repo targets, lost in the v1.5 rewrite (jobs against non-git dirs FAILed immediately)
 - fix: align the model matrix rows and synchronize the matrix/settings header grid without removing the routing motion
 - feat: rebuild the setup UI as a kinetic local Agent routing console with live role mapping, purposeful motion, responsive layout, and reduced-motion support
@@ -11,6 +14,8 @@
 - feat: arbiter blind-solve protocol + 搭子，试跑 first-run tryout; goal.md task table drops owner in favor of identity (`f329daf`)
 - feat: idea-king adds 分工 (Assignment) section to Partner work-split reviews (`18dd247`)
 - fix: wire per-task role decision into the split flow; clarify owner vs role (`983457f`, `493d561`, superseded by the identity matrix)
+
+### Protocol, receipts, and verification
 
 - test: dual-host CI sandbox matrix — install order, idempotence, fail-closed (`6333e8c`)
 - fix: redirect codex exec stdin from /dev/null to prevent hung background jobs (`0d673cc`)
