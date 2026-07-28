@@ -17,6 +17,7 @@
 
 ### Protocol, receipts, and verification
 
+- test: make the dual-host sandbox matrix self-contained with deterministic fake CLI binaries so CI does not depend on installed Claude or Codex tools
 - test: dual-host CI sandbox matrix — install order, idempotence, fail-closed (`6333e8c`)
 - fix: redirect codex exec stdin from /dev/null to prevent hung background jobs (`0d673cc`)
 - docs: README bilingual rewrite — setup wizard, host self-ID, receipt v2, opt-in full protocol (`54ce055`)

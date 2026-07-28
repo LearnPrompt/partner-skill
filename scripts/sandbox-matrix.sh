@@ -30,12 +30,18 @@ run_setup() {
     HOME="$scratch/home" \
     XDG_CONFIG_HOME="$scratch/xdg" \
     CODEX_HOME="$scratch/codex" \
+    PATH="$scratch/bin:$PATH" \
     python3 "$SETUP" "$@" >"$log" 2>&1
 }
 
 prepare_scratch() {
   local scratch="$1"
-  mkdir -p "$scratch/repo" "$scratch/home" "$scratch/xdg" "$scratch/codex" || return 1
+  local backend
+  mkdir -p "$scratch/repo" "$scratch/home" "$scratch/xdg" "$scratch/codex" "$scratch/bin" || return 1
+  for backend in claude codex; do
+    printf '#!/usr/bin/env bash\nexit 0\n' >"$scratch/bin/$backend" || return 1
+    chmod +x "$scratch/bin/$backend" || return 1
+  done
   export HOME="$scratch/home"
   export XDG_CONFIG_HOME="$scratch/xdg"
   export CODEX_HOME="$scratch/codex"
