@@ -779,6 +779,23 @@ def show_status(args: argparse.Namespace, env: Mapping[str, str]) -> int:
     return 0
 
 
+def _nested_claude_env(env: Mapping[str, str]) -> Dict[str, str]:
+    """Strip host-injected Claude Code vars before spawning a `claude` subprocess.
+
+    A `claude` CLI launched from inside a Claude Code session inherits the
+    host's ANTHROPIC_BASE_URL / CLAUDE_CODE_* env vars, which override the
+    user's own ~/.claude/settings.json credentials and make the child report
+    a false "Not logged in" error even when the user is authenticated.
+    """
+    cleaned = {
+        key: value
+        for key, value in env.items()
+        if not key.startswith("ANTHROPIC_") and not key.startswith("CLAUDE_CODE_")
+    }
+    cleaned["CLAUDECODE"] = ""
+    return cleaned
+
+
 def smoke_claude_identity(
     args: argparse.Namespace,
     env: Mapping[str, str],
@@ -813,7 +830,7 @@ def smoke_claude_identity(
         result = subprocess.run(
             command,
             cwd=args.repo,
-            env=dict(env),
+            env=_nested_claude_env(env),
             text=True,
             capture_output=True,
             check=False,

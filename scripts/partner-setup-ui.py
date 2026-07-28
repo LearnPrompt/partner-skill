@@ -67,7 +67,7 @@ def _binary_version(path: Optional[str], env: Mapping[str, str], source: str) ->
     try:
         result = subprocess.run(
             [path, "--version"],
-            env=dict(env),
+            env=engine._nested_claude_env(env),
             text=True,
             capture_output=True,
             check=False,
@@ -238,7 +238,7 @@ def _claude_model_options(
         try:
             result = subprocess.run(
                 [path, "--help"],
-                env=dict(env),
+                env=engine._nested_claude_env(env),
                 text=True,
                 capture_output=True,
                 check=False,

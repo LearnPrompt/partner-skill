@@ -40,6 +40,9 @@ class SetupTests(unittest.TestCase):
             "if [ -n \"${PARTNER_TEST_CLAUDE_ARGS:-}\" ]; then\n"
             "  printf '%s\\n' \"$@\" > \"$PARTNER_TEST_CLAUDE_ARGS\"\n"
             "fi\n"
+            "if [ -n \"${PARTNER_TEST_CLAUDE_ENV:-}\" ]; then\n"
+            "  env > \"$PARTNER_TEST_CLAUDE_ENV\"\n"
+            "fi\n"
             "printf 'PARTNER_SMOKE_OK\\n'\n",
             encoding="utf-8",
         )
@@ -609,6 +612,53 @@ always_on_host_rules = false
             self.assertEqual(
                 "2026-07-20T01:02:03Z", identities[identity]["verified_at"]
             )
+
+    def test_nested_claude_env_strips_host_credential_vars(self):
+        source = {
+            "PATH": "/usr/bin",
+            "HOME": "/home/carl",
+            "ANTHROPIC_BASE_URL": "https://poisoned.example",
+            "ANTHROPIC_AUTH_TOKEN": "poisoned-token",
+            "CLAUDE_CODE_PROVIDER_MANAGED_BY_HOST": "1",
+            "CLAUDE_CODE_SSE_PORT": "12345",
+            "CLAUDECODE": "1",
+        }
+        cleaned = partner_setup._nested_claude_env(source)
+        for key in cleaned:
+            self.assertFalse(key.startswith("ANTHROPIC_"), key)
+            self.assertFalse(key.startswith("CLAUDE_CODE_"), key)
+        self.assertEqual("", cleaned["CLAUDECODE"])
+        self.assertEqual("/usr/bin", cleaned["PATH"])
+        self.assertEqual("/home/carl", cleaned["HOME"])
+
+    def test_claude_smoke_strips_host_credential_env_vars(self):
+        self.assertEqual(0, self.run_cli(*self.claude_args())[0])
+        env_log = self.root / "claude-smoke-env.txt"
+        self.env["PARTNER_TEST_CLAUDE_ENV"] = str(env_log)
+        self.env["ANTHROPIC_BASE_URL"] = "https://poisoned.example"
+        self.env["ANTHROPIC_AUTH_TOKEN"] = "poisoned-token"
+        self.env["CLAUDE_CODE_PROVIDER_MANAGED_BY_HOST"] = "1"
+        self.env["CLAUDECODE"] = "1"
+        status, output, error = self.run_cli(
+            "--smoke",
+            "--host",
+            "claude_code",
+            "--repo",
+            str(self.repo),
+            "--timestamp",
+            "2026-07-20T01:02:03Z",
+        )
+        self.assertEqual((0, ""), (status, error))
+        self.assertIn("PASS (fresh Claude session)", output)
+        captured = dict(
+            line.split("=", 1)
+            for line in env_log.read_text(encoding="utf-8").splitlines()
+            if "=" in line
+        )
+        for key in captured:
+            self.assertFalse(key.startswith("ANTHROPIC_"), key)
+            self.assertFalse(key.startswith("CLAUDE_CODE_"), key)
+        self.assertEqual("", captured.get("CLAUDECODE", ""))
 
     def test_claude_smoke_failure_keeps_only_that_identity_unverified(self):
         self.assertEqual(0, self.run_cli(*self.codex_args())[0])
