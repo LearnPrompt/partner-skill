@@ -147,7 +147,22 @@ def assert_order(markdown: str, entries: list[str], label: str, failures: list[s
 def main() -> int:
     zh = read(ZH)
     en = read(EN)
+    skill = read(ROOT / "SKILL.md")
     failures: list[str] = []
+
+    version_match = re.search(r"(?m)^version:\s*([0-9]+\.[0-9]+\.[0-9]+)\s*$", skill)
+    if version_match is None:
+        failures.append("SKILL.md is missing a semantic version")
+    else:
+        expected_badge = f"[![Version: {version_match.group(1)}]"
+        if expected_badge not in zh:
+            failures.append(
+                f"README.md version badge does not match SKILL.md {version_match.group(1)}"
+            )
+        if expected_badge not in en:
+            failures.append(
+                f"README.en.md version badge does not match SKILL.md {version_match.group(1)}"
+            )
 
     zh_headings = headings(zh)
     en_headings = headings(en)

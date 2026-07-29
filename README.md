@@ -7,11 +7,11 @@
 > 我的 Claude Code 和 Codex 天下第一好。
 
 [![Agent Skills](https://img.shields.io/badge/Agent%20Skills-partner--skill-blueviolet)](SKILL.md)
-[![Version: 2.0.0](https://img.shields.io/badge/version-2.0.0-ef6f4f)](CHANGELOG.md)
+[![Version: 2.0.1](https://img.shields.io/badge/version-2.0.1-ef6f4f)](CHANGELOG.md)
 [![GitHub stars](https://img.shields.io/github/stars/LearnPrompt/partner-skill?style=flat-square&color=f5c542)](https://github.com/LearnPrompt/partner-skill/stargazers)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-**把 Claude Code 留给规划、审美和审查，把 Codex 留给实现、跑检查和收尾。最后用一张 Session Receipt 证明：没有乱开新的 Claude 会话烧钱。**
+**把 Claude Code 留给规划、审美和审查，把 Codex 留给实现、跑检查和收尾。v2.0.1 再把仓库级 Fable 规划变成有边界、可恢复、可审计的流程。**
 
 [30 秒装上](#30-秒装上) · [Showcase](#showcase) · [一句话用起来](#一句话用起来) · [分宿主用法](#分宿主用法) · [成本压力模型](#成本压力模型) · [它解决什么](#它解决什么) · [安全边界](#安全边界) · [验证](#验证)
 
@@ -46,11 +46,26 @@ bash install.sh --target claude
 
 ## Showcase
 
+**Showcase 1：同会话 UI polish**
+
 <div align="center">
 <img src="assets/showcase.gif" alt="Codex-only vs Partner: before/after UI contrast" width="720" />
 </div>
 
 左边是 Codex 单独做出来的——功能正确但视觉上没什么记忆点。右边是同一个 Claude Code 会话接回来做 UI polish 后的结果，右下角 `session: reused ✓` 说明没有新开 Claude 会话。
+
+**Showcase 2：真实 Fable 失败与恢复**
+
+这不是一张“全部成功”的表，而是一条真实故障链。v2.0.1 的承诺不是 Fable 永不失败，而是失败不会无限跑、不会静默换模，也不会把半截结果当计划。
+
+| 实际阶段 | 观测结果 | Claude CLI 返回成本 | Partner 怎么处理 |
+|---|---|---:|---|
+| v2.0.0 仓库规划 | 登录成功，派生 3 个子 Agent 后 stream idle；花费已发生但没有计划 | `$6.57` | 暴露旧流程无边界 |
+| v2.0.1 fresh bounded attempt | 180 秒没有有效事件，`idle_timeout`；没有生成 plan | `unknown`（CLI 未返回最终成本） | 杀掉整个进程组，保留 metadata/checkpoint/recovery |
+| 同 session resume | exact `claude-fable-5` / `xhigh`，返回有效八段计划 | `$0.382695` | 证明失败链可恢复，没有换模型 |
+| 最终 fresh candidate | exact model/session、return code 0、packet/runner hash 一致 | `$0.45282` | 作为最终 Judge 与 PR 证据 |
+
+这里的美元数是 Claude CLI 在对应真实 planning run 中返回的成本，不是整套工作流的 token 节省率；失败尝试没有 final result 时就诚实写 `unknown`。完整边界见 [`docs/releases/v2.0.1.md`](docs/releases/v2.0.1.md)、[`references/bounded-planning.md`](references/bounded-planning.md) 和 [`docs/showcase-cost-model.md`](docs/showcase-cost-model.md)。
 
 ## 一句话用起来
 
@@ -224,7 +239,7 @@ install.sh                       Local installer for Codex, Claude Code, Agents,
 test-prompts.json                Trigger and behavior regression prompts
 docs/showcase-cost-model.md      Showcase 成本压力模型与真实 token 记录字段
 docs/receipt-schema.json         Partner Session Receipt 的 JSON schema (partner.receipt.v1)
-docs/config-schema.md            Partner 配置 schema v1：字段表、优先级链、并发语义、TOML 子集边界
+docs/config-schema.md            Partner 配置 schema v2：身份矩阵、优先级链、并发语义、TOML 子集边界
 examples/session-receipt.md      Minimal visible proof of same-session reuse
 examples/showcase-cost-ledger.json
                                   三种模式的成本压力 ledger
@@ -253,7 +268,7 @@ scripts/validate-receipt.py      校验 Partner Session Receipt 的字段与取�
 scripts/run-test-prompts.py      行为回归 prompt 的静态检查与实验性 live 模式
 scripts/run-claude-plan.py       按配置运行 bounded Claude planner，保存 sanitized events/checkpoint/cost
 scripts/delegate-codex.sh        Codex 后台任务原语：submit / status / result / resume / cancel
-scripts/partner-config.py        配置引擎：TOML 子集解析、确定性写回、锁与原子写（schema v1）
+scripts/partner-config.py        配置引擎：TOML 子集解析、确定性写回、锁与原子写（schema v2）
 scripts/partner_runtime.py       Claude 子进程共享环境边界，避免宿主变量污染一方 OAuth
 scripts/partner-setup.py         向导落盘引擎：--preview/--apply/--rollback/--smoke/--status/--interactive
 scripts/partner-setup-ui.py      localhost 单页配置 UI：完整模型矩阵、精确预览、确认写入
