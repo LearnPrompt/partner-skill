@@ -44,6 +44,14 @@ bash install.sh --target claude
 
 装完第一次用之前，说一句「搭子，配置」：搭子会打开只监听 `127.0.0.1` 的本地单页 UI。均衡/质量/成本三个起点和三个身份的具体 CLI/模型/effort 都在一页完成；页面先展示精确 diff，确认后才落盘。小白流程固定使用当前项目、本机 Git 忽略、安装后自动检查等安全默认值，不再追问高级选项。Codex 模型和每个模型支持的 effort 来自本机 CLI `model/list`，Claude 别名与 effort 来自 `claude --help`，绝不瞎猜。
 
+<div align="center">
+<p><strong>配置演示：切换工作模式、CLI、模型和推理强度</strong></p>
+<a href="assets/config-switch-demo.mp4">
+<img src="assets/config-switch-demo.gif" alt="Partner 配置页面演示：切换工作模式与三个搭子角色的 CLI、模型和推理强度" width="720" />
+</a>
+<p><a href="assets/config-switch-demo.mp4">打开 7 秒完整 MP4</a></p>
+</div>
+
 ## Showcase
 
 **Showcase 1：同会话 UI polish**
@@ -57,7 +65,10 @@ bash install.sh --target claude
 **Showcase 2：真实 Fable 失败与恢复**
 
 <div align="center">
-<img src="assets/v2.0.1-conversation-cost-receipt.png" alt="Partner v2.0.1 对话消耗小票：三个身份的实际模型、推理强度、调用状态、成本和验收结果" width="720" />
+<a href="assets/v2.0.1-conversation-cost-receipt.png">
+<img src="assets/v2.0.1-conversation-cost-receipt.png" alt="Partner v2.0.1 对话消耗网页截图：角色运行映射、可核验成本、任务、推理强度和交付结果" width="720" />
+</a>
+<p><sub>真实网页截图：切换角色查看实际模型、effort、任务、成本与交付证据。</sub></p>
 </div>
 
 这不是一张“全部成功”的表，而是一条真实故障链。v2.0.1 的承诺不是 Fable 永不失败，而是失败不会无限跑、不会静默换模，也不会把半截结果当计划。

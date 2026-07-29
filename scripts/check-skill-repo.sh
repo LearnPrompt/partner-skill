@@ -36,6 +36,8 @@ check_file "README.en.md"
 check_file "test-prompts.json"
 check_file "install.sh"
 check_file "LICENSE"
+check_file "assets/config-switch-demo.mp4"
+check_file "assets/config-switch-demo.gif"
 check_file "assets/v2.0.1-conversation-cost-receipt.png"
 check_file "examples/showcase-cost-ledger.json"
 check_file "docs/showcase-cost-model.md"
@@ -244,6 +246,18 @@ if [ -f assets/v2.0.1-conversation-cost-receipt.png ] && \
   echo "PASS v2.0.1 conversation cost receipt image"
 else
   echo "FAIL v2.0.1 conversation cost receipt image must exist and be linked by both READMEs"
+  fail=$((fail + 1))
+fi
+
+if [ -f assets/config-switch-demo.mp4 ] && \
+  [ -f assets/config-switch-demo.gif ] && \
+  grep -qF 'assets/config-switch-demo.mp4' README.md && \
+  grep -qF 'assets/config-switch-demo.mp4' README.en.md && \
+  grep -qF 'assets/config-switch-demo.gif' README.md && \
+  grep -qF 'assets/config-switch-demo.gif' README.en.md; then
+  echo "PASS configuration demo video and README preview"
+else
+  echo "FAIL configuration demo video/preview must exist and be linked by both READMEs"
   fail=$((fail + 1))
 fi
 

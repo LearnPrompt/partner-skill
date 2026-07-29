@@ -29,6 +29,8 @@ EXPECTED_HEADINGS = [
 REQUIRED_MARKERS = [
     "examples/showcase-cost-ledger.json",
     "docs/showcase-cost-model.md",
+    "assets/config-switch-demo.mp4",
+    "assets/config-switch-demo.gif",
     "assets/v2.0.1-conversation-cost-receipt.png",
     "Partner Session Receipt",
     "new_claude_p_sessions",

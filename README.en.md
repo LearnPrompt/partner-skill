@@ -44,6 +44,14 @@ bash install.sh --target claude
 
 Before first real use, say "搭子，配置" (Partner, configure). Partner opens a local single-page UI bound only to `127.0.0.1`: balanced/quality/cost starting points plus every identity's concrete CLI/model/effort are handled in one place. The beginner flow fixes project scope, local Git exclusion, and post-install checks to safe defaults instead of asking advanced questions. The page shows the exact diff before confirmation. Codex models and per-model efforts come from the local CLI `model/list`; Claude aliases and efforts come from `claude --help`. Neither side is guessed.
 
+<div align="center">
+<p><strong>Configuration demo: switch operating mode, CLI, model, and reasoning effort</strong></p>
+<a href="assets/config-switch-demo.mp4">
+<img src="assets/config-switch-demo.gif" alt="Partner configuration page demo switching operating mode and each identity's CLI, model, and reasoning effort" width="720" />
+</a>
+<p><a href="assets/config-switch-demo.mp4">Open the complete 7-second MP4</a></p>
+</div>
+
 ## Showcase
 
 **Showcase 1: same-session UI polish**
@@ -57,7 +65,10 @@ Left: what Codex produces on its own — functional but visually forgettable. Ri
 **Showcase 2: a real Fable failure and recovery**
 
 <div align="center">
-<img src="assets/v2.0.1-conversation-cost-receipt.png" alt="Partner v2.0.1 conversation cost receipt showing each identity's actual model, reasoning effort, invocation status, cost, and verification result" width="720" />
+<a href="assets/v2.0.1-conversation-cost-receipt.png">
+<img src="assets/v2.0.1-conversation-cost-receipt.png" alt="Partner v2.0.1 conversation-cost webpage screenshot showing role routing, verified cost, tasks, reasoning effort, and delivery evidence" width="720" />
+</a>
+<p><sub>Real webpage screenshot: switch roles to inspect the actual model, effort, task, cost, and delivery evidence.</sub></p>
 </div>
 
 This is a real fault chain, not an all-green demo. v2.0.1 does not promise that Fable never fails. It promises that failure is bounded, never triggers a silent model swap, and never turns partial output into a plan.
