@@ -56,6 +56,10 @@ bash install.sh --target claude
 
 **Showcase 2：真实 Fable 失败与恢复**
 
+<div align="center">
+<img src="assets/v2.0.1-conversation-cost-receipt.png" alt="Partner v2.0.1 对话消耗小票：三个身份的实际模型、推理强度、调用状态、成本和验收结果" width="720" />
+</div>
+
 这不是一张“全部成功”的表，而是一条真实故障链。v2.0.1 的承诺不是 Fable 永不失败，而是失败不会无限跑、不会静默换模，也不会把半截结果当计划。
 
 | 实际阶段 | 观测结果 | Claude CLI 返回成本 | Partner 怎么处理 |
@@ -65,7 +69,7 @@ bash install.sh --target claude
 | 同 session resume | exact `claude-fable-5` / `xhigh`，返回有效八段计划 | `$0.382695` | 证明失败链可恢复，没有换模型 |
 | 最终 fresh candidate | exact model/session、return code 0、packet/runner hash 一致 | `$0.45282` | 作为最终 Judge 与 PR 证据 |
 
-这里的美元数是 Claude CLI 在对应真实 planning run 中返回的成本，不是整套工作流的 token 节省率；失败尝试没有 final result 时就诚实写 `unknown`。每个身份实际执行的任务、模型、effort 和逐次成本见[完整对话消耗小票](examples/v2.0.1-conversation-cost-receipt.md)。运行边界见 [`docs/releases/v2.0.1.md`](docs/releases/v2.0.1.md)、[`references/bounded-planning.md`](references/bounded-planning.md) 和 [`docs/showcase-cost-model.md`](docs/showcase-cost-model.md)。
+这里的美元数是 Claude CLI 在对应真实 planning run 中返回的成本，不是整套工作流的 token 节省率；失败尝试没有 final result 时就诚实写 `unknown`。每个身份实际执行的任务、模型、effort 和逐次成本分别见 [v2.0.0 失败基线小票](examples/v2.0.0-conversation-cost-receipt.md)和 [v2.0.1 完整对话消耗小票](examples/v2.0.1-conversation-cost-receipt.md)。运行边界见 [`docs/releases/v2.0.1.md`](docs/releases/v2.0.1.md)、[`references/bounded-planning.md`](references/bounded-planning.md) 和 [`docs/showcase-cost-model.md`](docs/showcase-cost-model.md)。
 
 ## 一句话用起来
 
@@ -241,6 +245,8 @@ docs/showcase-cost-model.md      Showcase 成本压力模型与真实 token 记�
 docs/receipt-schema.json         Partner Session Receipt 的 JSON schema (partner.receipt.v1)
 docs/config-schema.md            Partner 配置 schema v2：身份矩阵、优先级链、并发语义、TOML 子集边界
 examples/session-receipt.md      Minimal visible proof of same-session reuse
+examples/v2.0.0-conversation-cost-receipt.md
+                                  2.0.0 失败基线的身份、模型、effort 与成本小票
 examples/v2.0.1-conversation-cost-receipt.md
                                   本轮三个身份的真实任务、模型、effort 与成本小票
 examples/showcase-cost-ledger.json

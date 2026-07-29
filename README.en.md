@@ -56,6 +56,10 @@ Left: what Codex produces on its own — functional but visually forgettable. Ri
 
 **Showcase 2: a real Fable failure and recovery**
 
+<div align="center">
+<img src="assets/v2.0.1-conversation-cost-receipt.png" alt="Partner v2.0.1 conversation cost receipt showing each identity's actual model, reasoning effort, invocation status, cost, and verification result" width="720" />
+</div>
+
 This is a real fault chain, not an all-green demo. v2.0.1 does not promise that Fable never fails. It promises that failure is bounded, never triggers a silent model swap, and never turns partial output into a plan.
 
 | Observed stage | Outcome | Cost returned by Claude CLI | Partner response |
@@ -65,7 +69,7 @@ This is a real fault chain, not an all-green demo. v2.0.1 does not promise that 
 | Same-session resume | Exact `claude-fable-5` / `xhigh`; valid eight-section plan | `$0.382695` | Proved recovery without changing models |
 | Final fresh candidate | Exact model/session, return code 0, matching packet/runner hashes | `$0.45282` | Became the final Judge and PR evidence |
 
-These dollar values are costs returned by Claude CLI for the individual real planning runs, not a measured end-to-end token-savings rate. When a failed attempt has no final result event, the cost stays `unknown`. The [complete conversation cost receipt](examples/v2.0.1-conversation-cost-receipt.md) records each identity's actual tasks, model, effort, and per-run cost. See [`docs/releases/v2.0.1.md`](docs/releases/v2.0.1.md), [`references/bounded-planning.md`](references/bounded-planning.md), and [`docs/showcase-cost-model.md`](docs/showcase-cost-model.md) for the evidence boundary.
+These dollar values are costs returned by Claude CLI for the individual real planning runs, not a measured end-to-end token-savings rate. When a failed attempt has no final result event, the cost stays `unknown`. The [v2.0.0 failure-baseline receipt](examples/v2.0.0-conversation-cost-receipt.md) and [v2.0.1 complete conversation cost receipt](examples/v2.0.1-conversation-cost-receipt.md) record each identity's actual tasks, model, effort, and per-run cost. See [`docs/releases/v2.0.1.md`](docs/releases/v2.0.1.md), [`references/bounded-planning.md`](references/bounded-planning.md), and [`docs/showcase-cost-model.md`](docs/showcase-cost-model.md) for the evidence boundary.
 
 ## Use It
 
@@ -243,6 +247,8 @@ docs/showcase-cost-model.md             Showcase cost-pressure model and real to
 docs/receipt-schema.json                JSON schema for the Partner Session Receipt (partner.receipt.v1)
 docs/config-schema.md                   Partner config schema v2: identity matrix, precedence, concurrency, TOML subset
 examples/session-receipt.md             Minimal visible proof of same-session reuse
+examples/v2.0.0-conversation-cost-receipt.md
+                                        Identity, model, effort, and cost receipt for the v2.0.0 failure baseline
 examples/v2.0.1-conversation-cost-receipt.md
                                         Real task, model, effort, and cost receipt for all three identities
 examples/showcase-cost-ledger.json      Cost-pressure ledger for the three operating modes

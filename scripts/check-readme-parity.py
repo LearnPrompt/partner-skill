@@ -29,6 +29,7 @@ EXPECTED_HEADINGS = [
 REQUIRED_MARKERS = [
     "examples/showcase-cost-ledger.json",
     "docs/showcase-cost-model.md",
+    "assets/v2.0.1-conversation-cost-receipt.png",
     "Partner Session Receipt",
     "new_claude_p_sessions",
     "monitoring_level",
@@ -45,6 +46,7 @@ FILE_MAP_ENTRIES = [
     "docs/receipt-schema.json",
     "docs/config-schema.md",
     "examples/session-receipt.md",
+    "examples/v2.0.0-conversation-cost-receipt.md",
     "examples/v2.0.1-conversation-cost-receipt.md",
     "examples/showcase-cost-ledger.json",
     "references/monitoring.md",
