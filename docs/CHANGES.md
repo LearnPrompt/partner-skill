@@ -6,6 +6,12 @@
 
 本文档记录本地 fork 从原版到现在的全部改动：第一轮 bug 修复与风险加固（v1.1.0），第二轮六项能力进化（v1.2.0），第三轮"重度使用者审查"修复（v1.3.0）。所有改动都保持核心协议不变：Claude Code 负责 plan / polish / review，Codex 负责实现与验证，同会话复用，bounded handoff，以 Partner Session Receipt 收尾，不声称没有 telemetry 的 token 节省。
 
+## Partner 2.0.1：Claude 规划链有界化
+
+真实 Fable 5/xhigh 仓库规划证明“CLI 登录成功”和“复杂规划稳定交付”不是同一件事：模型成功读仓库并派生子 Agent，最终却在综合阶段 stream idle。v2.0.1 新增 `scripts/run-claude-plan.py`，由 Codex 先整理固定格式、最多 24,000 字符的事实包，再让配置中的 Claude identity 在 safe mode、零工具/子 Agent、wall/idle/API 预算内只做决策综合。
+
+运行结果不靠一句 PASS：`.partner/runs/<run-id>/` 保留有大小上限的 sanitized events、visible checkpoint、metadata 和 recovery，同一 session 可恢复；配置缺失、身份字段变化后继承旧 verification、backend 不符、secret-like 内容、静默截断、并发覆盖既有计划和自动换模全部 fail closed。idle 只由完整有效的 JSON event 刷新，stdin/stdout/stderr、可见输出、日志和整个子进程组都有硬边界。即使 Claude CLI 返回 success，只要退出码非零、实际 model/session 不符、结果缺少固定八段 plan 契约或只输出一句过场话，也按 `protocol_error` 处理且不生成 plan。metadata 同时记录 packet/runner hash；`--max-budget-usd` 明确由 Claude CLI 执行，本地只记录最终可见成本，不虚构 mid-stream 累计成本。
+
 ## 一、Bug 修复与风险加固（v1.1.0）
 
 ### 1. README.md showcase 居中失效（bug 修复）

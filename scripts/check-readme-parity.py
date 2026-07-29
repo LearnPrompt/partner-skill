@@ -29,6 +29,7 @@ EXPECTED_HEADINGS = [
 REQUIRED_MARKERS = [
     "examples/showcase-cost-ledger.json",
     "docs/showcase-cost-model.md",
+    "assets/v2.0.1-conversation-cost-receipt.png",
     "Partner Session Receipt",
     "new_claude_p_sessions",
     "monitoring_level",
@@ -45,6 +46,8 @@ FILE_MAP_ENTRIES = [
     "docs/receipt-schema.json",
     "docs/config-schema.md",
     "examples/session-receipt.md",
+    "examples/v2.0.0-conversation-cost-receipt.md",
+    "examples/v2.0.1-conversation-cost-receipt.md",
     "examples/showcase-cost-ledger.json",
     "references/monitoring.md",
     "references/handoff-template.md",
@@ -58,6 +61,7 @@ FILE_MAP_ENTRIES = [
     "references/goal-to-pr.md",
     "references/goal-template.md",
     "references/fable5-principles.md",
+    "references/bounded-planning.md",
     "references/memory-protocol.md",
     "scripts/showcase-cost-ledger.py",
     "scripts/check-readme-parity.py",
@@ -68,8 +72,10 @@ FILE_MAP_ENTRIES = [
     "scripts/session-snapshot.sh",
     "scripts/validate-receipt.py",
     "scripts/run-test-prompts.py",
+    "scripts/run-claude-plan.py",
     "scripts/delegate-codex.sh",
     "scripts/partner-config.py",
+    "scripts/partner_runtime.py",
     "scripts/partner-setup.py",
     "scripts/partner-setup-ui.py",
     "scripts/goal-sync.py",
@@ -78,6 +84,7 @@ FILE_MAP_ENTRIES = [
     "tests/test_partner_setup_ui.py",
     "tests/test_delegate_role.py",
     "tests/test_goal_sync.py",
+    "tests/test_run_claude_plan.py",
     "idea-king/SKILL.md",
     "idea-king/README.md",
 ]
@@ -143,7 +150,22 @@ def assert_order(markdown: str, entries: list[str], label: str, failures: list[s
 def main() -> int:
     zh = read(ZH)
     en = read(EN)
+    skill = read(ROOT / "SKILL.md")
     failures: list[str] = []
+
+    version_match = re.search(r"(?m)^version:\s*([0-9]+\.[0-9]+\.[0-9]+)\s*$", skill)
+    if version_match is None:
+        failures.append("SKILL.md is missing a semantic version")
+    else:
+        expected_badge = f"[![Version: {version_match.group(1)}]"
+        if expected_badge not in zh:
+            failures.append(
+                f"README.md version badge does not match SKILL.md {version_match.group(1)}"
+            )
+        if expected_badge not in en:
+            failures.append(
+                f"README.en.md version badge does not match SKILL.md {version_match.group(1)}"
+            )
 
     zh_headings = headings(zh)
     en_headings = headings(en)

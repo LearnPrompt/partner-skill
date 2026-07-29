@@ -7,11 +7,11 @@
 > My Claude Code and Codex are the best coding partners.
 
 [![Agent Skills](https://img.shields.io/badge/Agent%20Skills-partner--skill-blueviolet)](SKILL.md)
-[![Version: 2.0.0](https://img.shields.io/badge/version-2.0.0-ef6f4f)](CHANGELOG.md)
+[![Version: 2.0.1](https://img.shields.io/badge/version-2.0.1-ef6f4f)](CHANGELOG.md)
 [![GitHub stars](https://img.shields.io/github/stars/LearnPrompt/partner-skill?style=flat-square&color=f5c542)](https://github.com/LearnPrompt/partner-skill/stargazers)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-**Use Claude Code for planning, UI taste, and review. Use Codex for implementation and checks. A Session Receipt shows whether you reused the same Claude session.**
+**Use Claude Code for planning, UI taste, and review. Use Codex for implementation and checks. v2.0.1 also makes repository-scale Fable planning bounded, recoverable, and auditable.**
 
 [Install](#install) · [Showcase](#showcase) · [Use It](#use-it) · [Per-Host Usage](#per-host-usage) · [Cost Pressure Model](#cost-pressure-model) · [What It Solves](#what-it-solves) · [Safety](#safety) · [Verify](#verify)
 
@@ -46,11 +46,30 @@ Before first real use, say "搭子，配置" (Partner, configure). Partner opens
 
 ## Showcase
 
+**Showcase 1: same-session UI polish**
+
 <div align="center">
 <img src="assets/showcase.gif" alt="Codex-only vs Partner: before/after UI contrast" width="720" />
 </div>
 
 Left: what Codex produces on its own — functional but visually forgettable. Right: the same card after Claude Code polishes it in the same session. The tiny `session: reused ✓` in the corner is the proof layer — no fresh Claude cold start.
+
+**Showcase 2: a real Fable failure and recovery**
+
+<div align="center">
+<img src="assets/v2.0.1-conversation-cost-receipt.png" alt="Partner v2.0.1 conversation cost receipt showing each identity's actual model, reasoning effort, invocation status, cost, and verification result" width="720" />
+</div>
+
+This is a real fault chain, not an all-green demo. v2.0.1 does not promise that Fable never fails. It promises that failure is bounded, never triggers a silent model swap, and never turns partial output into a plan.
+
+| Observed stage | Outcome | Cost returned by Claude CLI | Partner response |
+|---|---|---:|---|
+| v2.0.0 repository plan | Authentication worked; after spawning three subagents the stream idled, with no plan returned | `$6.57` | Exposed the unbounded legacy path |
+| v2.0.1 fresh bounded attempt | No accepted event for 180 seconds; `idle_timeout`; no plan created | `unknown` (no final cost event) | Terminated the process group and kept metadata/checkpoint/recovery |
+| Same-session resume | Exact `claude-fable-5` / `xhigh`; valid eight-section plan | `$0.382695` | Proved recovery without changing models |
+| Final fresh candidate | Exact model/session, return code 0, matching packet/runner hashes | `$0.45282` | Became the final Judge and PR evidence |
+
+These dollar values are costs returned by Claude CLI for the individual real planning runs, not a measured end-to-end token-savings rate. When a failed attempt has no final result event, the cost stays `unknown`. The [v2.0.0 failure-baseline receipt](examples/v2.0.0-conversation-cost-receipt.md) and [v2.0.1 complete conversation cost receipt](examples/v2.0.1-conversation-cost-receipt.md) record each identity's actual tasks, model, effort, and per-run cost. See [`docs/releases/v2.0.1.md`](docs/releases/v2.0.1.md), [`references/bounded-planning.md`](references/bounded-planning.md), and [`docs/showcase-cost-model.md`](docs/showcase-cost-model.md) for the evidence boundary.
 
 ## Use It
 
@@ -210,6 +229,7 @@ Chinese triggers such as `搭子` and `搭子.skill` are also first-class trigge
 - Monitoring evidence: PTY output, `claude agents --json`, transcript structure, optional task files, and repo checks — with `scripts/check-claude-cli.sh` probing what is actually available and a documented degradation path.
 - A Session Receipt: proof of session reuse, fresh `claude -p` count, checks, anomalies, and monitoring level — machine-checkable via `scripts/validate-receipt.py`.
 - Supporting tools: `scripts/make-handoff.sh` generates bounded handoffs and can persist them under `.partner/`; `references/failure-playbook.md` gives every anomaly a fixed recovery path; `references/scenarios.md` covers review-only, debugging, non-UI, non-git, monorepo, and multi-day tasks.
+- Bounded Claude planning: Codex first prepares an evidence packet within 24,000 characters, then `scripts/run-claude-plan.py` invokes the configured Claude model/effort once with no tools or subagents and with wall/idle/API budgets. Success and failure both leave inspectable artifacts; the runner never substitutes a model silently.
 - A Darwin-style ratchet: improve one workflow dimension at a time and keep only verified gains.
 - A first-run setup wizard (`搭子，配置`): balanced/quality/cost presets remain editable per identity; `.partner/config.toml` is the single dual-host source of truth; beginner-safe defaults remove advanced setup questions; the exact diff is previewed before writing; models and efforts come from each CLI's real capability list; post-install verification uses a tool-free fresh Claude session plus the Codex delegate dry-run chain.
 - Partner Session Receipt v2: adds `host`/`scope`/`config_source`/`roles_used` fields, so the receipt proves which model and effort actually ran a role, not just "Claude was used."
@@ -225,8 +245,12 @@ install.sh                              Local installer for Codex, Claude Code, 
 test-prompts.json                       Trigger and behavior regression prompts
 docs/showcase-cost-model.md             Showcase cost-pressure model and real token capture fields
 docs/receipt-schema.json                JSON schema for the Partner Session Receipt (partner.receipt.v1)
-docs/config-schema.md                   Partner config schema v1: fields, precedence chain, concurrency, TOML subset
+docs/config-schema.md                   Partner config schema v2: identity matrix, precedence, concurrency, TOML subset
 examples/session-receipt.md             Minimal visible proof of same-session reuse
+examples/v2.0.0-conversation-cost-receipt.md
+                                        Identity, model, effort, and cost receipt for the v2.0.0 failure baseline
+examples/v2.0.1-conversation-cost-receipt.md
+                                        Real task, model, effort, and cost receipt for all three identities
 examples/showcase-cost-ledger.json      Cost-pressure ledger for the three operating modes
 references/monitoring.md                How Codex monitors Claude Code progress
 references/handoff-template.md          Bounded context packet for Claude Code polish/review
@@ -240,6 +264,7 @@ references/tryout.md                    "搭子，试跑" identity tryout: one m
 references/goal-to-pr.md                Opt-in full protocol: Plan→Goal→PR→Verification, hard-stop list, imperative authorization
 references/goal-template.md             Template for .partner/goal.md (task table + checkpoint rule)
 references/fable5-principles.md         Shared frontier-model prompting rules (why-forward, effort, checkpoint, resume)
+references/bounded-planning.md          Input contract, tool-free boundary, budgets, and recovery for repository-scale Claude planning
 references/memory-protocol.md           Wrap-up memory protocol (claude-mem / mem0 / auto-memory / rollout)
 scripts/showcase-cost-ledger.py         Rebuilds the showcase cost-pressure ledger
 scripts/check-readme-parity.py          Checks that Chinese and English READMEs stay aligned
@@ -250,8 +275,10 @@ scripts/make-receipt.py                 Generates a pre-validated receipt, auto-
 scripts/session-snapshot.sh             Transcript snapshot diff so the new-session count is computed, not claimed
 scripts/validate-receipt.py             Validates Partner Session Receipt fields and values
 scripts/run-test-prompts.py             Static checks plus experimental live mode for the regression prompts
+scripts/run-claude-plan.py              Runs the bounded configured Claude planner and saves sanitized events/checkpoint/cost
 scripts/delegate-codex.sh               Codex background-job primitive: submit / status / result / resume / cancel
-scripts/partner-config.py               Config engine: TOML-subset parsing, deterministic writes, locking (schema v1)
+scripts/partner-config.py               Config engine: TOML-subset parsing, deterministic writes, locking (schema v2)
+scripts/partner_runtime.py              Shared Claude child-process environment boundary for first-party OAuth
 scripts/partner-setup.py                Setup wizard engine: --preview/--apply/--rollback/--smoke/--status/--interactive
 scripts/partner-setup-ui.py             Localhost single-page setup UI: full model matrix, exact preview, confirmed apply
 scripts/goal-sync.py                    Hash-checked .partner/goal.md read/write: concurrent writes abort instead of silently losing updates
@@ -260,6 +287,7 @@ tests/test_partner_setup.py             Setup engine unit tests (idempotence / o
 tests/test_partner_setup_ui.py          Local UI state, preview binding, and write-gate unit tests
 tests/test_delegate_role.py             Unit tests for --role injection and the override chain
 tests/test_goal_sync.py                 goal.md concurrency unit tests (stale-hash writes rejected, no silent lost update)
+tests/test_run_claude_plan.py           Bounded-planner input, config, budget, timeout, and no-fallback unit tests
 idea-king/SKILL.md                      Idea King: first-principles decomposition + adversarial review (installs with Partner)
 idea-king/README.md                     Idea King standalone notes and methodology credits
 ```

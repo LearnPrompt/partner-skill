@@ -468,5 +468,37 @@
       "Estimate elapsed times instead of measuring them.",
       "Skip the arbiter row or contaminate it with deep_reasoner's answer."
     ]
+  },
+  {
+    "id": "bounded-claude-repo-planning",
+    "prompt": "搭子，让配置里的 Claude deep_reasoner 用 xhigh 先完整规划这个大仓库，但别再让它无限扫文件或自己拉一堆子 Agent。",
+    "should_trigger": true,
+    "expected_behavior": [
+      "Have the outer Codex host inspect the repo and prepare the exact bounded planning packet from references/bounded-planning.md.",
+      "Run scripts/run-claude-plan.py so model and effort resolve only from .partner/config.toml.",
+      "Keep the packet at or below 24,000 characters with explicit truncation disclosure, and run Claude with safe mode plus zero tools or subagents.",
+      "Report the configured model/effort, wall and idle limits, Claude-CLI budget, plan path, sanitized events, checkpoint, and cost metadata."
+    ],
+    "must_not": [
+      "Ask the Claude Deep Reasoner to rediscover the repository with tools or subagents.",
+      "Silently truncate the packet, invent a model, or substitute another configured role.",
+      "Claim local mid-stream cost telemetry when only Claude CLI enforces --max-budget-usd."
+    ]
+  },
+  {
+    "id": "bounded-claude-timeout-recovery",
+    "prompt": "bounded deep_reasoner 又 stream idle 了，搭子继续处理。",
+    "should_trigger": true,
+    "expected_behavior": [
+      "Read the run metadata, sanitized events, and visible checkpoint before deciding recovery.",
+      "Use the exact same-session resume command written to recovery.md first.",
+      "Keep authentication, upstream idle, local idle timeout, wall timeout, and budget stop as separate failure classes.",
+      "Ask for explicit approval before using any different configured role or model."
+    ],
+    "must_not": [
+      "Restart repository discovery from zero.",
+      "Relabel every idle timeout as a login failure.",
+      "Silently fall back to Sonnet, Opus, Codex, or another role."
+    ]
   }
 ]

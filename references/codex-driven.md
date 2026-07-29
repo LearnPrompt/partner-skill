@@ -19,12 +19,20 @@ All helper scripts live in `$PARTNER_DIR` (see Tool Location in `SKILL.md`).
    - Identify whether the task is greenfield, feature-heavy, UI-heavy, review-only, or debugging. When the task does not fit the default profile (review-only, debugging, non-UI, non-git, monorepo, multi-day), apply the matching profile in `references/scenarios.md`.
 
 2. Start one Claude Code session for the expensive thinking loop.
-   - For planning: start Claude Code in a PTY and set a goal.
-   - Use `claude --permission-mode plan --name <task-name>` by default.
-   - In the interactive session, send `/goal <clear completion condition>`.
+   - For repository-heavy planning through a Claude-backed `deep_reasoner`,
+     especially at `xhigh`, follow `references/bounded-planning.md`: Codex
+     prepares the contract packet and invokes
+     `python3 "$PARTNER_DIR/scripts/run-claude-plan.py"`. The runner preserves a
+     resumable session id while disabling tools and subagents.
+   - For small interactive planning, or when the user explicitly asks for
+     Claude Code `/goal`, start Claude Code in a PTY with
+     `claude --permission-mode plan --name <task-name>` and send
+     `/goal <clear completion condition>`.
    - Ask Claude Code for a concrete implementation plan, acceptance criteria, and UI/interaction guidance.
-   - Keep this same session open for the later polish and review passes when the task is not too large.
-   - Do not start a separate `claude -p` review-only session just because Codex has finished implementation. That spends tokens on cold-start context and weakens Claude's continuity.
+   - Reuse the bounded runner's session id or the interactive session for later
+     polish and review when it remains healthy.
+   - Do not start a separate cold review session just because Codex has finished
+     implementation. That spends tokens on rediscovery and weakens continuity.
 
 3. Implement primarily with Codex.
    - Convert Claude Code's plan into a short checklist.
@@ -56,7 +64,10 @@ All helper scripts live in `$PARTNER_DIR` (see Tool Location in `SKILL.md`).
 - Do not skip the Claude polish phase for UI/frontend work unless the user explicitly asks for a faster minimal loop.
 - If `/codex:review` hangs, times out, or gets stuck in a permission prompt, record that as a monitoring finding, stop the stuck subprocess/session, and continue with Codex-side verification.
 - If Claude Code produces no actionable polish, do not keep prompting it blindly. Capture the empty/low-signal result, run Codex verification, and report the limitation.
-- `claude -p` is not the default Partner path. Use it only for cheap one-off questions where losing prior session context is acceptable.
+- Raw `claude -p` is not the default Partner path. The bounded runner is the
+  only default print-mode exception: it supplies limits, artifacts, config-only
+  model resolution, and a resumable session id. Use raw print mode only for a
+  cheap one-off where losing prior context is acceptable.
 
 ## Permission Policy
 

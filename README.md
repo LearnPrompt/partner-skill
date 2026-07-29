@@ -7,11 +7,11 @@
 > 我的 Claude Code 和 Codex 天下第一好。
 
 [![Agent Skills](https://img.shields.io/badge/Agent%20Skills-partner--skill-blueviolet)](SKILL.md)
-[![Version: 2.0.0](https://img.shields.io/badge/version-2.0.0-ef6f4f)](CHANGELOG.md)
+[![Version: 2.0.1](https://img.shields.io/badge/version-2.0.1-ef6f4f)](CHANGELOG.md)
 [![GitHub stars](https://img.shields.io/github/stars/LearnPrompt/partner-skill?style=flat-square&color=f5c542)](https://github.com/LearnPrompt/partner-skill/stargazers)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-**把 Claude Code 留给规划、审美和审查，把 Codex 留给实现、跑检查和收尾。最后用一张 Session Receipt 证明：没有乱开新的 Claude 会话烧钱。**
+**把 Claude Code 留给规划、审美和审查，把 Codex 留给实现、跑检查和收尾。v2.0.1 再把仓库级 Fable 规划变成有边界、可恢复、可审计的流程。**
 
 [30 秒装上](#30-秒装上) · [Showcase](#showcase) · [一句话用起来](#一句话用起来) · [分宿主用法](#分宿主用法) · [成本压力模型](#成本压力模型) · [它解决什么](#它解决什么) · [安全边界](#安全边界) · [验证](#验证)
 
@@ -46,11 +46,30 @@ bash install.sh --target claude
 
 ## Showcase
 
+**Showcase 1：同会话 UI polish**
+
 <div align="center">
 <img src="assets/showcase.gif" alt="Codex-only vs Partner: before/after UI contrast" width="720" />
 </div>
 
 左边是 Codex 单独做出来的——功能正确但视觉上没什么记忆点。右边是同一个 Claude Code 会话接回来做 UI polish 后的结果，右下角 `session: reused ✓` 说明没有新开 Claude 会话。
+
+**Showcase 2：真实 Fable 失败与恢复**
+
+<div align="center">
+<img src="assets/v2.0.1-conversation-cost-receipt.png" alt="Partner v2.0.1 对话消耗小票：三个身份的实际模型、推理强度、调用状态、成本和验收结果" width="720" />
+</div>
+
+这不是一张“全部成功”的表，而是一条真实故障链。v2.0.1 的承诺不是 Fable 永不失败，而是失败不会无限跑、不会静默换模，也不会把半截结果当计划。
+
+| 实际阶段 | 观测结果 | Claude CLI 返回成本 | Partner 怎么处理 |
+|---|---|---:|---|
+| v2.0.0 仓库规划 | 登录成功，派生 3 个子 Agent 后 stream idle；花费已发生但没有计划 | `$6.57` | 暴露旧流程无边界 |
+| v2.0.1 fresh bounded attempt | 180 秒没有有效事件，`idle_timeout`；没有生成 plan | `unknown`（CLI 未返回最终成本） | 杀掉整个进程组，保留 metadata/checkpoint/recovery |
+| 同 session resume | exact `claude-fable-5` / `xhigh`，返回有效八段计划 | `$0.382695` | 证明失败链可恢复，没有换模型 |
+| 最终 fresh candidate | exact model/session、return code 0、packet/runner hash 一致 | `$0.45282` | 作为最终 Judge 与 PR 证据 |
+
+这里的美元数是 Claude CLI 在对应真实 planning run 中返回的成本，不是整套工作流的 token 节省率；失败尝试没有 final result 时就诚实写 `unknown`。每个身份实际执行的任务、模型、effort 和逐次成本分别见 [v2.0.0 失败基线小票](examples/v2.0.0-conversation-cost-receipt.md)和 [v2.0.1 完整对话消耗小票](examples/v2.0.1-conversation-cost-receipt.md)。运行边界见 [`docs/releases/v2.0.1.md`](docs/releases/v2.0.1.md)、[`references/bounded-planning.md`](references/bounded-planning.md) 和 [`docs/showcase-cost-model.md`](docs/showcase-cost-model.md)。
 
 ## 一句话用起来
 
@@ -208,6 +227,7 @@ Claude 里跑 Codex Review 验收当前 diff，发现问题你来修。
 - 监控清单：PTY、`claude agents --json`、transcript、task files、git diff/test 五层证据，配 `scripts/check-claude-cli.sh` 能力探测和降级策略。
 - Session Receipt：把是否复用会话、是否新开 `claude -p`、检查、异常和监控等级写清楚，可用 `scripts/validate-receipt.py` 机器校验。
 - 配套工具：`scripts/make-handoff.sh` 自动生成 bounded handoff 并可持久化到 `.partner/`；`references/failure-playbook.md` 给每种异常固定恢复路径；`references/scenarios.md` 覆盖 review-only、debugging、非 UI、非 git、monorepo、跨天任务。
+- Bounded Claude planning：Codex 先整理 24,000 字符内的证据包，`scripts/run-claude-plan.py` 再按配置中的 Claude 模型/effort 做一次无工具、无子 Agent、有 wall/idle/API 预算的规划；成功与失败都留下可核验工件，绝不静默换模。
 - Darwin-style 验证门：一次只改一个协作维度，过检查才保留。
 - 首次配置向导（`搭子，配置`）：均衡/质量/成本预设可继续逐角色调整，`.partner/config.toml` 是双宿主共享的单一事实源；小白流程使用安全默认值，预览 diff 再落盘，绝不覆盖已有 agent 文件；模型和 effort 从两个 CLI 的真实能力列表读取，安装后自动启动无工具的新 Claude session 和 Codex dry-run 做验证。
 - Partner Session Receipt v2：新增 `host`/`scope`/`config_source`/`roles_used` 字段，能证明这次跑的到底是哪个模型、哪个 effort，而不只是"用了 Claude"。
@@ -223,8 +243,12 @@ install.sh                       Local installer for Codex, Claude Code, Agents,
 test-prompts.json                Trigger and behavior regression prompts
 docs/showcase-cost-model.md      Showcase 成本压力模型与真实 token 记录字段
 docs/receipt-schema.json         Partner Session Receipt 的 JSON schema (partner.receipt.v1)
-docs/config-schema.md            Partner 配置 schema v1：字段表、优先级链、并发语义、TOML 子集边界
+docs/config-schema.md            Partner 配置 schema v2：身份矩阵、优先级链、并发语义、TOML 子集边界
 examples/session-receipt.md      Minimal visible proof of same-session reuse
+examples/v2.0.0-conversation-cost-receipt.md
+                                  2.0.0 失败基线的身份、模型、effort 与成本小票
+examples/v2.0.1-conversation-cost-receipt.md
+                                  本轮三个身份的真实任务、模型、effort 与成本小票
 examples/showcase-cost-ledger.json
                                   三种模式的成本压力 ledger
 references/monitoring.md         How Codex monitors Claude Code progress
@@ -239,6 +263,7 @@ references/tryout.md             「搭子，试跑」身份试跑：三身份�
 references/goal-to-pr.md         完整协议(可选)：Plan→Goal→PR→Verification、hard stop 清单、祈使句授权法
 references/goal-template.md      .partner/goal.md 目标文件模板（任务表 + checkpoint 规则）
 references/fable5-principles.md  前沿模型提示词共同准则（why-forward、effort、checkpoint、resume）
+references/bounded-planning.md   仓库级 Claude 规划的输入契约、无工具执行边界、预算与恢复规则
 references/memory-protocol.md    收尾记忆协议（claude-mem / mem0 / auto-memory / rollout）
 scripts/showcase-cost-ledger.py  Rebuilds the showcase cost-pressure ledger
 scripts/check-readme-parity.py   检查中英文 README 章节和关键证据是否对齐
@@ -249,8 +274,10 @@ scripts/make-receipt.py          生成并预校验 receipt，自动填 monitori
 scripts/session-snapshot.sh      transcript 快照对比，让新开会话数成为可计算的事实
 scripts/validate-receipt.py      校验 Partner Session Receipt 的字段与取值
 scripts/run-test-prompts.py      行为回归 prompt 的静态检查与实验性 live 模式
+scripts/run-claude-plan.py       按配置运行 bounded Claude planner，保存 sanitized events/checkpoint/cost
 scripts/delegate-codex.sh        Codex 后台任务原语：submit / status / result / resume / cancel
-scripts/partner-config.py        配置引擎：TOML 子集解析、确定性写回、锁与原子写（schema v1）
+scripts/partner-config.py        配置引擎：TOML 子集解析、确定性写回、锁与原子写（schema v2）
+scripts/partner_runtime.py       Claude 子进程共享环境边界，避免宿主变量污染一方 OAuth
 scripts/partner-setup.py         向导落盘引擎：--preview/--apply/--rollback/--smoke/--status/--interactive
 scripts/partner-setup-ui.py      localhost 单页配置 UI：完整模型矩阵、精确预览、确认写入
 scripts/goal-sync.py             .partner/goal.md 哈希校验读写：并发写入不静默丢更新，冲突即 abort
@@ -259,6 +286,7 @@ tests/test_partner_setup.py      向导引擎单元测试（幂等 / 防覆盖 /
 tests/test_partner_setup_ui.py   本地 UI 状态、预览绑定与写入门单元测试
 tests/test_delegate_role.py      --role 注入与覆盖链单元测试
 tests/test_goal_sync.py          goal.md 并发写入单元测试（哈希不符即拒绝，证明无静默丢更新）
+tests/test_run_claude_plan.py    bounded planner 的输入、配置、预算、timeout、无 fallback 单元测试
 idea-king/SKILL.md               点子王：第一性原理拆解 + 对抗式审查（随 Partner 一起安装）
 idea-king/README.md              点子王独立说明与方法论致谢
 ```

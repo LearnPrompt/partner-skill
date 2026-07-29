@@ -1,6 +1,6 @@
 ---
 name: partner-skill
-version: 2.0.0
+version: 2.0.1
 description: |
   搭子.skill / Partner — two-direction cost-split workflow between Claude Code and Codex. Direction A (Codex-driven): Codex orchestrates and implements; Claude Code plans (/goal), polishes UI/interaction, and runs final /codex:review in one reused session. Direction B (Claude-driven): Claude plans and splits the work, runs the idea-king adversarial gate, delegates to Codex background jobs, monitors, and full-reviews before accepting. Use on "搭子" / "双向搭子" / "搭子，恢复" (resume from .partner/), "搭子，配置" (first-run setup wizard), "搭子，试跑" (identity tryout report), 分工给 codex / 让 codex 做 / codex 后台跑 / Claude 计划 Codex 实现 / 让 Claude skip 做完, or any request to split coding work between Claude Code and Codex to save quota. Not for ordinary code review without Claude Code; do not trigger on the bare English word "partner" in unrelated contexts.
 ---
@@ -63,6 +63,18 @@ The helper scripts referenced below live in this skill's install directory (the 
 - Route to Codex: scaffolding, implementation, long-context code edits, tests, build fixes, repository inspection, monitoring, summaries.
 - Route back to the same Claude Code session when UI quality matters or the first implementation passes technically but still needs product polish.
 - Keep Kimi Work/Kimi Code Goal separate from Claude Code `/goal`; prior "Goal mode" context may refer to Kimi, not Claude.
+
+## Bounded Claude Planning
+
+For repository-heavy planning through a Claude-backed `deep_reasoner`,
+especially at `xhigh`, use `references/bounded-planning.md` and
+`scripts/run-claude-plan.py`. The outer host prepares the required
+24,000-character-max evidence packet; Claude runs in safe mode with no tools or
+subagents, explicit wall/valid-event idle limits, bounded stream/output/log
+sizes, process-group termination, and a Claude-CLI-enforced API budget.
+Model and effort come only from `.partner/config.toml`. Failure preserves a
+checkpoint, sanitized events, cost metadata, and a same-session recovery
+command; Partner never substitutes another model silently.
 
 ## Validation Gate
 
