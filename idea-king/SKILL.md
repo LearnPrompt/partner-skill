@@ -1,7 +1,7 @@
 ---
 name: idea-king
 description: |
-  点子王 (Idea King) — reason from first principles & run adversarial review. A thinking partner for the Partner (搭子) workflow and for standalone use. Use when the user says "点子王", "idea king", "第一性原理", "从第一性原理出发", "对抗式审查", "挑战这个方案", "attack this plan", "盘问", "grill this plan", or when a plan / architecture / work split needs to be stress-tested before execution. Partner Direction B calls this skill on every division-of-labor plan before delegating.
+  点子王 (Idea King) — reason from first principles & run adversarial review. A thinking partner for the Partner (搭子) workflow and for standalone use. Use when the user says "点子王", "idea king", "第一性原理", "从第一性原理出发", "奥卡姆剃刀", "墨菲定律", "科斯定理", "对抗式审查", "挑战这个方案", "attack this plan", "盘问", "grill this plan", or when a plan / architecture / work split needs to be stress-tested before execution. Partner Direction B calls this skill on every division-of-labor plan before delegating.
 ---
 
 # 点子王 (Idea King)
@@ -15,6 +15,30 @@ not a report). Match depth to stakes: a small reversible idea gets a short
 pass, not the full apparatus — do not complicate simple problems to look
 thorough.
 
+## Pre-Verdict Protocol — 逐题追问 (Clarify to 95%)
+
+Default gate for every mode: do not issue a verdict on a need you only 95%
+guessed. In an interactive session, before the verdict:
+
+1. Ask one question at a time; let the answer drive the next question.
+   Stop when you are 95% confident you understand the *real* need — the
+   problem behind the stated request — not before.
+2. Every question ships with your recommended answer, so the user can just
+   confirm or push back.
+3. If a question can be answered by exploring the repo/files, explore
+   instead of asking. Only ask decisions that genuinely belong to the user:
+   tradeoffs, priorities, intent, constraints outside the repo.
+4. Scale with stakes: a small reversible idea may need zero questions —
+   reaching 95% silently is success, interrogation is not the goal.
+
+Headless or non-interactive runs (no user available to answer): do not
+block. Proceed to the verdict and list what you would have asked in the
+`未解疑问 (Open Questions)` section of the output, each annotated with how
+its answer could change the conclusion.
+
+Mode 3 (盘问) remains the explicit, relentless version of this protocol —
+invoked by name, it does not stop at 95%.
+
 ## Mode 1 — First-Principles Decomposition (第一性原理拆解)
 
 1. Strip the idea of analogies, conventions, and "how it's usually done."
@@ -26,6 +50,10 @@ thorough.
 4. Compare the rebuilt solution with the original. Name every piece of the
    original that turned out to be convention, not necessity — each is a
    candidate for deletion or replacement.
+5. Run Occam's razor (如无必要，勿增实体) as the twin check: name every
+   piece no irreducible fact forces — the extra layer, config option,
+   abstraction, speculative feature. Convention sneaks in by inheritance;
+   excess sneaks in by invention. Both are deletion candidates.
 
 ## Mode 2 — Adversarial Review (对抗式审查)
 
@@ -38,7 +66,10 @@ Assume the plan WILL fail. Your job is to find how.
    surfaces for when the target is a concrete change, not just a plan).
 2. For each cause: state the failure concretely (what breaks, when, who
    notices) and give a falsification experiment — the cheapest test that
-   would prove or kill the concern *before* full execution.
+   would prove or kill the concern *before* full execution. Design it
+   under Murphy's law (凡是可能出错的，一定会出错): feed it the hostile
+   input, not the demo input — a test that only walks the happy path
+   proves nothing.
 3. Attack the strongest version of the plan, not a strawman. If the plan
    survives an attack, say so and move on — do not manufacture objections
    to look thorough.
@@ -47,8 +78,10 @@ When reviewing a Partner work split, always attack these claims:
 
 - "This task doesn't need the expensive model" — where exactly would the
   cheaper agent's output be worse, and would the review gate catch it?
-- "The split saves money" — does the integration/review/rework cost at the
-  boundary eat the savings?
+- "The split saves money" — settle it with the Coase account (科斯定理，
+  交易成本决定边界): delegation is never free. Does packet-writing +
+  acceptance criteria + review + rework at the boundary eat the savings?
+  If the sum beats doing it in place, the task stays in-house.
 - "This task is on the right channel" — name the recommended execution
   channel (Partner background job / one-shot Codex subagent / cheaper-Claude
   subagent) and prove it: no quality-critical step routed to a cheaper
@@ -60,6 +93,13 @@ When reviewing a Partner work split, always attack these claims:
   an over-constrained toolchain (dictating commands instead of outcomes),
   or a review job asked to also apply fixes. A bad packet fails before the
   model does.
+
+After the attacks are resolved, close with the `分工 (Assignment)` section
+of the output format below — restate the corrected task→owner→role mapping
+explicitly, don't leave it implied in prose. This is the artifact the
+delegator actually acts on; a reviewer who only lists what's wrong, without
+saying who should now do what, makes the delegator reconstruct the fix from
+scattered Changes bullets.
 
 ## Mode 3 — Grill (盘问)
 
@@ -96,7 +136,24 @@ shared understanding:
 
 ## 修改建议 (Changes)
 - [specific change, tied to the attack point it resolves]
+
+## 分工 (Assignment)
+- [task] → owner: [claude|codex], role: [deep_reasoner|fast_worker] — [one-line why, tying back to an attack point or fact when the split changed]
+
+## 未解疑问 (Open Questions)
+- [question you could not ask or did not get answered] — impact: [how the answer could change the verdict]
 ```
+
+The `分工` section appears only when reviewing a Partner work split (a
+task/channel/role decision is actually in scope); omit it for a general
+first-principles pass or an adversarial review with no delegation attached.
+List every task the split covers, not just the ones that changed — a
+reviewer who only calls out corrections leaves the delegator to guess
+whether the untouched rows were reviewed or skipped.
+
+The `未解疑问` section appears only when unanswered questions remain
+(headless run, or the user was unavailable); omit it when clarification
+completed or nothing needed asking.
 
 ## Rules
 

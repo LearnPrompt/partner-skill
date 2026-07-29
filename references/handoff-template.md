@@ -55,6 +55,11 @@ anomalies: <none | permission wait | idle | empty review | failed check | other>
 monitoring_level: <full | degraded | none | unknown>
 direction: <codex-driven | claude-driven>
 codex_jobs: <0 | count>
+host: <claude_code | codex | generic>
+scope: <project | global | n/a>
+config_source: <session | project | global | default | n/a>
+roles_used: <none | JSON array of {role, host, model, effort, verified}>
+receipt_schema_version: 2
 ```
 ```
 
@@ -110,3 +115,47 @@ Delegation packet rules:
 - Ask for prioritized findings. Do not ask for a broad rewrite unless the user requested one.
 - If Claude Code returns style-only ideas after the app already works, Codex decides whether they are worth applying.
 - Include a Partner Session Receipt whenever Claude Code was involved.
+
+## Goal Packet (Plan→Goal→PR→Verification, `references/goal-to-pr.md`)
+
+Use this packet to present a Stage 1 plan for authorization before writing
+`.partner/goal.md` and starting Stage 3. It is a decision artifact for the
+user, not a delegation packet for Codex.
+
+```markdown
+# Partner Goal Packet
+
+## Ask
+[One why-forward sentence: what the user asked for and why it matters.]
+
+## Plan
+- Goal / non-goals: ...
+- Current-state evidence: [file:line citations, not vibes]
+- File scope: ...
+- Phases: ...
+- Risks: ...
+- Acceptance criteria: [verifiable per phase]
+- Rollback plan: ...
+
+## idea-king Verdict
+[ship | needs-attention | no-go, plus surviving attack points and the
+changes already folded into the plan above.]
+
+## Open Decisions
+[Anything only the user can decide — scope tradeoffs, priorities,
+constraints not visible in the repo.]
+
+## What Authorization Unlocks
+Confirming this packet authorizes Stage 3 up through merge-ready PR +
+preview verified. It does NOT authorize merge, production, tags,
+force-push, deletion, destructive migration, or external publish — each of
+those needs its own explicit imperative sentence when the time comes.
+```
+
+Rules:
+
+- Send this before creating a branch, worktree, or `.partner/goal.md` —
+  Stage 1 (Plan) touches no files.
+- A reply that only answers a question in this packet is not authorization
+  to proceed; wait for an actual imperative.
+- Keep it bounded: cite evidence, do not paste the whole repo.

@@ -136,6 +136,11 @@ anomalies: <none | permission wait | idle | empty review | failed check | other>
 monitoring_level: <full | degraded | none | unknown>
 direction: <codex-driven | claude-driven>
 codex_jobs: <0 | count>
+host: <claude_code | codex | generic>
+scope: <project | global | n/a>
+config_source: <session | project | global | default | n/a>
+roles_used: <none | JSON array of {role, host, model, effort, verified}>
+receipt_schema_version: 2
 ```
 
 Generate it with `python3 "$PARTNER_DIR/scripts/make-receipt.py"` (validates

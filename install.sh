@@ -8,6 +8,8 @@ Partner installer
 Usage:
   bash install.sh [--target codex|claude|agents|all] [--dry-run]
   bash install.sh --status
+  bash install.sh --configure [partner-setup-ui.py args...]
+  bash install.sh --configure-cli [partner-setup.py args...]
 
 Targets:
   codex   -> ~/.codex/skills/partner-skill  (+ ~/.codex/prompts/idea-king.md)
@@ -21,6 +23,9 @@ split. It installs as its own skill directory so both agents can call it.
 
 --status compares every installed copy's .install-meta commit against this
 repository's HEAD so stale copies are visible before they cause confusion.
+
+--configure opens the localhost-only single-page setup UI; any extra arguments
+are passed to partner-setup-ui.py. --configure-cli keeps the terminal fallback.
 USAGE
 }
 
@@ -46,6 +51,14 @@ while [ "$#" -gt 0 ]; do
     --status)
       STATUS="true"
       shift
+      ;;
+    --configure)
+      shift
+      exec python3 "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/scripts/partner-setup-ui.py" "$@"
+      ;;
+    --configure-cli)
+      shift
+      exec python3 "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/scripts/partner-setup.py" --interactive "$@"
       ;;
     -h|--help)
       usage
@@ -73,11 +86,22 @@ source_commit() {
   fi
 }
 
+host_for_dest() {
+  case "$1" in
+    "$HOME"/.codex/*) echo "codex" ;;
+    "$HOME"/.claude/*) echo "claude" ;;
+    "$HOME"/.agents/*) echo "generic" ;;
+    *) echo "unknown" ;;
+  esac
+}
+
 write_install_meta() {
   local meta_path="$1"
+  local host="${2:-unknown}"
   {
     printf 'source_commit=%s\n' "$(source_commit)"
     printf 'installed_at=%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+    printf 'host=%s\n' "$host"
   } >"$meta_path"
 }
 
@@ -144,7 +168,7 @@ copy_payload() {
       -print0 | tar -cf - --null -T -) \
       | tar -xf - -C "$dest"
   fi
-  write_install_meta "$dest/.install-meta"
+  write_install_meta "$dest/.install-meta" "$(host_for_dest "$dest")"
 }
 
 for dest in "${DESTS[@]}"; do
@@ -195,7 +219,7 @@ install_idea_king_skill() {
   mkdir -p "$dest"
   (cd "$ROOT/idea-king" && find . -type f ! -name '.DS_Store' ! -name 'codex-prompt.md' -print0 \
     | tar -cf - --null -T -) | tar -xf - -C "$dest"
-  write_install_meta "$dest/.install-meta"
+  write_install_meta "$dest/.install-meta" "$(host_for_dest "$dest")"
 }
 
 install_idea_king_codex_prompt() {
@@ -206,7 +230,7 @@ install_idea_king_codex_prompt() {
   fi
   mkdir -p "$HOME/.codex/prompts"
   cp "$ROOT/idea-king/codex-prompt.md" "$dest"
-  write_install_meta "$dest.install-meta"
+  write_install_meta "$dest.install-meta" "codex"
 }
 
 for dest in "${DESTS[@]}"; do

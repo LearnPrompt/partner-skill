@@ -37,6 +37,23 @@ are available (`$PARTNER_DIR` = the skill's install directory).
 - Recover: stop the stuck subprocess, record it, and continue with Codex-side verification. Do not cold-start a replacement review session by default.
 - Receipt: `anomalies: other (review hang, codex-side verification used)`.
 
+## Bounded Planner Idle Or Timeout
+
+- Detect: `scripts/run-claude-plan.py` exits non-zero and its
+  `.partner/runs/<run-id>/metadata.json` reports `idle_timeout`,
+  `wall_timeout`, or `upstream_idle`.
+- Recover: inspect the sanitized `events.jsonl` and `checkpoint.md`, then use
+  the exact same-session command in `recovery.md`. Do not restart repository
+  discovery and do not substitute another role/model automatically. If resume
+  fails, ask for explicit approval before selecting another configured role.
+- Receipt: `anomalies: other (bounded planner <failure_kind>; checkpoint
+  preserved)` and list the run id under checks.
+
+Authentication is a separate failure class. `metadata.json` reports
+`authentication` only when the child CLI produces authentication evidence;
+an idle or API timeout after successful model events must not be relabeled as a
+login error.
+
 ## Session Crash Or Unrecoverable Exit
 
 - Detect: process gone, `claude agents --json` no longer lists the session.
@@ -72,6 +89,8 @@ git-ignored by this skill's convention.
   plan.md                  The accepted Claude plan for the current task
   handoffs/                Bounded handoffs, one file per pass
                            (written by make-handoff.sh --save)
+  plans/                   Successful bounded Claude plans
+  runs/                    Sanitized bounded-plan events/checkpoints/metadata
   receipts/                Final receipts (written by make-receipt.py --save)
   session-baseline.txt     Transcript snapshot (written by session-snapshot.sh)
 ```

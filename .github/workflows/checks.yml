@@ -23,7 +23,10 @@ jobs:
           bash -n scripts/check-claude-cli.sh
           bash -n scripts/make-handoff.sh
           bash -n scripts/session-snapshot.sh
-          python3 -m py_compile scripts/check-readme-parity.py scripts/showcase-cost-ledger.py scripts/validate-receipt.py scripts/run-test-prompts.py scripts/make-receipt.py
+          python3 -m py_compile scripts/check-readme-parity.py scripts/showcase-cost-ledger.py scripts/validate-receipt.py scripts/run-test-prompts.py scripts/run-claude-plan.py scripts/partner_runtime.py scripts/partner-setup.py scripts/make-receipt.py
+
+      - name: Unit suite
+        run: python3 -m unittest discover -s tests
 
       - name: Receipt contract
         run: |
@@ -32,6 +35,7 @@ jobs:
           python3 scripts/make-receipt.py --phase review --claude-session ci-test \
             --reused yes --new-claude-p 0 --codex-passes 1 \
             --checks "ci roundtrip" --monitoring-level none \
+            --host claude_code --scope project --config-source project --roles-used '[]' \
             | python3 scripts/validate-receipt.py -
 
       - name: Monitoring probe degrades cleanly without claude CLI
@@ -47,3 +51,6 @@ jobs:
 
       - name: Install dry run
         run: bash install.sh --target all --dry-run
+
+      - name: Dual-host sandbox matrix
+        run: bash scripts/sandbox-matrix.sh

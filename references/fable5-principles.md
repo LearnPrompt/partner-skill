@@ -32,11 +32,15 @@ Put this rule in the goal file and in every delegation packet.
 
 ## Effort as a Handoff Parameter
 
-Effort level is the intelligence/latency/cost dial. Pass it explicitly with
-every delegation (`delegate-codex.sh --effort`). Partner default is `high`;
-reserve `xhigh` for the hardest, quality-critical jobs (expect long
-runtimes); drop to `medium` only for genuinely trivial mechanical work.
-On a subscription plan, do not economize on effort at the price of rework.
+Effort level is the intelligence/latency/cost dial. Prefer `delegate-codex.sh
+--host <driver> --role <identity>` so backend, effort, and model resolve
+from `搭子，配置`'s config instead of being picked ad hoc per call; pass an
+explicit `--effort` only when a specific task genuinely needs to override
+its identity's default. Without a `--role` or explicit `--effort`, the tool
+falls back to `high` — reserve `xhigh` for the hardest, quality-critical
+jobs (expect long runtimes); `medium` only for genuinely trivial mechanical
+work. On a subscription plan, do not economize on effort at the price of
+rework.
 
 ## Resume Instead of Restart
 
@@ -88,6 +92,12 @@ Three execution channels, in order of preference for delegable work:
 | Codex subagent (one-shot, e.g. a rescue/second-opinion agent) | Codex subscription | in-process, blocking, no durable state | stuck and want a second diagnosis, or a throwaway assist |
 | Claude subagent (Task tool, cheaper Claude tier) | Claude API metered | in-process, isolated context, returns a summary | the step genuinely needs Claude-grade reasoning at a lower tier and the metered spend is acceptable |
 
+Picking *which* Claude subagent to spawn is a separate, three-level lookup —
+see "Sub Agent Routing" in `references/claude-driven.md`: a `partner-*`
+namespaced agent configured via `搭子，配置` first, the user's own
+similarly-named agent second, the generic `Task` tool last. This is about
+which agent definition answers the call, not which channel bills for it.
+
 Only the Codex channels move the whole meter to the subscription; a
 cheaper-Claude subagent still bills the API. A subagent is a single-call
 primitive; the Partner job is an orchestration layer (submit → monitor →
@@ -100,3 +110,11 @@ Restricting the orchestrator's thinking backfires: in controlled runs it
 raised turns from 92 to 138 and doubled output — thinking buys turn
 efficiency (Superpowers 6 autoresearch). Economize on the execution axis
 (delegate downward), never on the planner's reasoning budget.
+
+Do bound the planner's **execution surface**. Reasoning effort and repository
+discovery are different dimensions: keep the configured effort, while the
+outer host supplies a compact evidence packet and disables tools/subagents for
+repository-heavy Claude planning. `references/bounded-planning.md` defines the
+packet, timeouts, CLI budget, artifacts, and no-fallback recovery path. This
+preserves high-effort judgment without paying the planner to recursively
+rediscover the repo.

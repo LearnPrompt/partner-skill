@@ -1,8 +1,8 @@
 ---
 name: partner-skill
-version: 1.4.2
+version: 2.0.1
 description: |
-  搭子.skill / Partner — two-direction cost-split workflow between Claude Code and Codex. Direction A (Codex-driven): Codex orchestrates and implements; Claude Code plans (/goal), polishes UI/interaction, and runs final /codex:review in one reused session. Direction B (Claude-driven): Claude plans and splits the work, runs the idea-king adversarial gate, delegates to Codex background jobs, monitors, and full-reviews before accepting. Use on "搭子" / "双向搭子" / "搭子，恢复" (resume from .partner/), 分工给 codex / 让 codex 做 / codex 后台跑 / Claude 计划 Codex 实现 / 让 Claude skip 做完, or any request to split coding work between Claude Code and Codex to save quota. Not for ordinary code review without Claude Code; do not trigger on the bare English word "partner" in unrelated contexts.
+  搭子.skill / Partner — two-direction cost-split workflow between Claude Code and Codex. Direction A (Codex-driven): Codex orchestrates and implements; Claude Code plans (/goal), polishes UI/interaction, and runs final /codex:review in one reused session. Direction B (Claude-driven): Claude plans and splits the work, runs the idea-king adversarial gate, delegates to Codex background jobs, monitors, and full-reviews before accepting. Use on "搭子" / "双向搭子" / "搭子，恢复" (resume from .partner/), "搭子，配置" (first-run setup wizard), "搭子，试跑" (identity tryout report), 分工给 codex / 让 codex 做 / codex 后台跑 / Claude 计划 Codex 实现 / 让 Claude skip 做完, or any request to split coding work between Claude Code and Codex to save quota. Not for ordinary code review without Claude Code; do not trigger on the bare English word "partner" in unrelated contexts.
 ---
 
 # 搭子.skill (Partner)
@@ -17,78 +17,45 @@ Prefer one long-lived Claude Code session for small and medium tasks: ask Claude
 
 Partner is not a delegation excuse. The user remains the owner, Codex remains accountable for repository evidence, and Claude Code is treated as a high-value collaborator whose output must be verified.
 
-## Direction Detection
+## Host Detection
 
-Partner runs in two directions. Decide once at the start and say which one you are in:
+Partner is one Core (this file) plus one host adapter. Decide the host once at the start and say which direction you are in:
 
-- **Direction A — Codex-driven (default here)**: this file is loaded by Codex; Codex orchestrates and Claude Code is the high-value planning/polish/review agent. Follow the Default Flow below.
+- **The host is the runtime that actually loaded this SKILL.md.** Self-identification wins: a prompt that merely mentions the other agent ("让 codex 做", "ask Claude") never switches your identity.
+- The `host=codex|claude|generic` marker in `.install-meta` (written by install.sh) is a tiebreaker only, for copies whose load path is ambiguous. It never overrides self-identification.
+- A generic install (`~/.agents`) runs Core-only: state up front that adapter primitives (delegate-codex.sh background jobs, Claude session monitoring) are unavailable instead of pretending they work.
+- Probing the peer CLI (`codex --version`, `check-claude-cli.sh`) only tells you what the other side can do; it never decides which adapter you load.
+
+Then load the matching adapter:
+
+- **Direction A — Codex-driven**: this file is loaded by Codex; Codex orchestrates and Claude Code is the high-value planning/polish/review agent. Read `references/codex-driven.md` and follow its Default Flow, Session Strategy, and Permission Policy.
 - **Direction B — Claude-driven**: this file is loaded inside Claude Code and the user asks to delegate work to Codex ("双向搭子", "分工给 codex", "让 codex 做", "codex 后台跑"). Claude plans and splits the work, delegates to Codex via `bash "$PARTNER_DIR/scripts/delegate-codex.sh"` background jobs, monitors with a loop, and full-reviews the result before accepting. Read `references/claude-driven.md` and follow its five phases; the shared prompting rules live in `references/fable5-principles.md` and the wrap-up memory rules in `references/memory-protocol.md`.
 
 Both directions end with the same Partner Session Receipt; `direction` records which flow ran.
 
+## Configuration
+
+On "搭子，配置", or when a Partner flow needs an identity with no
+configuration yet, run the local setup UI in `references/setup.md` with
+`python3 "$PARTNER_DIR/scripts/partner-setup-ui.py" --host <host> --repo <repo>`.
+Do not collect the matrix through repeated chat questions when a browser is
+available. The single page shows every backend, concrete model, and effort,
+then delegates every preview/write to `partner-setup.py` (preview → atomic
+apply → automatic smoke test). It uses beginner-safe project defaults instead
+of asking scope/Git/routing questions in chat; the terminal engine remains
+available for explicit advanced overrides. Three identities — deep_reasoner, fast_worker, and
+arbiter (the blind second solver for contentious calls) — each carry their
+own backend (which CLI executes: claude or codex), model, and effort,
+freely mixed across vendors. Their values live only in
+`.partner/config.toml` (project) or `~/.config/partner/config.toml`
+(global) — schema in `docs/config-schema.md`; never duplicate them into
+prompts or docs. On "搭子，试跑", run the identity tryout in
+`references/tryout.md`: each identity executes one micro-task and the
+report proves they are live on the configured models.
+
 ## Tool Location
 
 The helper scripts referenced below live in this skill's install directory (the directory containing this SKILL.md), not in the target repo. Resolve it once as `$PARTNER_DIR` — you know it from wherever this file was loaded; otherwise probe `~/.codex/skills/partner-skill`, `~/.claude/skills/partner-skill`, `~/.agents/skills/partner-skill`, or the local clone. All scripts accept running from any cwd; repo-dependent ones take `--repo`.
-
-## Default Flow
-
-1. Ground in the target repo.
-   - Enter the concrete project directory, not the `agent-workbench` root.
-   - Run `git status --short` before starting Claude Code. For a non-git target, record a bounded file inventory instead (see `references/monitoring.md`).
-   - Run `bash "$PARTNER_DIR/scripts/check-claude-cli.sh"` once to learn the available monitoring level; report it in the final receipt.
-   - Run `bash "$PARTNER_DIR/scripts/session-snapshot.sh" start --repo <repo>` so the receipt's new-session count is computed, not guessed.
-   - Identify whether the task is greenfield, feature-heavy, UI-heavy, review-only, or debugging. When the task does not fit the default profile (review-only, debugging, non-UI, non-git, monorepo, multi-day), apply the matching profile in `references/scenarios.md`.
-
-2. Start one Claude Code session for the expensive thinking loop.
-   - For planning: start Claude Code in a PTY and set a goal.
-   - Use `claude --permission-mode plan --name <task-name>` by default.
-   - In the interactive session, send `/goal <clear completion condition>`.
-   - Ask Claude Code for a concrete implementation plan, acceptance criteria, and UI/interaction guidance.
-   - Keep this same session open for the later polish and review passes when the task is not too large.
-   - Do not start a separate `claude -p` review-only session just because Codex has finished implementation. That spends tokens on cold-start context and weakens Claude's continuity.
-
-3. Implement primarily with Codex.
-   - Convert Claude Code's plan into a short checklist.
-   - Make the code changes directly in Codex, using existing repo patterns.
-   - Run the fastest relevant check after risky edits.
-   - Keep Claude Code out of mechanical bulk edits, repeated lint fixes, and long command loops unless the user asks.
-
-4. Send the implemented state back to the same Claude Code session for polish.
-   - Use this especially for frontend UI, interaction quality, product feel, accessibility, and edge states.
-   - Send a bounded payload. Use `references/handoff-template.md` when possible: the original plan, changed-file list, `git diff --stat`, test/check output, risks, open questions, and only the key file snippets or full files Claude needs. `bash "$PARTNER_DIR/scripts/make-handoff.sh"` collects the evidence half automatically.
-   - Ask for prioritized findings, not broad rewrites.
-   - Codex applies accepted fixes and reruns checks.
-
-5. Run final review from the same Claude Code session.
-   - In Claude Code, use `/codex:review` when available.
-   - Treat findings as bug/risk/test issues first, style suggestions second.
-   - Codex fixes blocking findings, reruns checks, and reports final status.
-   - End with a Partner Session Receipt so the user can verify whether Claude Code context was reused.
-
-## Session Strategy
-
-- Small or medium task: keep one Claude Code session open for `plan -> polish -> /codex:review`.
-- Treat a new Claude Code session as expensive. Open one only when there is no reusable session, the prior session is unrecoverable, or the user explicitly asks for a fresh Claude pass.
-- If the same Claude session gets stuck in a prompt, permission wait, or idle state, first try to continue or resume the same session with a bounded message. Do not cold-start a replacement review unless the value clearly beats the context cost.
-- Large task or huge diff: split sessions only after Codex produces a compact handoff containing the plan, changed files, key decisions, known risks, and check results.
-- For large or multi-day tasks, persist the loop state under `.partner/` in the target repo (plan, handoffs via `make-handoff.sh --save`, receipts) so a lost session restarts from the newest handoff, not from zero. See `references/failure-playbook.md`.
-- When the user says `搭子，恢复` or asks to resume the last Partner task, load `.partner/plan.md` plus the newest file in `.partner/handoffs/` as the cold-start payload instead of rebuilding context.
-- If the same Claude session gets slow, confused, or context-heavy, close it and restart with a bounded handoff only after reporting the token tradeoff.
-- Do not skip the Claude polish phase for UI/frontend work unless the user explicitly asks for a faster minimal loop.
-- If `/codex:review` hangs, times out, or gets stuck in a permission prompt, record that as a monitoring finding, stop the stuck subprocess/session, and continue with Codex-side verification.
-- If Claude Code produces no actionable polish, do not keep prompting it blindly. Capture the empty/low-signal result, run Codex verification, and report the limitation.
-- `claude -p` is not the default Partner path. Use it only for cheap one-off questions where losing prior session context is acceptable.
-
-## Permission Policy
-
-- Default to `--permission-mode plan` for planning and normal permissions for implementation review.
-- Use skip/bypass only when the user explicitly asks for `skip`, `最高权限`, `全部允许`, `bypass`, or when the work is inside an intentionally isolated worktree.
-- Treat `skip` as a permission escalation only when it clearly refers to Claude Code's permission mode (for example `让 Claude skip 做完`). When `skip` could mean skipping a workflow step (for example `skip the polish`, `跳过这一步`), ask one clarifying question instead of launching bypassPermissions.
-- For skip mode, start Claude Code with `claude --permission-mode bypassPermissions --name <task-name>` or `claude --dangerously-skip-permissions --name <task-name>`.
-- Before any skip session, state the repo path, current git status, intended scope, and stop condition.
-- Never let skip mode commit, push, deploy, send messages, publish, or touch secrets unless the user gives a separate explicit instruction.
-- Never treat `skip` as permission to ignore repo evidence. `skip` changes Claude Code permissions, not Partner's verification duty.
-- Keep repository visibility changes, release tags, registry publication, and external announcements behind a separate explicit publish instruction.
 
 ## Routing Rules
 
@@ -96,6 +63,18 @@ The helper scripts referenced below live in this skill's install directory (the 
 - Route to Codex: scaffolding, implementation, long-context code edits, tests, build fixes, repository inspection, monitoring, summaries.
 - Route back to the same Claude Code session when UI quality matters or the first implementation passes technically but still needs product polish.
 - Keep Kimi Work/Kimi Code Goal separate from Claude Code `/goal`; prior "Goal mode" context may refer to Kimi, not Claude.
+
+## Bounded Claude Planning
+
+For repository-heavy planning through a Claude-backed `deep_reasoner`,
+especially at `xhigh`, use `references/bounded-planning.md` and
+`scripts/run-claude-plan.py`. The outer host prepares the required
+24,000-character-max evidence packet; Claude runs in safe mode with no tools or
+subagents, explicit wall/valid-event idle limits, bounded stream/output/log
+sizes, process-group termination, and a Claude-CLI-enforced API budget.
+Model and effort come only from `.partner/config.toml`. Failure preserves a
+checkpoint, sanitized events, cost metadata, and a same-session recovery
+command; Partner never substitutes another model silently.
 
 ## Validation Gate
 
@@ -143,8 +122,24 @@ anomalies: <none | permission wait | idle | empty review | failed check | other>
 monitoring_level: <full | degraded | none | unknown>
 direction: <codex-driven | claude-driven>
 codex_jobs: <0 | count>
+host: <claude_code | codex | generic>
+scope: <project | global | n/a>
+config_source: <session | project | global | default | n/a>
+roles_used: <none | JSON array of {role, host, model, effort, verified}>
+receipt_schema_version: 2
 ```
 
 Generate the receipt with `python3 "$PARTNER_DIR/scripts/make-receipt.py"` — it auto-fills `monitoring_level` from the probe and refuses to emit an invalid receipt. Get `new_claude_p_sessions` from `bash "$PARTNER_DIR/scripts/session-snapshot.sh" diff` so the count is computed from transcript evidence. In Direction B, set `direction: claude-driven` and `codex_jobs` to the number of `delegate-codex.sh` jobs (including fix rounds); in Direction A they are `codex-driven` and `0` unless background jobs were used. A written receipt can be re-checked any time with `validate-receipt.py` against `docs/receipt-schema.json`.
+
+`host` is the runtime that loaded this file (see Host Detection above); `scope`
+and `config_source` come straight from `partner-setup.py --status` or a
+`partner-config.py resolve` call (`n/a` when the run touched no configured
+role). `roles_used` lists every role actually invoked this run, each entry's
+`verified` taken from the config's `verified` field, not guessed — an
+unconfigured or unverified role still gets an entry with `verified: false`,
+it is never omitted to make the receipt look cleaner. `receipt_schema_version`
+is always `2`; a receipt missing the four fields above is a schema v1
+receipt from before this contract and will fail `validate-receipt.py`, which
+is the intended signal to regenerate it with the current `make-receipt.py`.
 
 Do not fabricate token savings. When exact token telemetry is unavailable, report verifiable behavior instead: same Claude Code session reused, no fresh `claude -p` session, bounded handoff used, checks passed.

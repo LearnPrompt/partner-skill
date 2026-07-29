@@ -67,8 +67,8 @@ def static_check(entries: list[dict]) -> list[str]:
         for text in [entry["prompt"], *entry.get("expected_behavior", [])]:
             if RISKY.search(str(text)):
                 failures.append(f"{case_id}: risky command text outside must_not: {text!r}")
-        if entry.get("should_trigger") is not True:
-            failures.append(f"{case_id}: should_trigger must be true for regression cases")
+        if entry.get("should_trigger") not in (True, False):
+            failures.append(f"{case_id}: should_trigger must be true or false")
 
     if not any("receipt" in str(entry.get("id", "")) for entry in entries):
         failures.append("no receipt-contract case found (expected an id containing 'receipt')")
@@ -92,6 +92,13 @@ def live_check(entries: list[dict], agent_cmd: str) -> list[str]:
             failures.append(f"{case_id}: agent command failed: {error}")
             continue
         output = result.stdout + result.stderr
+        should_trigger = entry.get("should_trigger", True)
+        if not should_trigger:
+            if RECEIPT_HEADER in output:
+                failures.append(f"{case_id}: expected no trigger, but a receipt was emitted")
+            else:
+                print(f"PASS live {case_id} (correctly did not trigger)")
+            continue
         if RECEIPT_HEADER not in output:
             failures.append(f"{case_id}: no Partner Session Receipt in output")
             continue

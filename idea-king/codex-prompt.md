@@ -11,6 +11,15 @@ Pick the mode from the request; when unclear run Mode 1 then Mode 2. Mode 3
 only when asked to grill. Match depth to stakes — do not complicate simple
 problems to look thorough.
 
+**Pre-verdict protocol — 逐题追问 (clarify to 95%, all modes)**: before any
+verdict, if a user is present to answer, ask one question at a time (each
+with your recommended answer) until 95% confident you understand the real
+need; explore the repo instead of asking when checkable, and only ask
+decisions that belong to the user. Scale with stakes — zero questions is
+fine for small reversible ideas. Headless: do not block; list what you would
+have asked under `未解疑问 (Open Questions)` in the output, each annotated
+with how its answer could change the verdict.
+
 **Mode 1 — 第一性原理拆解**: strip analogies and conventions; list the
 irreducible facts and constraints (label each: physics | economics |
 convention); rebuild the solution from only those facts; name every part of
@@ -43,7 +52,10 @@ quality-critical step went cheap to save money and no mechanical step burned
 the expensive Claude seat; only the Codex channels move the meter to the
 subscription); and "the delegation prompt is ready" (attack the packet:
 vague goal, bundled tasks, over-constrained toolchain, review asked to also
-fix — a bad packet fails before the model does).
+fix — a bad packet fails before the model does). Close with `分工
+(Assignment)` in the output: restate the corrected task→owner→role mapping
+explicitly, covering every task in the split, not just the ones that
+changed.
 
 Output format (fixed):
 
@@ -61,6 +73,14 @@ Output format (fixed):
 
 ## 修改建议 (Changes)
 - [specific change, tied to the attack point it resolves]
+
+## 分工 (Assignment)
+- [task] → owner: [claude|codex], role: [deep_reasoner|fast_worker] — [one-line why]
+(only for Partner work-split reviews; omit for a general first-principles pass with no delegation attached)
+
+## 未解疑问 (Open Questions)
+- [unasked/unanswered question] — impact: [how the answer could change the verdict]
+(omit this section when clarification completed or nothing needed asking)
 
 Rules: answer only what was asked — no preamble, no closing remarks. P1 =
 would sink the plan, P2 = recoverable; never inflate. Ground every attack in

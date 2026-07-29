@@ -36,10 +36,15 @@ check_file "README.en.md"
 check_file "test-prompts.json"
 check_file "install.sh"
 check_file "LICENSE"
+check_file "assets/config-switch-demo.mp4"
+check_file "assets/config-switch-demo.gif"
+check_file "assets/v2.0.1-conversation-cost-receipt.png"
 check_file "examples/showcase-cost-ledger.json"
 check_file "docs/showcase-cost-model.md"
 check_file "docs/receipt-schema.json"
 check_file "examples/session-receipt.md"
+check_file "examples/v2.0.0-conversation-cost-receipt.md"
+check_file "examples/v2.0.1-conversation-cost-receipt.md"
 check_file "references/monitoring.md"
 check_file "references/handoff-template.md"
 check_file "references/failure-playbook.md"
@@ -51,10 +56,21 @@ check_file "scripts/make-receipt.py"
 check_file "scripts/session-snapshot.sh"
 check_file "scripts/validate-receipt.py"
 check_file "scripts/run-test-prompts.py"
+check_file "scripts/run-claude-plan.py"
 check_file "scripts/delegate-codex.sh"
+check_file "scripts/partner-config.py"
+check_file "scripts/partner_runtime.py"
+check_file "scripts/partner-setup.py"
+check_file "scripts/partner-setup-ui.py"
+check_file "scripts/goal-sync.py"
+check_file "references/codex-driven.md"
 check_file "references/claude-driven.md"
+check_file "references/setup.md"
+check_file "references/tryout.md"
+check_file "references/goal-to-pr.md"
 check_file "references/goal-template.md"
 check_file "references/fable5-principles.md"
+check_file "references/bounded-planning.md"
 check_file "references/memory-protocol.md"
 check_file "idea-king/SKILL.md"
 check_file "idea-king/references/adversarial-checklist.md"
@@ -70,6 +86,20 @@ if python3 scripts/validate-receipt.py examples/session-receipt.md >/dev/null; t
   echo "PASS example receipt validates against receipt contract"
 else
   echo "FAIL examples/session-receipt.md does not validate; run scripts/validate-receipt.py on it"
+  fail=$((fail + 1))
+fi
+
+if python3 scripts/validate-receipt.py examples/v2.0.0-conversation-cost-receipt.md >/dev/null; then
+  echo "PASS v2.0.0 conversation cost receipt validates against receipt contract"
+else
+  echo "FAIL v2.0.0 conversation cost receipt does not validate"
+  fail=$((fail + 1))
+fi
+
+if python3 scripts/validate-receipt.py examples/v2.0.1-conversation-cost-receipt.md >/dev/null; then
+  echo "PASS v2.0.1 conversation cost receipt validates against receipt contract"
+else
+  echo "FAIL v2.0.1 conversation cost receipt does not validate"
   fail=$((fail + 1))
 fi
 
@@ -207,6 +237,27 @@ elif [ -f assets/showcase.png ] && grep -qF 'assets/showcase.png' README.md && g
   echo "PASS showcase asset"
 else
   echo "FAIL README files must have a showcase placeholder or a valid showcase asset"
+  fail=$((fail + 1))
+fi
+
+if [ -f assets/v2.0.1-conversation-cost-receipt.png ] && \
+  grep -qF 'assets/v2.0.1-conversation-cost-receipt.png' README.md && \
+  grep -qF 'assets/v2.0.1-conversation-cost-receipt.png' README.en.md; then
+  echo "PASS v2.0.1 conversation cost receipt image"
+else
+  echo "FAIL v2.0.1 conversation cost receipt image must exist and be linked by both READMEs"
+  fail=$((fail + 1))
+fi
+
+if [ -f assets/config-switch-demo.mp4 ] && \
+  [ -f assets/config-switch-demo.gif ] && \
+  grep -qF 'assets/config-switch-demo.mp4' README.md && \
+  grep -qF 'assets/config-switch-demo.mp4' README.en.md && \
+  grep -qF 'assets/config-switch-demo.gif' README.md && \
+  grep -qF 'assets/config-switch-demo.gif' README.en.md; then
+  echo "PASS configuration demo video and README preview"
+else
+  echo "FAIL configuration demo video/preview must exist and be linked by both READMEs"
   fail=$((fail + 1))
 fi
 

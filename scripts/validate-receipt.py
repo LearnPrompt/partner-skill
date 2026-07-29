@@ -33,6 +33,11 @@ PHASES = {"planning", "codex implementation", "claude polish", "review", "final 
 REUSED_VALUES = {"yes", "no", "n/a"}
 MONITORING_LEVELS = {"full", "degraded", "none", "unknown"}
 DIRECTIONS = {"codex-driven", "claude-driven"}
+HOSTS = {"claude_code", "codex", "generic"}
+SCOPES = {"project", "global", "n/a"}
+CONFIG_SOURCES = {"session", "project", "global", "default", "n/a"}
+ROLE_HOSTS = {"claude_code", "codex"}
+ROLES = {"deep_reasoner", "fast_worker", "arbiter"}
 
 REQUIRED_FIELDS = [
     "phase",
@@ -45,6 +50,11 @@ REQUIRED_FIELDS = [
     "monitoring_level",
     "direction",
     "codex_jobs",
+    "host",
+    "scope",
+    "config_source",
+    "roles_used",
+    "receipt_schema_version",
 ]
 
 
@@ -68,6 +78,33 @@ def extract_block(text: str) -> dict[str, str] | None:
 
 def is_non_bool_int(value: object) -> bool:
     return isinstance(value, int) and not isinstance(value, bool)
+
+
+def parse_roles_used(value: object) -> list[dict]:
+    if value == "none":
+        return []
+    parsed = value
+    if isinstance(value, str):
+        parsed = json.loads(value)  # may raise json.JSONDecodeError
+    if not isinstance(parsed, list):
+        raise ValueError("roles_used must be 'none' or a JSON array")
+    for entry in parsed:
+        if not isinstance(entry, dict):
+            raise ValueError("roles_used entries must be objects")
+        missing = {"role", "host", "model", "effort", "verified"} - set(entry)
+        if missing:
+            raise ValueError(f"roles_used entry missing fields: {sorted(missing)}")
+        if entry["role"] not in ROLES:
+            raise ValueError(f"roles_used entry has unknown role: {entry['role']!r}")
+        if entry["host"] not in ROLE_HOSTS:
+            raise ValueError(f"roles_used entry has unknown host: {entry['host']!r}")
+        if not isinstance(entry["model"], str) or not entry["model"].strip():
+            raise ValueError("roles_used entry model must be a non-empty string")
+        if not isinstance(entry["effort"], str) or not entry["effort"].strip():
+            raise ValueError("roles_used entry effort must be a non-empty string")
+        if not isinstance(entry["verified"], bool):
+            raise ValueError("roles_used entry verified must be a boolean")
+    return parsed
 
 
 def validate(fields: dict[str, object], *, strict_json_types: bool = False) -> list[str]:
@@ -125,6 +162,27 @@ def validate(fields: dict[str, object], *, strict_json_types: bool = False) -> l
 
     if as_text("direction") not in DIRECTIONS:
         failures.append(f"direction must be one of {sorted(DIRECTIONS)}, got {as_text('direction')!r}")
+
+    if as_text("host") not in HOSTS:
+        failures.append(f"host must be one of {sorted(HOSTS)}, got {as_text('host')!r}")
+    if as_text("scope") not in SCOPES:
+        failures.append(f"scope must be one of {sorted(SCOPES)}, got {as_text('scope')!r}")
+    if as_text("config_source") not in CONFIG_SOURCES:
+        failures.append(
+            f"config_source must be one of {sorted(CONFIG_SOURCES)}, got {as_text('config_source')!r}"
+        )
+    try:
+        parse_roles_used(fields["roles_used"])
+    except (ValueError, json.JSONDecodeError) as error:
+        failures.append(f"roles_used is invalid: {error}")
+
+    version = fields["receipt_schema_version"]
+    version_text = as_text("receipt_schema_version")
+    if strict_json_types:
+        if version != 2:
+            failures.append(f"receipt_schema_version must be 2, got {version!r}")
+    elif version_text != "2":
+        failures.append(f"receipt_schema_version must be 2, got {version_text!r}")
 
     for placeholder_field in ("phase", "claude_session", "checks", "anomalies"):
         value = as_text(placeholder_field)

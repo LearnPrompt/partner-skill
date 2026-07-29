@@ -25,7 +25,9 @@ delegate-codex.sh — background Codex jobs for the Claude-driven Partner flow
 Usage:
   delegate-codex.sh submit --repo <path> --prompt-file <file>
                     [--label <name>] [--effort minimal|low|medium|high|xhigh]
-                    [--model <model>] [--read-only]
+                    [--model <model>] [--role deep_reasoner|fast_worker|arbiter]
+                    [--host claude_code|codex]
+                    [--read-only] [--dry-run]
   delegate-codex.sh status <jobId> --repo <path> [--wait] [--timeout <seconds>]
   delegate-codex.sh result <jobId> --repo <path> [--json]
   delegate-codex.sh resume <jobId> --repo <path> --prompt-file <file> [--read-only]
@@ -34,7 +36,12 @@ Usage:
 
 Defaults: --effort high (Partner default for delegated work), read-write
 sandbox per the user's codex config. Use --read-only for review/adversarial
-jobs that must not touch the repo.
+jobs that must not touch the repo. --host selects the identity routing table;
+identities with backend=claude must be spawned as host subagents.
+
+Codex binary: set PARTNER_CODEX_BIN to an executable path or command name to
+override discovery. On macOS the ChatGPT/Codex app-bundled CLI is preferred
+when present so app-only models use a compatible client; otherwise PATH is used.
 
 Exit codes: status prints RUNNING/DONE/FAILED/CANCELLED; `status --wait`
 returns non-zero on timeout or failure so callers can branch on it.
@@ -42,6 +49,7 @@ USAGE
 }
 
 JOBS_SUBDIR=".partner/jobs"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 die() {
   echo "ERROR: $*" >&2
@@ -65,6 +73,48 @@ require_job() {
 
 now_utc() {
   date -u +%Y-%m-%dT%H:%M:%SZ
+}
+
+is_git_repo() {
+  # `codex exec` refuses to run outside a trusted (git) directory unless
+  # --skip-git-repo-check is passed. Detect via rev-parse rather than a
+  # bare `-d "$1/.git"` check so worktrees/submodules (where .git is a
+  # file, not a directory) are still recognized as git repos.
+  git -C "$1" rev-parse --git-dir >/dev/null 2>&1
+}
+
+resolve_codex_bin() {
+  local configured="${PARTNER_CODEX_BIN:-}"
+  local candidate=""
+
+  CODEX_BIN_SOURCE="path"
+  if [ -n "$configured" ]; then
+    CODEX_BIN_SOURCE="env"
+    if [[ "$configured" == */* ]]; then
+      candidate="$configured"
+    else
+      candidate="$(command -v "$configured" 2>/dev/null || true)"
+    fi
+    [ -n "$candidate" ] && [ -x "$candidate" ] || die "PARTNER_CODEX_BIN is not executable: $configured"
+  elif [ "$(uname -s)" = "Darwin" ]; then
+    for candidate in "/Applications/ChatGPT.app/Contents/Resources/codex" "/Applications/Codex.app/Contents/Resources/codex"; do
+      if [ -x "$candidate" ]; then
+        CODEX_BIN_SOURCE="app"
+        break
+      fi
+      candidate=""
+    done
+  fi
+
+  if [ -z "$candidate" ]; then
+    candidate="$(command -v codex 2>/dev/null || true)"
+    CODEX_BIN_SOURCE="path"
+  fi
+  [ -n "$candidate" ] && [ -x "$candidate" ] || die "codex CLI not found; install it or set PARTNER_CODEX_BIN"
+
+  CODEX_BIN="$candidate"
+  CODEX_VERSION="$("$CODEX_BIN" --version 2>/dev/null | head -1 || true)"
+  CODEX_VERSION="${CODEX_VERSION:-unknown}"
 }
 
 make_job_id() {
@@ -133,24 +183,66 @@ PY
 }
 
 cmd_submit() {
-  local PROMPT_FILE="" LABEL="task" EFFORT="high" MODEL="" READ_ONLY="false"
+  local PROMPT_FILE="" LABEL="task" EFFORT="high" MODEL="" ROLE="" CONFIG_HOST="codex" READ_ONLY="false" DRY_RUN="false"
+  local EFFORT_EXPLICIT="false" MODEL_EXPLICIT="false"
+  local EFFORT_SOURCE="default" MODEL_SOURCE="default"
   while [ "$#" -gt 0 ]; do
     case "$1" in
       --repo) REPO="${2:-}"; shift 2 ;;
       --prompt-file) PROMPT_FILE="${2:-}"; shift 2 ;;
       --label) LABEL="${2:-}"; shift 2 ;;
-      --effort) EFFORT="${2:-}"; shift 2 ;;
-      --model) MODEL="${2:-}"; shift 2 ;;
+      --effort) EFFORT="${2:-}"; EFFORT_EXPLICIT="true"; shift 2 ;;
+      --model) MODEL="${2:-}"; MODEL_EXPLICIT="true"; shift 2 ;;
+      --role) ROLE="${2:-}"; shift 2 ;;
+      --host) CONFIG_HOST="${2:-}"; shift 2 ;;
       --read-only) READ_ONLY="true"; shift ;;
+      --dry-run) DRY_RUN="true"; shift ;;
       *) die "unknown submit argument: $1" ;;
     esac
   done
   require_repo
   [ -n "$PROMPT_FILE" ] && [ -f "$PROMPT_FILE" ] || die "--prompt-file is required and must exist"
-  command -v codex >/dev/null 2>&1 || die "codex CLI not found on PATH"
+  case "$ROLE" in ""|deep_reasoner|fast_worker|arbiter) ;; *) die "invalid --role: $ROLE" ;; esac
+  case "$CONFIG_HOST" in claude_code|codex) ;; *) die "invalid --host: $CONFIG_HOST" ;; esac
+
+  if [ -n "$ROLE" ]; then
+    local CONFIG_JSON CONFIG_SOURCE ROLE_BACKEND ROLE_MODEL ROLE_EFFORT
+    if ! CONFIG_JSON="$(python3 "$SCRIPT_DIR/partner-config.py" --host "$CONFIG_HOST" --repo "$REPO" resolve)"; then
+      die "failed to resolve Codex identity config; run 'python3 scripts/partner-config.py --host $CONFIG_HOST init' and then 'set --role $ROLE --backend codex --model <model> --effort <effort>'"
+    fi
+    CONFIG_SOURCE="$(printf '%s' "$CONFIG_JSON" | python3 -c 'import json, sys; print(json.load(sys.stdin).get("source", ""))')" || die "invalid JSON from partner-config.py resolve"
+    ROLE_BACKEND="$(printf '%s' "$CONFIG_JSON" | python3 -c 'import json, sys; host, role = sys.argv[1:]; print(json.load(sys.stdin).get("hosts", {}).get(host, {}).get("identities", {}).get(role, {}).get("backend", ""))' "$CONFIG_HOST" "$ROLE")" || die "invalid JSON from partner-config.py resolve"
+    ROLE_MODEL="$(printf '%s' "$CONFIG_JSON" | python3 -c 'import json, sys; host, role = sys.argv[1:]; print(json.load(sys.stdin).get("hosts", {}).get(host, {}).get("identities", {}).get(role, {}).get("model", ""))' "$CONFIG_HOST" "$ROLE")" || die "invalid JSON from partner-config.py resolve"
+    ROLE_EFFORT="$(printf '%s' "$CONFIG_JSON" | python3 -c 'import json, sys; host, role = sys.argv[1:]; print(json.load(sys.stdin).get("hosts", {}).get(host, {}).get("identities", {}).get(role, {}).get("effort", ""))' "$CONFIG_HOST" "$ROLE")" || die "invalid JSON from partner-config.py resolve"
+    if [ -z "$ROLE_BACKEND" ] || [ -z "$ROLE_MODEL" ] || [ -z "$ROLE_EFFORT" ]; then
+      die "Codex identity '$ROLE' is missing backend, model, or effort; run 'python3 scripts/partner-config.py --host $CONFIG_HOST init' and then 'set --role $ROLE --backend codex --model <model> --effort <effort>'"
+    fi
+    if [ "$ROLE_BACKEND" != "codex" ]; then
+      die "identity $ROLE is configured as backend=$ROLE_BACKEND; spawn partner-$ROLE subagent inside the host instead of delegating to Codex"
+    fi
+    if [ "$MODEL_EXPLICIT" = "false" ]; then
+      MODEL="$ROLE_MODEL"
+      MODEL_SOURCE="config:$CONFIG_SOURCE"
+    fi
+    if [ "$EFFORT_EXPLICIT" = "false" ]; then
+      EFFORT="$ROLE_EFFORT"
+      EFFORT_SOURCE="config:$CONFIG_SOURCE"
+    fi
+  fi
+  [ "$MODEL_EXPLICIT" = "false" ] || MODEL_SOURCE="explicit"
+  [ "$EFFORT_EXPLICIT" = "false" ] || EFFORT_SOURCE="explicit"
   case "$EFFORT" in minimal|low|medium|high|xhigh) ;; *) die "invalid --effort: $EFFORT" ;; esac
+  resolve_codex_bin
 
   LABEL="$(echo "$LABEL" | tr -cs 'A-Za-z0-9_-' '-' | sed 's/^-//;s/-$//')"
+  if [ "$DRY_RUN" = "true" ]; then
+    local SKIP_GIT_REPO_CHECK=""
+    is_git_repo "$REPO" || SKIP_GIT_REPO_CHECK="--skip-git-repo-check"
+    printf 'role=%s\nbackend=codex\nconfig_host=%s\nmodel=%s\neffort=%s\nmodel_source=%s\neffort_source=%s\ncodex_bin=%s\ncodex_bin_source=%s\ncodex_version=%s\nskip_git_repo_check=%s\n' \
+      "${ROLE:-none}" "$CONFIG_HOST" "${MODEL:-default}" "$EFFORT" "$MODEL_SOURCE" "$EFFORT_SOURCE" \
+      "$CODEX_BIN" "$CODEX_BIN_SOURCE" "$CODEX_VERSION" "$SKIP_GIT_REPO_CHECK"
+    return 0
+  fi
   local JOB_ID
   JOB_ID="$(make_job_id "$LABEL")"
   JOB="$(job_dir "$JOB_ID")"
@@ -159,8 +251,9 @@ cmd_submit() {
   cp "$PROMPT_FILE" "$JOB/prompt.md"
 
   {
-    printf 'label=%s\neffort=%s\nmodel=%s\nread_only=%s\nsubmitted_at=%s\nmode=fresh\n' \
-      "$LABEL" "$EFFORT" "${MODEL:-default}" "$READ_ONLY" "$(now_utc)"
+    printf 'label=%s\neffort=%s\nmodel=%s\nrole=%s\nbackend=codex\nconfig_host=%s\nmodel_source=%s\neffort_source=%s\ncodex_bin=%s\ncodex_bin_source=%s\ncodex_version=%s\nread_only=%s\nsubmitted_at=%s\nmode=fresh\n' \
+      "$LABEL" "$EFFORT" "${MODEL:-default}" "${ROLE:-none}" "$CONFIG_HOST" "$MODEL_SOURCE" "$EFFORT_SOURCE" \
+      "$CODEX_BIN" "$CODEX_BIN_SOURCE" "$CODEX_VERSION" "$READ_ONLY" "$(now_utc)"
   } >"$JOB/meta"
 
   write_run_script "$JOB" "$EFFORT" "$MODEL" "$READ_ONLY" ""
@@ -191,6 +284,14 @@ cmd_resume() {
 
   local EFFORT
   EFFORT="$(sed -n 's/^effort=//p' "$PARENT_JOB/meta")"
+  CODEX_BIN="$(sed -n 's/^codex_bin=//p' "$PARENT_JOB/meta")"
+  if [ -n "$CODEX_BIN" ] && [ -x "$CODEX_BIN" ]; then
+    CODEX_BIN_SOURCE="parent"
+    CODEX_VERSION="$("$CODEX_BIN" --version 2>/dev/null | head -1 || true)"
+    CODEX_VERSION="${CODEX_VERSION:-unknown}"
+  else
+    resolve_codex_bin
+  fi
   local ROUND=2
   case "$PARENT_ID" in *-r[0-9]*) ROUND=$(( ${PARENT_ID##*-r} + 1 )) ;; esac
   local JOB_ID="${PARENT_ID%-r[0-9]*}-r${ROUND}"
@@ -201,8 +302,8 @@ cmd_resume() {
   printf '%s' "$SESSION_ID" >"$JOB/session_id"
 
   {
-    printf 'label=resume\neffort=%s\nmodel=inherit\nread_only=%s\nsubmitted_at=%s\nmode=resume\nparent=%s\n' \
-      "${EFFORT:-high}" "$READ_ONLY" "$(now_utc)" "$PARENT_ID"
+    printf 'label=resume\neffort=%s\nmodel=inherit\ncodex_bin=%s\ncodex_bin_source=%s\ncodex_version=%s\nread_only=%s\nsubmitted_at=%s\nmode=resume\nparent=%s\n' \
+      "${EFFORT:-high}" "$CODEX_BIN" "$CODEX_BIN_SOURCE" "$CODEX_VERSION" "$READ_ONLY" "$(now_utc)" "$PARENT_ID"
   } >"$JOB/meta"
 
   write_run_script "$JOB" "${EFFORT:-high}" "" "$READ_ONLY" "$SESSION_ID"
@@ -217,22 +318,27 @@ write_run_script() {
     echo 'set -uo pipefail'
     printf 'JOB=%q\n' "$job"
     printf 'REPO=%q\n' "$REPO"
+    printf 'CODEX_BIN=%q\n' "$CODEX_BIN"
     echo 'PROMPT="$(cat "$JOB/prompt.md")"'
-    # web_search tooling is rejected at effort=minimal; enable it otherwise.
-    local search=""
-    [ "$effort" != "minimal" ] && search=" --enable web_search_cached"
+    # </dev/null: a long prompt can make codex exec also wait on stdin for
+    # more input ("Reading additional input from stdin..."); the background
+    # job's stdin is never closed on its own, so without this the job hangs
+    # forever with no further JSONL events.
     if [ -n "$session_id" ]; then
       # `codex exec resume` accepts no -C/-s flags: cwd comes from the shell,
       # sandbox and effort go through -c config overrides.
-      local args="--json -c 'model_reasoning_effort=\"$effort\"'$search"
+      local args="--json -c 'model_reasoning_effort=\"$effort\"'"
       [ "$read_only" = "true" ] && args="$args -c 'sandbox_mode=\"read-only\"'"
       echo 'cd "$REPO"'
-      printf 'codex exec resume %q "$PROMPT" %s >"$JOB/log.jsonl" 2>"$JOB/stderr.log"\n' "$session_id" "$args"
+      printf '"$CODEX_BIN" exec resume %q "$PROMPT" %s >"$JOB/log.jsonl" 2>"$JOB/stderr.log" </dev/null\n' "$session_id" "$args"
     else
-      local args="--json -C \"\$REPO\" -c 'model_reasoning_effort=\"$effort\"'$search"
+      local args="--json -C \"\$REPO\" -c 'model_reasoning_effort=\"$effort\"'"
+      # Non-git --repo targets need --skip-git-repo-check or codex exec
+      # refuses to run ("Not inside a trusted directory").
+      is_git_repo "$REPO" || args="$args --skip-git-repo-check"
       [ -n "$model" ] && args="$args -m \"$model\""
       [ "$read_only" = "true" ] && args="$args -s read-only"
-      printf 'codex exec "$PROMPT" %s >"$JOB/log.jsonl" 2>"$JOB/stderr.log"\n' "$args"
+      printf '"$CODEX_BIN" exec "$PROMPT" %s >"$JOB/log.jsonl" 2>"$JOB/stderr.log" </dev/null\n' "$args"
     fi
     echo 'echo $? >"$JOB/exit_code"'
   } >"$job/run.sh"

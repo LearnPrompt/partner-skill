@@ -10,7 +10,9 @@ the target repo's .partner/receipts/.
 Usage:
     python3 make-receipt.py --phase "final fix" --claude-session abc123 \
         --reused yes --new-claude-p 0 --codex-passes 2 \
-        --checks "npm test; bash lint.sh" [--anomalies none] [--save] [--repo PATH]
+        --checks "npm test; bash lint.sh" --host claude_code \
+        [--scope project] [--config-source project] [--roles-used '[]'] \
+        [--anomalies none] [--save] [--repo PATH]
 
 Tip: get a verifiable --new-claude-p value from
 `bash session-snapshot.sh diff` instead of estimating it.
@@ -61,6 +63,10 @@ def main() -> int:
     parser.add_argument("--monitoring-level", default="", help="Override; default runs check-claude-cli.sh.")
     parser.add_argument("--direction", default="codex-driven", help="codex-driven | claude-driven")
     parser.add_argument("--codex-jobs", default="0", help="Number of delegate-codex.sh jobs including fix rounds.")
+    parser.add_argument("--host", required=True, help="claude_code | codex | generic — the runtime that loaded SKILL.md this run.")
+    parser.add_argument("--scope", default="n/a", help="project | global | n/a (default: n/a, when no configured role was touched).")
+    parser.add_argument("--config-source", default="n/a", help="session | project | global | default | n/a.")
+    parser.add_argument("--roles-used", default="none", help="'none' or a JSON array of {role, host, model, effort, verified}.")
     parser.add_argument("--save", action="store_true", help="Also write to <repo>/.partner/receipts/.")
     parser.add_argument("--repo", default=".", help="Target repo for --save (default: current directory).")
     args = parser.parse_args()
@@ -76,6 +82,11 @@ def main() -> int:
         "monitoring_level": args.monitoring_level or probe_monitoring_level(),
         "direction": args.direction,
         "codex_jobs": args.codex_jobs,
+        "host": args.host,
+        "scope": args.scope,
+        "config_source": args.config_source,
+        "roles_used": args.roles_used,
+        "receipt_schema_version": "2",
     }
 
     validator = load_validator()
