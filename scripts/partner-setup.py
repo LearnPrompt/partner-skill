@@ -20,6 +20,10 @@ from pathlib import Path
 from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple
 
 SCRIPT_DIR = Path(__file__).resolve().parent
+if str(SCRIPT_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPT_DIR))
+from partner_runtime import clean_claude_env
+
 ROOT = SCRIPT_DIR.parent
 CONFIG_SCRIPT = SCRIPT_DIR / "partner-config.py"
 SPEC = importlib.util.spec_from_file_location("partner_config", CONFIG_SCRIPT)
@@ -780,20 +784,9 @@ def show_status(args: argparse.Namespace, env: Mapping[str, str]) -> int:
 
 
 def _nested_claude_env(env: Mapping[str, str]) -> Dict[str, str]:
-    """Strip host-injected Claude Code vars before spawning a `claude` subprocess.
+    """Backward-compatible local name for the shared Claude env boundary."""
 
-    A `claude` CLI launched from inside a Claude Code session inherits the
-    host's ANTHROPIC_BASE_URL / CLAUDE_CODE_* env vars, which override the
-    user's own ~/.claude/settings.json credentials and make the child report
-    a false "Not logged in" error even when the user is authenticated.
-    """
-    cleaned = {
-        key: value
-        for key, value in env.items()
-        if not key.startswith("ANTHROPIC_") and not key.startswith("CLAUDE_CODE_")
-    }
-    cleaned["CLAUDECODE"] = ""
-    return cleaned
+    return clean_claude_env(env)
 
 
 def smoke_claude_identity(

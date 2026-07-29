@@ -646,6 +646,35 @@ def _host_overlay(data: Mapping[str, Any], host: str) -> Dict[str, Any]:
     return overlay
 
 
+def _invalidate_inherited_verification(
+    resolved: MutableMapping[str, Any],
+    overlay: Mapping[str, Any],
+    host: str,
+) -> None:
+    identities = (
+        overlay.get("hosts", {})
+        .get(host, {})
+        .get("identities", {})
+    )
+    resolved_identities = (
+        resolved.setdefault("hosts", {})
+        .setdefault(host, {})
+        .setdefault("identities", {})
+    )
+    for identity, fields in identities.items():
+        if not isinstance(fields, Mapping):
+            continue
+        identity_changed = any(
+            field in fields for field in ("backend", "model", "effort")
+        )
+        if identity_changed:
+            current = resolved_identities.setdefault(identity, {})
+            if "verified" not in fields:
+                current["verified"] = False
+            if "verified_at" not in fields:
+                current.pop("verified_at", None)
+
+
 def resolve_config(
     repo: Path,
     host: str,
@@ -663,10 +692,13 @@ def resolve_config(
     for label, path in (("global", global_path), ("project", project_path)):
         if path.is_file():
             parsed = validate_config(_read_text(path), host, path=path)
-            _deep_merge(resolved, _host_overlay(parsed, host))
+            overlay = _host_overlay(parsed, host)
+            _deep_merge(resolved, overlay)
+            _invalidate_inherited_verification(resolved, overlay, host)
             source = label
     if session_override:
         _deep_merge(resolved, session_override)
+        _invalidate_inherited_verification(resolved, session_override, host)
         source = "session"
     _validate_data(resolved, host)
     resolved["source"] = source
@@ -781,9 +813,23 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 "verified": args.verified,
                 "verified_at": args.verified_at,
             }
+            identity_changed = any(
+                value is not None
+                and value != current.get(field)
+                for field, value in (
+                    ("backend", args.backend),
+                    ("model", args.model),
+                    ("effort", args.effort),
+                )
+            )
             for key, value in updates.items():
                 if value is not None:
                     current[key] = value
+            if identity_changed and args.verified is None:
+                current["verified"] = False
+                current.pop("verified_at", None)
+            elif identity_changed and args.verified_at is None:
+                current.pop("verified_at", None)
             if args.verified is False and args.verified_at is None:
                 current.pop("verified_at", None)
             identities[args.role] = current

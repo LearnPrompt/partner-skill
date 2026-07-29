@@ -110,3 +110,11 @@ Restricting the orchestrator's thinking backfires: in controlled runs it
 raised turns from 92 to 138 and doubled output — thinking buys turn
 efficiency (Superpowers 6 autoresearch). Economize on the execution axis
 (delegate downward), never on the planner's reasoning budget.
+
+Do bound the planner's **execution surface**. Reasoning effort and repository
+discovery are different dimensions: keep the configured effort, while the
+outer host supplies a compact evidence packet and disables tools/subagents for
+repository-heavy Claude planning. `references/bounded-planning.md` defines the
+packet, timeouts, CLI budget, artifacts, and no-fallback recovery path. This
+preserves high-effort judgment without paying the planner to recursively
+rediscover the repo.

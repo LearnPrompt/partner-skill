@@ -23,7 +23,10 @@ jobs:
           bash -n scripts/check-claude-cli.sh
           bash -n scripts/make-handoff.sh
           bash -n scripts/session-snapshot.sh
-          python3 -m py_compile scripts/check-readme-parity.py scripts/showcase-cost-ledger.py scripts/validate-receipt.py scripts/run-test-prompts.py scripts/make-receipt.py
+          python3 -m py_compile scripts/check-readme-parity.py scripts/showcase-cost-ledger.py scripts/validate-receipt.py scripts/run-test-prompts.py scripts/run-claude-plan.py scripts/partner_runtime.py scripts/partner-setup.py scripts/make-receipt.py
+
+      - name: Unit suite
+        run: python3 -m unittest discover -s tests
 
       - name: Receipt contract
         run: |

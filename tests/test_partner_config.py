@@ -291,6 +291,68 @@ class ResolveTests(unittest.TestCase):
             self.assertEqual("default", resolved["source"])
             self.assertEqual({}, resolved["hosts"]["codex"]["identities"])
 
+    def test_higher_layer_identity_change_invalidates_inherited_verification(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            repo = root / "repo"
+            xdg = root / "xdg"
+            global_path = xdg / "partner" / "config.toml"
+            project_path = repo / ".partner" / "config.toml"
+            global_path.parent.mkdir(parents=True)
+            project_path.parent.mkdir(parents=True)
+            global_path.write_text(
+                partner_config.update_host(
+                    "",
+                    "codex",
+                    {
+                        "deep_reasoner": {
+                            "backend": "claude",
+                            "model": "verified-old",
+                            "effort": "high",
+                            "verified": True,
+                            "verified_at": "2026-07-29T00:00:00Z",
+                        }
+                    },
+                ),
+                encoding="utf-8",
+            )
+            project_path.write_text(
+                partner_config.update_host(
+                    "",
+                    "codex",
+                    {
+                        "deep_reasoner": {
+                            "backend": "claude",
+                            "model": "unverified-new",
+                            "effort": "xhigh",
+                        }
+                    },
+                ),
+                encoding="utf-8",
+            )
+            env = {"HOME": str(root / "home"), "XDG_CONFIG_HOME": str(xdg)}
+            resolved = partner_config.resolve_config(repo, "codex", env=env)
+            identity = resolved["hosts"]["codex"]["identities"]["deep_reasoner"]
+            self.assertEqual("unverified-new", identity["model"])
+            self.assertFalse(identity["verified"])
+            self.assertNotIn("verified_at", identity)
+
+            override = {
+                "hosts": {
+                    "codex": {
+                        "identities": {
+                            "deep_reasoner": {"model": "session-model"}
+                        }
+                    }
+                }
+            }
+            resolved = partner_config.resolve_config(
+                repo, "codex", override, env=env
+            )
+            identity = resolved["hosts"]["codex"]["identities"]["deep_reasoner"]
+            self.assertEqual("session-model", identity["model"])
+            self.assertFalse(identity["verified"])
+
 
 class AtomicWriteTests(unittest.TestCase):
     def test_atomic_write_leaves_no_tempfile(self):
@@ -383,6 +445,48 @@ class CliTests(unittest.TestCase):
                 {"backend": "codex", "effort": "xhigh", "model": "gpt-arbiter", "verified": True},
                 json.loads(output),
             )
+
+    def test_identity_change_invalidates_existing_verification(self):
+        with tempfile.TemporaryDirectory() as directory:
+            base = ("--host", "codex", "--repo", directory)
+            self.assertEqual(0, self.run_cli(*base, "init")[0])
+            self.assertEqual(
+                0,
+                self.run_cli(
+                    *base,
+                    "set",
+                    "--role",
+                    "deep_reasoner",
+                    "--backend",
+                    "claude",
+                    "--model",
+                    "verified-old",
+                    "--effort",
+                    "high",
+                    "--verified",
+                    "--verified-at",
+                    "2026-07-29T00:00:00Z",
+                )[0],
+            )
+            self.assertEqual(
+                0,
+                self.run_cli(
+                    *base,
+                    "set",
+                    "--role",
+                    "deep_reasoner",
+                    "--model",
+                    "unverified-new",
+                )[0],
+            )
+            status, output, error = self.run_cli(
+                *base, "get", "hosts.codex.identities.deep_reasoner"
+            )
+            self.assertEqual((0, ""), (status, error))
+            identity = json.loads(output)
+            self.assertEqual("unverified-new", identity["model"])
+            self.assertFalse(identity["verified"])
+            self.assertNotIn("verified_at", identity)
 
 
 class LockTests(unittest.TestCase):

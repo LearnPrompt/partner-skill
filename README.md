@@ -208,6 +208,7 @@ Claude 里跑 Codex Review 验收当前 diff，发现问题你来修。
 - 监控清单：PTY、`claude agents --json`、transcript、task files、git diff/test 五层证据，配 `scripts/check-claude-cli.sh` 能力探测和降级策略。
 - Session Receipt：把是否复用会话、是否新开 `claude -p`、检查、异常和监控等级写清楚，可用 `scripts/validate-receipt.py` 机器校验。
 - 配套工具：`scripts/make-handoff.sh` 自动生成 bounded handoff 并可持久化到 `.partner/`；`references/failure-playbook.md` 给每种异常固定恢复路径；`references/scenarios.md` 覆盖 review-only、debugging、非 UI、非 git、monorepo、跨天任务。
+- Bounded Claude planning：Codex 先整理 24,000 字符内的证据包，`scripts/run-claude-plan.py` 再按配置中的 Claude 模型/effort 做一次无工具、无子 Agent、有 wall/idle/API 预算的规划；成功与失败都留下可核验工件，绝不静默换模。
 - Darwin-style 验证门：一次只改一个协作维度，过检查才保留。
 - 首次配置向导（`搭子，配置`）：均衡/质量/成本预设可继续逐角色调整，`.partner/config.toml` 是双宿主共享的单一事实源；小白流程使用安全默认值，预览 diff 再落盘，绝不覆盖已有 agent 文件；模型和 effort 从两个 CLI 的真实能力列表读取，安装后自动启动无工具的新 Claude session 和 Codex dry-run 做验证。
 - Partner Session Receipt v2：新增 `host`/`scope`/`config_source`/`roles_used` 字段，能证明这次跑的到底是哪个模型、哪个 effort，而不只是"用了 Claude"。
@@ -239,6 +240,7 @@ references/tryout.md             「搭子，试跑」身份试跑：三身份�
 references/goal-to-pr.md         完整协议(可选)：Plan→Goal→PR→Verification、hard stop 清单、祈使句授权法
 references/goal-template.md      .partner/goal.md 目标文件模板（任务表 + checkpoint 规则）
 references/fable5-principles.md  前沿模型提示词共同准则（why-forward、effort、checkpoint、resume）
+references/bounded-planning.md   仓库级 Claude 规划的输入契约、无工具执行边界、预算与恢复规则
 references/memory-protocol.md    收尾记忆协议（claude-mem / mem0 / auto-memory / rollout）
 scripts/showcase-cost-ledger.py  Rebuilds the showcase cost-pressure ledger
 scripts/check-readme-parity.py   检查中英文 README 章节和关键证据是否对齐
@@ -249,8 +251,10 @@ scripts/make-receipt.py          生成并预校验 receipt，自动填 monitori
 scripts/session-snapshot.sh      transcript 快照对比，让新开会话数成为可计算的事实
 scripts/validate-receipt.py      校验 Partner Session Receipt 的字段与取值
 scripts/run-test-prompts.py      行为回归 prompt 的静态检查与实验性 live 模式
+scripts/run-claude-plan.py       按配置运行 bounded Claude planner，保存 sanitized events/checkpoint/cost
 scripts/delegate-codex.sh        Codex 后台任务原语：submit / status / result / resume / cancel
 scripts/partner-config.py        配置引擎：TOML 子集解析、确定性写回、锁与原子写（schema v1）
+scripts/partner_runtime.py       Claude 子进程共享环境边界，避免宿主变量污染一方 OAuth
 scripts/partner-setup.py         向导落盘引擎：--preview/--apply/--rollback/--smoke/--status/--interactive
 scripts/partner-setup-ui.py      localhost 单页配置 UI：完整模型矩阵、精确预览、确认写入
 scripts/goal-sync.py             .partner/goal.md 哈希校验读写：并发写入不静默丢更新，冲突即 abort
@@ -259,6 +263,7 @@ tests/test_partner_setup.py      向导引擎单元测试（幂等 / 防覆盖 /
 tests/test_partner_setup_ui.py   本地 UI 状态、预览绑定与写入门单元测试
 tests/test_delegate_role.py      --role 注入与覆盖链单元测试
 tests/test_goal_sync.py          goal.md 并发写入单元测试（哈希不符即拒绝，证明无静默丢更新）
+tests/test_run_claude_plan.py    bounded planner 的输入、配置、预算、timeout、无 fallback 单元测试
 idea-king/SKILL.md               点子王：第一性原理拆解 + 对抗式审查（随 Partner 一起安装）
 idea-king/README.md              点子王独立说明与方法论致谢
 ```

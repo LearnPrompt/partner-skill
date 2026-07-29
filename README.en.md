@@ -210,6 +210,7 @@ Chinese triggers such as `搭子` and `搭子.skill` are also first-class trigge
 - Monitoring evidence: PTY output, `claude agents --json`, transcript structure, optional task files, and repo checks — with `scripts/check-claude-cli.sh` probing what is actually available and a documented degradation path.
 - A Session Receipt: proof of session reuse, fresh `claude -p` count, checks, anomalies, and monitoring level — machine-checkable via `scripts/validate-receipt.py`.
 - Supporting tools: `scripts/make-handoff.sh` generates bounded handoffs and can persist them under `.partner/`; `references/failure-playbook.md` gives every anomaly a fixed recovery path; `references/scenarios.md` covers review-only, debugging, non-UI, non-git, monorepo, and multi-day tasks.
+- Bounded Claude planning: Codex first prepares an evidence packet within 24,000 characters, then `scripts/run-claude-plan.py` invokes the configured Claude model/effort once with no tools or subagents and with wall/idle/API budgets. Success and failure both leave inspectable artifacts; the runner never substitutes a model silently.
 - A Darwin-style ratchet: improve one workflow dimension at a time and keep only verified gains.
 - A first-run setup wizard (`搭子，配置`): balanced/quality/cost presets remain editable per identity; `.partner/config.toml` is the single dual-host source of truth; beginner-safe defaults remove advanced setup questions; the exact diff is previewed before writing; models and efforts come from each CLI's real capability list; post-install verification uses a tool-free fresh Claude session plus the Codex delegate dry-run chain.
 - Partner Session Receipt v2: adds `host`/`scope`/`config_source`/`roles_used` fields, so the receipt proves which model and effort actually ran a role, not just "Claude was used."
@@ -240,6 +241,7 @@ references/tryout.md                    "搭子，试跑" identity tryout: one m
 references/goal-to-pr.md                Opt-in full protocol: Plan→Goal→PR→Verification, hard-stop list, imperative authorization
 references/goal-template.md             Template for .partner/goal.md (task table + checkpoint rule)
 references/fable5-principles.md         Shared frontier-model prompting rules (why-forward, effort, checkpoint, resume)
+references/bounded-planning.md          Input contract, tool-free boundary, budgets, and recovery for repository-scale Claude planning
 references/memory-protocol.md           Wrap-up memory protocol (claude-mem / mem0 / auto-memory / rollout)
 scripts/showcase-cost-ledger.py         Rebuilds the showcase cost-pressure ledger
 scripts/check-readme-parity.py          Checks that Chinese and English READMEs stay aligned
@@ -250,8 +252,10 @@ scripts/make-receipt.py                 Generates a pre-validated receipt, auto-
 scripts/session-snapshot.sh             Transcript snapshot diff so the new-session count is computed, not claimed
 scripts/validate-receipt.py             Validates Partner Session Receipt fields and values
 scripts/run-test-prompts.py             Static checks plus experimental live mode for the regression prompts
+scripts/run-claude-plan.py              Runs the bounded configured Claude planner and saves sanitized events/checkpoint/cost
 scripts/delegate-codex.sh               Codex background-job primitive: submit / status / result / resume / cancel
 scripts/partner-config.py               Config engine: TOML-subset parsing, deterministic writes, locking (schema v1)
+scripts/partner_runtime.py              Shared Claude child-process environment boundary for first-party OAuth
 scripts/partner-setup.py                Setup wizard engine: --preview/--apply/--rollback/--smoke/--status/--interactive
 scripts/partner-setup-ui.py             Localhost single-page setup UI: full model matrix, exact preview, confirmed apply
 scripts/goal-sync.py                    Hash-checked .partner/goal.md read/write: concurrent writes abort instead of silently losing updates
@@ -260,6 +264,7 @@ tests/test_partner_setup.py             Setup engine unit tests (idempotence / o
 tests/test_partner_setup_ui.py          Local UI state, preview binding, and write-gate unit tests
 tests/test_delegate_role.py             Unit tests for --role injection and the override chain
 tests/test_goal_sync.py                 goal.md concurrency unit tests (stale-hash writes rejected, no silent lost update)
+tests/test_run_claude_plan.py           Bounded-planner input, config, budget, timeout, and no-fallback unit tests
 idea-king/SKILL.md                      Idea King: first-principles decomposition + adversarial review (installs with Partner)
 idea-king/README.md                     Idea King standalone notes and methodology credits
 ```

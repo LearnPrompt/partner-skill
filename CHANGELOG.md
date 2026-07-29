@@ -1,5 +1,18 @@
 # Changelog
 
+## v2.0.1 (2026-07-29)
+
+### Bounded Claude planning
+
+- feat: add `scripts/run-claude-plan.py`, a config-only Claude planner with a validated 24,000-character evidence packet delivered over stdin, safe mode, zero tools/subagents, wall and no-event timeouts, and a Claude-CLI-enforced API budget
+- feat: persist bounded sanitized event envelopes, visible-text checkpoints, exact configured/observed model/session, runner and packet hashes, cost metadata, atomically created plans, and same-session recovery instructions under `.partner/`
+- fix: distinguish authentication, upstream idle, local idle timeout, wall timeout, budget stop, tool-use violation, and protocol error instead of treating every Fable failure as login trouble
+- fix: invalidate verification when an identity changes; refuse unverified/non-Claude roles, malformed or secret-like packets, silent truncation, incomplete/conversational plan output, nonzero nominal success, observed model/session mismatches, output overwrite races, and all automatic model fallback
+- fix: bound partial-line, visible-output, event-log, process-group termination, and expanded secret-redaction paths so watchdogs cannot be defeated by byte trickles, inherited pipes, or common bearer/password/GitLab credentials
+- refactor: share the nested Claude environment cleanup between setup smoke and the bounded planner
+- test: add mocked stream/budget/timeout/config boundary coverage, repository behavior prompts, and the full unit suite to GitHub Actions
+- docs: define who builds the bounded packet, its exact contract, the honest budget telemetry boundary, and the fixed recovery path
+
 ## v2.0.0 (2026-07-29)
 
 ### Setup, identity routing, and safety
