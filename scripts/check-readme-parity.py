@@ -45,6 +45,7 @@ FILE_MAP_ENTRIES = [
     "docs/receipt-schema.json",
     "docs/config-schema.md",
     "examples/session-receipt.md",
+    "examples/v2.0.1-conversation-cost-receipt.md",
     "examples/showcase-cost-ledger.json",
     "references/monitoring.md",
     "references/handoff-template.md",

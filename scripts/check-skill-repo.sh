@@ -40,6 +40,7 @@ check_file "examples/showcase-cost-ledger.json"
 check_file "docs/showcase-cost-model.md"
 check_file "docs/receipt-schema.json"
 check_file "examples/session-receipt.md"
+check_file "examples/v2.0.1-conversation-cost-receipt.md"
 check_file "references/monitoring.md"
 check_file "references/handoff-template.md"
 check_file "references/failure-playbook.md"
@@ -81,6 +82,13 @@ if python3 scripts/validate-receipt.py examples/session-receipt.md >/dev/null; t
   echo "PASS example receipt validates against receipt contract"
 else
   echo "FAIL examples/session-receipt.md does not validate; run scripts/validate-receipt.py on it"
+  fail=$((fail + 1))
+fi
+
+if python3 scripts/validate-receipt.py examples/v2.0.1-conversation-cost-receipt.md >/dev/null; then
+  echo "PASS v2.0.1 conversation cost receipt validates against receipt contract"
+else
+  echo "FAIL v2.0.1 conversation cost receipt does not validate"
   fail=$((fail + 1))
 fi
 
