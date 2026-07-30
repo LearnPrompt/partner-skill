@@ -65,7 +65,7 @@ Left: what Codex produces on its own — functional but visually forgettable. Ri
 **Showcase 2: a real Fable failure and recovery**
 
 <div align="center">
-<a href="assets/v2.0.1-conversation-cost-receipt.png">
+<a href="examples/v2.0.1-conversation-cost-receipt.html">
 <img src="assets/v2.0.1-conversation-cost-receipt.png" alt="Partner v2.0.1 conversation-cost webpage screenshot showing role routing, verified cost, tasks, reasoning effort, and delivery evidence" width="720" />
 </a>
 <p><sub>Real webpage screenshot: switch roles to inspect the actual model, effort, task, cost, and delivery evidence.</sub></p>
