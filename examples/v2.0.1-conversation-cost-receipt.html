@@ -1,0 +1,843 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>Partner v2.0.1 对话消耗小票</title>
+  <style>
+    :root {
+      --paper: #f1f3f6;
+      --surface: #fbfcfd;
+      --ink: #171a20;
+      --muted: #59616d;
+      --line: #cfd5de;
+      --strong-line: #939daa;
+      --cobalt: #1748d2;
+      --cobalt-soft: #e9efff;
+      --coral: #b53d34;
+      --coral-soft: #fff0ed;
+      --radius: 16px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      background: var(--paper);
+    }
+
+    body {
+      min-width: 320px;
+      min-height: 100vh;
+      margin: 0;
+      color: var(--ink);
+      background: var(--paper);
+      font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI",
+        "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    button {
+      font: inherit;
+    }
+
+    .page {
+      width: min(1152px, calc(100% - 40px));
+      min-height: 100vh;
+      margin: 0 auto;
+      padding: clamp(20px, 3vh, 30px) 0;
+      display: grid;
+      grid-template-rows: auto auto minmax(330px, 1fr) auto auto;
+      gap: 12px;
+    }
+
+    .masthead,
+    .role-switcher,
+    .stage,
+    .verification,
+    .methodology {
+      opacity: 0;
+      animation: reveal 520ms cubic-bezier(.2, .72, .2, 1) forwards;
+    }
+
+    .role-switcher {
+      animation-delay: 70ms;
+    }
+
+    .stage {
+      animation-delay: 140ms;
+    }
+
+    .verification {
+      animation-delay: 210ms;
+    }
+
+    .methodology {
+      animation-delay: 280ms;
+    }
+
+    @keyframes reveal {
+      from {
+        opacity: 0;
+        transform: translateY(12px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .masthead {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 28px;
+      align-items: end;
+      padding: 4px 2px 10px;
+      border-bottom: 2px solid var(--ink);
+    }
+
+    .masthead h1 {
+      max-width: 800px;
+      margin: 4px 0 6px;
+      font-family: Georgia, "Times New Roman", "Songti SC", serif;
+      font-size: clamp(40px, 5.1vw, 66px);
+      font-weight: 600;
+      line-height: .96;
+      letter-spacing: -.045em;
+    }
+
+    .subtitle {
+      margin: 0;
+      color: var(--cobalt);
+      font-size: 15px;
+      font-weight: 750;
+      letter-spacing: .08em;
+    }
+
+    .date-block {
+      min-width: 158px;
+      padding-bottom: 2px;
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .date-block span {
+      display: block;
+      margin-bottom: 5px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+    }
+
+    .date-block time {
+      font-size: 19px;
+      font-weight: 760;
+    }
+
+    .role-switcher {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px;
+      overflow-x: auto;
+      background: #e3e7ed;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      scrollbar-width: none;
+    }
+
+    .role-switcher::-webkit-scrollbar {
+      display: none;
+    }
+
+    .role-switcher button {
+      flex: 1 0 auto;
+      min-height: 39px;
+      padding: 8px 16px;
+      color: #444c58;
+      background: transparent;
+      border: 1px solid transparent;
+      border-radius: 14px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 760;
+      transition: color 160ms ease, background-color 160ms ease, border-color 160ms ease;
+    }
+
+    .role-switcher button:hover {
+      color: var(--ink);
+      background: rgba(255, 255, 255, .64);
+    }
+
+    .role-switcher button[aria-pressed="true"] {
+      color: #fff;
+      background: var(--cobalt);
+      border-color: var(--cobalt);
+    }
+
+    .role-switcher button:focus-visible {
+      outline: 3px solid #0b1e57;
+      outline-offset: 2px;
+    }
+
+    .stage {
+      display: grid;
+      grid-template-columns: minmax(0, 1.5fr) minmax(300px, .72fr);
+      gap: 12px;
+      min-height: 330px;
+    }
+
+    .evidence-panel,
+    .run-map,
+    .verification,
+    .methodology {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+    }
+
+    .evidence-panel {
+      position: relative;
+      min-width: 0;
+      padding: clamp(22px, 3vw, 36px);
+      overflow: hidden;
+      border-top: 7px solid var(--cobalt);
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+    }
+
+    .evidence-panel::after {
+      content: "";
+      position: absolute;
+      right: -58px;
+      bottom: -76px;
+      width: 220px;
+      height: 220px;
+      border: 28px solid var(--cobalt-soft);
+      border-radius: 50%;
+      pointer-events: none;
+    }
+
+    .role-line {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      gap: 10px 18px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .role-name {
+      margin: 0;
+      font-size: clamp(21px, 2.1vw, 28px);
+      font-weight: 820;
+      letter-spacing: -.025em;
+    }
+
+    .role-id {
+      color: var(--cobalt);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 12px;
+      font-weight: 760;
+    }
+
+    .metric-block {
+      align-self: center;
+      position: relative;
+      z-index: 1;
+      padding: 12px 0;
+    }
+
+    .metric-label {
+      margin: 0 0 4px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 760;
+      letter-spacing: .11em;
+      text-transform: uppercase;
+    }
+
+    .metric-value {
+      max-width: 670px;
+      margin: 0;
+      color: var(--cobalt);
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: clamp(39px, 5.5vw, 70px);
+      font-weight: 600;
+      line-height: .98;
+      letter-spacing: -.045em;
+      font-variant-numeric: tabular-nums;
+      overflow-wrap: anywhere;
+    }
+
+    .metric-note {
+      max-width: 610px;
+      margin: 10px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .role-spec {
+      position: relative;
+      z-index: 1;
+      display: grid;
+      grid-template-columns: minmax(92px, .45fr) minmax(86px, .35fr) minmax(0, 1.65fr);
+      gap: 20px;
+      padding-top: 17px;
+      border-top: 1px solid var(--strong-line);
+    }
+
+    .spec-item {
+      min-width: 0;
+    }
+
+    .spec-item dt {
+      margin-bottom: 5px;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 750;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+    }
+
+    .spec-item dd {
+      margin: 0;
+      font-size: 14px;
+      font-weight: 720;
+      line-height: 1.35;
+    }
+
+    .run-map {
+      padding: 19px 20px;
+    }
+
+    .run-map h2 {
+      margin: 0 0 12px;
+      font-size: 13px;
+      font-weight: 820;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+    }
+
+    .run-list {
+      margin: 0;
+    }
+
+    .run-entry {
+      display: grid;
+      grid-template-columns: 20px minmax(0, 1fr);
+      gap: 9px;
+      padding: 11px 0;
+      border-top: 1px solid var(--line);
+    }
+
+    .run-entry:first-child {
+      border-top-color: var(--ink);
+    }
+
+    .run-index {
+      padding-top: 1px;
+      color: var(--cobalt);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 11px;
+      font-weight: 800;
+    }
+
+    .run-entry dt {
+      margin: 0;
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+    .run-entry dd {
+      margin: 3px 0 0;
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.35;
+    }
+
+    .run-entry strong {
+      color: var(--ink);
+      font-weight: 760;
+    }
+
+    .savings-callout {
+      margin-top: 17px;
+      padding-top: 15px;
+      border-top: 2px solid var(--ink);
+    }
+
+    .savings-callout h3 {
+      margin: 0 0 8px;
+      font-size: 11px;
+      font-weight: 820;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+    }
+
+    .savings-token {
+      margin: 0 0 3px;
+      color: var(--muted);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 11px;
+      font-weight: 760;
+    }
+
+    .savings-metric {
+      margin: 0;
+      color: var(--cobalt);
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: clamp(27px, 3vw, 37px);
+      font-weight: 600;
+      line-height: 1;
+      letter-spacing: -.035em;
+    }
+
+    .savings-formula {
+      margin: 7px 0 0;
+      color: var(--muted);
+      font-size: 10.5px;
+      line-height: 1.4;
+    }
+
+    .verification {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 24px;
+      align-items: center;
+      padding: 13px 20px;
+      border-color: #aab6d9;
+    }
+
+    .verification h2 {
+      margin: 0;
+      color: var(--cobalt);
+      font-size: 12px;
+      font-weight: 820;
+      letter-spacing: .11em;
+      text-transform: uppercase;
+    }
+
+    .verification-list {
+      display: flex;
+      justify-content: space-between;
+      gap: 14px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: clamp(12px, 1.35vw, 15px);
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .methodology {
+      display: grid;
+      grid-template-columns: minmax(170px, .55fr) minmax(0, 2fr) minmax(240px, 1fr);
+      gap: 20px;
+      align-items: start;
+      padding: 15px 20px;
+    }
+
+    .methodology h2 {
+      margin: 0;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 20px;
+      font-weight: 600;
+      letter-spacing: -.02em;
+    }
+
+    .methodology p {
+      margin: 0;
+      color: #4f5763;
+      font-size: 11.5px;
+      line-height: 1.48;
+    }
+
+    .unknown-note {
+      padding-left: 13px;
+      color: #713029 !important;
+      border-left: 3px solid var(--coral);
+    }
+
+    .evidence-panel.is-updating .metric-block,
+    .evidence-panel.is-updating .role-spec,
+    .evidence-panel.is-updating .role-line {
+      animation: evidence-change 260ms ease-out;
+    }
+
+    @keyframes evidence-change {
+      from {
+        opacity: .3;
+        transform: translateY(5px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @media (max-width: 720px) {
+      .page {
+        width: min(100% - 24px, 560px);
+        padding: 14px 0 20px;
+        grid-template-rows: auto;
+        gap: 10px;
+      }
+
+      .masthead {
+        grid-template-columns: 1fr;
+        gap: 12px;
+      }
+
+      .masthead h1 {
+        font-size: clamp(38px, 12vw, 52px);
+      }
+
+      .date-block {
+        text-align: left;
+      }
+
+      .date-block span,
+      .date-block time {
+        display: inline;
+      }
+
+      .date-block span {
+        margin-right: 8px;
+      }
+
+      .role-switcher {
+        justify-content: flex-start;
+      }
+
+      .role-switcher button {
+        flex: 0 0 auto;
+      }
+
+      .stage {
+        grid-template-columns: 1fr;
+      }
+
+      .evidence-panel {
+        min-height: 430px;
+        padding: 24px 20px;
+      }
+
+      .role-spec {
+        grid-template-columns: 1fr 1fr;
+        gap: 14px;
+      }
+
+      .spec-item:last-child {
+        grid-column: 1 / -1;
+      }
+
+      .run-map {
+        padding: 18px;
+      }
+
+      .verification {
+        grid-template-columns: 1fr;
+        gap: 10px;
+      }
+
+      .verification-list {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 7px;
+      }
+
+      .methodology {
+        grid-template-columns: 1fr;
+        gap: 12px;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *,
+      *::before,
+      *::after {
+        scroll-behavior: auto !important;
+        animation-duration: .01ms !important;
+        animation-delay: 0ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: .01ms !important;
+      }
+    }
+
+    @media print {
+      @page {
+        size: landscape;
+        margin: 10mm;
+      }
+
+      html,
+      body {
+        min-height: auto;
+        background: #fff;
+        print-color-adjust: exact;
+        -webkit-print-color-adjust: exact;
+      }
+
+      .page {
+        width: 100%;
+        min-height: auto;
+        padding: 0;
+      }
+
+      .masthead,
+      .role-switcher,
+      .stage,
+      .verification,
+      .methodology {
+        opacity: 1;
+        break-inside: avoid;
+        animation: none;
+      }
+
+      .role-switcher {
+        overflow: visible;
+      }
+
+      .role-switcher button {
+        cursor: default;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <header class="masthead">
+      <div>
+        <p class="subtitle">LearnPrompt 真实运行记录</p>
+        <h1>Partner v2.0.1 对话消耗小票</h1>
+      </div>
+      <div class="date-block">
+        <span>Run date</span>
+        <time datetime="2026-07-29">2026-07-29</time>
+      </div>
+    </header>
+
+    <nav class="role-switcher" aria-label="选择运行角色">
+      <button type="button" data-role="deep" aria-pressed="true" aria-controls="role-evidence">
+        Deep Reasoner
+      </button>
+      <button type="button" data-role="fast" aria-pressed="false" aria-controls="role-evidence">
+        Fast Worker
+      </button>
+      <button type="button" data-role="judge" aria-pressed="false" aria-controls="role-evidence">
+        Judge
+      </button>
+      <button type="button" data-role="codex" aria-pressed="false" aria-controls="role-evidence">
+        Codex
+      </button>
+    </nav>
+
+    <section class="stage" aria-label="角色执行证据">
+      <article class="evidence-panel" id="role-evidence" aria-live="polite">
+        <div class="role-line">
+          <h2 class="role-name" id="role-name">Deep Reasoner</h2>
+          <span class="role-id" id="role-id">deep_reasoner</span>
+        </div>
+
+        <div class="metric-block">
+          <p class="metric-label">Verified metric</p>
+          <p class="metric-value" id="metric-value">可核验成本 $6.0879975</p>
+          <p class="metric-note" id="metric-note">11 次账本记录中，仅汇总返回最终 billing event 的已知成本。</p>
+        </div>
+
+        <dl class="role-spec">
+          <div class="spec-item">
+            <dt id="model-label">Model</dt>
+            <dd id="model-value">Fable 5</dd>
+          </div>
+          <div class="spec-item">
+            <dt id="effort-label">Effort</dt>
+            <dd id="effort-value">xhigh</dd>
+          </div>
+          <div class="spec-item">
+            <dt>Actual task</dt>
+            <dd id="task-value">planning, fault classification, same-session recovery, final candidate</dd>
+          </div>
+        </dl>
+      </article>
+
+      <aside class="run-map" aria-labelledby="run-map-title">
+        <h2 id="run-map-title">Role to runtime map</h2>
+        <dl class="run-list">
+          <div class="run-entry">
+            <span class="run-index" aria-hidden="true">01</span>
+            <div>
+              <dt>Deep Reasoner</dt>
+              <dd><strong>Fable 5</strong> / xhigh / known cost $6.0879975</dd>
+            </div>
+          </div>
+          <div class="run-entry">
+            <span class="run-index" aria-hidden="true">02</span>
+            <div>
+              <dt>Fast Worker</dt>
+              <dd><strong>Sonnet 5</strong> / high / setup smoke only / project cost $0</dd>
+            </div>
+          </div>
+          <div class="run-entry">
+            <span class="run-index" aria-hidden="true">03</span>
+            <div>
+              <dt>Judge</dt>
+              <dd><strong>GPT-5.6-sol</strong> / high / 6 P1 -&gt; 2 P1 -&gt; PASS</dd>
+            </div>
+          </div>
+          <div class="run-entry">
+            <span class="run-index" aria-hidden="true">04</span>
+            <div>
+              <dt>Codex host</dt>
+              <dd><strong>Pro</strong> / four implementation/fix/documentation passes</dd>
+            </div>
+          </div>
+        </dl>
+
+        <section class="savings-callout" aria-labelledby="savings-title">
+          <h3 id="savings-title">Plan mode counterfactual</h3>
+          <p class="savings-token">可核验总量 46.56M+ tokens</p>
+          <p class="savings-metric">保守省下 $64.20+</p>
+          <p class="savings-formula">全 Fable 估算 $70.28 / 实际 Fable $6.09 / 节省 91.3%</p>
+        </section>
+      </aside>
+    </section>
+
+    <section class="verification" aria-labelledby="verification-title">
+      <h2 id="verification-title">Delivery verification</h2>
+      <ul class="verification-list">
+        <li>102/102 tests</li>
+        <li>PR #4 CLEAN</li>
+        <li>CI 2/2 PASS</li>
+      </ul>
+    </section>
+
+    <aside class="methodology" aria-labelledby="methodology-title">
+      <h2 id="methodology-title">证据边界</h2>
+      <p>
+        主视觉只展示已核验数字。Host 未返回的角色级美元拆分不展示、不估算。
+        46.56M+ 合并保留的 Fable 与 Codex token events；未知运行不计入。
+      </p>
+      <p class="unknown-note">
+        $64.20+ 按同等 token 量、Fable 5 官方输入 / cache hit / 输出单价保守折算。
+        它是反事实成本，不是宿主账单或退款。
+      </p>
+    </aside>
+  </main>
+
+  <script>
+    (() => {
+      const roles = {
+        deep: {
+          name: "Deep Reasoner",
+          id: "deep_reasoner",
+          metric: "可核验成本 $6.0879975",
+          note: "11 次账本记录中，仅汇总返回最终 billing event 的已知成本。",
+          modelLabel: "Model",
+          model: "Fable 5",
+          effortLabel: "Effort",
+          effort: "xhigh",
+          task: "planning, fault classification, same-session recovery, final candidate"
+        },
+        fast: {
+          name: "Fast Worker",
+          id: "fast_worker",
+          metric: "0 project calls / $0",
+          note: "Actual work: setup smoke only. No project implementation task.",
+          modelLabel: "Model",
+          model: "Sonnet 5",
+          effortLabel: "Effort",
+          effort: "high",
+          task: "setup smoke only; no project implementation task"
+        },
+        judge: {
+          name: "Judge",
+          id: "arbiter",
+          metric: "3 reviews / PASS",
+          note: "Three independent review rounds: 6 P1 -> 2 P1 -> PASS.",
+          modelLabel: "Model",
+          model: "GPT-5.6-sol",
+          effortLabel: "Effort",
+          effort: "high",
+          task: "three independent review rounds"
+        },
+        codex: {
+          name: "Codex host",
+          id: "codex",
+          metric: "6% used / 94% remaining",
+          note: "7 天 rolling quota observed 2026-07-29 18:28 JST: 已用 6%, 剩余 94%. Reset 2026-08-05 13:09 JST.",
+          modelLabel: "Plan",
+          model: "Pro",
+          effortLabel: "Quota window",
+          effort: "7 天",
+          task: "four implementation/fix/documentation passes"
+        }
+      };
+
+      const panel = document.querySelector(".evidence-panel");
+      const buttons = [...document.querySelectorAll(".role-switcher button")];
+      const fields = {
+        name: document.querySelector("#role-name"),
+        id: document.querySelector("#role-id"),
+        metric: document.querySelector("#metric-value"),
+        note: document.querySelector("#metric-note"),
+        modelLabel: document.querySelector("#model-label"),
+        model: document.querySelector("#model-value"),
+        effortLabel: document.querySelector("#effort-label"),
+        effort: document.querySelector("#effort-value"),
+        task: document.querySelector("#task-value")
+      };
+
+      function selectRole(key, focusButton = false) {
+        const role = roles[key];
+        if (!role) return;
+
+        buttons.forEach((button) => {
+          const selected = button.dataset.role === key;
+          button.setAttribute("aria-pressed", String(selected));
+          if (selected && focusButton) button.focus();
+        });
+
+        Object.entries(fields).forEach(([field, element]) => {
+          element.textContent = role[field];
+        });
+
+        panel.classList.remove("is-updating");
+        void panel.offsetWidth;
+        panel.classList.add("is-updating");
+      }
+
+      buttons.forEach((button, index) => {
+        button.addEventListener("click", () => selectRole(button.dataset.role));
+        button.addEventListener("keydown", (event) => {
+          let nextIndex;
+          if (event.key === "ArrowRight" || event.key === "ArrowDown") {
+            nextIndex = (index + 1) % buttons.length;
+          } else if (event.key === "ArrowLeft" || event.key === "ArrowUp") {
+            nextIndex = (index - 1 + buttons.length) % buttons.length;
+          } else if (event.key === "Home") {
+            nextIndex = 0;
+          } else if (event.key === "End") {
+            nextIndex = buttons.length - 1;
+          } else {
+            return;
+          }
+          event.preventDefault();
+          selectRole(buttons[nextIndex].dataset.role, true);
+        });
+      });
+
+      panel.addEventListener("animationend", () => {
+        panel.classList.remove("is-updating");
+      });
+    })();
+  </script>
+</body>
+</html>

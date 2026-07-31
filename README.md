@@ -65,7 +65,7 @@ bash install.sh --target claude
 **Showcase 2：真实 Fable 失败与恢复**
 
 <div align="center">
-<a href="assets/v2.0.1-conversation-cost-receipt.png">
+<a href="examples/v2.0.1-conversation-cost-receipt.html">
 <img src="assets/v2.0.1-conversation-cost-receipt.png" alt="Partner v2.0.1 对话消耗网页截图：角色运行映射、可核验成本、任务、推理强度和交付结果" width="720" />
 </a>
 <p><sub>真实网页截图：切换角色查看实际模型、effort、任务、成本与交付证据。</sub></p>
