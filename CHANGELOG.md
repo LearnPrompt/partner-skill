@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+### Direction B sandbox
+
+- fix: add `--writable` to `delegate-codex.sh submit`/`resume` — with no sandbox flag a job inherits `codex exec`'s own default, which is read-only unless the user set `sandbox_mode` in `~/.codex/config.toml`, so implementation jobs finished `DONE` having written nothing
+- fix: let an explicit `PARTNER_CODEX_BIN` win over the parent job's binary on `resume`; inheriting it unconditionally made the env var silently inert, so a wrapper CLI never ran and the round was wasted
+- feat: record the effective sandbox (`read-only` / `workspace-write` / `codex-default`) in each job's `meta` and in `--dry-run` output
+- docs: state the real default in usage and in Direction B Phase 2, and add a Phase 3 check that `DONE` plus an empty `git status --short` is an anomaly, not a completed task
+- test: add `tests/test_delegate_sandbox.py` covering the three sandbox states, flag exclusivity, the resume `-c` override, and both resume binary-resolution paths
+
 ## v2.0.1 (2026-07-29)
 
 ### Bounded Claude planning
