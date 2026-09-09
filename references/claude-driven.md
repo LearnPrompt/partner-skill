@@ -126,8 +126,19 @@ prompt=$(mktemp)
 # ... write the delegation packet into "$prompt" ...
 bash "$PARTNER_DIR/scripts/delegate-codex.sh" submit \
   --repo "$REPO" --prompt-file "$prompt" --label <task-id> \
-  --host claude_code --role <identity>
+  --host claude_code --role <identity> --writable
 ```
+
+**`--writable` is not optional for implementation tasks.** With no sandbox
+flag the job inherits `codex exec`'s own default, which is **read-only**
+unless the user happens to have set `sandbox_mode` in `~/.codex/config.toml`.
+A read-only implementation job does not fail — Codex reads everything, works
+out the patch, gets `apply_patch` rejected, and finishes `DONE` having
+changed nothing. Check the box before delegating: no `~/.codex/config.toml`
+(or no `sandbox_mode` in it) means every write-bearing job needs
+`--writable`. On a Maven/Gradle/npm task whose build writes outside the
+repo, note that `workspace-write` covers the repo and `/tmp` only; a job that
+must populate `~/.m2` or a similar cache needs that root granted too.
 
 The tool fail-closes on both misconfigurations: no Partner config yet →
 clear error (run `搭子，配置` first, or fall back to an explicit `--effort`
@@ -153,6 +164,15 @@ claude-backend identity on the wrong vendor.
   `status` of FAILED, is a monitoring anomaly: cancel it, read
   `stderr.log`, and either resubmit with a corrected prompt or take the
   task back into Claude. Record the anomaly for the receipt.
+- **`DONE` is not evidence of work.** Before moving to Phase 4, run
+  `git status --short` on any job that was supposed to change files. `DONE`
+  plus an empty diff is an anomaly, not a completed task — most often a
+  read-only sandbox (see `--writable` in Phase 2), sometimes a job that
+  decided the work was already done. Read `stderr.log` for
+  `writing is blocked by read-only sandbox` before assuming anything else.
+  Never open a fix round without knowing which of the two it was: resuming
+  a blocked job with "please try again" burns a full round and changes
+  nothing.
 
 ## Phase 4 — Full Review Gate
 

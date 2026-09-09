@@ -27,21 +27,28 @@ Usage:
                     [--label <name>] [--effort minimal|low|medium|high|xhigh]
                     [--model <model>] [--role deep_reasoner|fast_worker|arbiter]
                     [--host claude_code|codex]
-                    [--read-only] [--dry-run]
+                    [--read-only|--writable] [--dry-run]
   delegate-codex.sh status <jobId> --repo <path> [--wait] [--timeout <seconds>]
   delegate-codex.sh result <jobId> --repo <path> [--json]
-  delegate-codex.sh resume <jobId> --repo <path> --prompt-file <file> [--read-only]
+  delegate-codex.sh resume <jobId> --repo <path> --prompt-file <file>
+                    [--read-only|--writable]
   delegate-codex.sh cancel <jobId> --repo <path>
   delegate-codex.sh list   --repo <path>
 
-Defaults: --effort high (Partner default for delegated work), read-write
-sandbox per the user's codex config. Use --read-only for review/adversarial
-jobs that must not touch the repo. --host selects the identity routing table;
-identities with backend=claude must be spawned as host subagents.
+Defaults: --effort high (Partner default for delegated work) and NO sandbox
+flag, i.e. whatever `codex exec` itself defaults to. That default is
+**read-only** unless the user set `sandbox_mode` in ~/.codex/config.toml, so
+an implementation job submitted with no flag typically finishes DONE having
+written nothing. Pass --writable for jobs that must edit the repo, and
+--read-only for review/adversarial jobs that must not. --host selects the
+identity routing table; identities with backend=claude must be spawned as
+host subagents.
 
 Codex binary: set PARTNER_CODEX_BIN to an executable path or command name to
 override discovery. On macOS the ChatGPT/Codex app-bundled CLI is preferred
 when present so app-only models use a compatible client; otherwise PATH is used.
+An explicit PARTNER_CODEX_BIN also wins on `resume`; without it, resume
+inherits the parent job's binary.
 
 Exit codes: status prints RUNNING/DONE/FAILED/CANCELLED; `status --wait`
 returns non-zero on timeout or failure so callers can branch on it.
@@ -81,6 +88,15 @@ is_git_repo() {
   # bare `-d "$1/.git"` check so worktrees/submodules (where .git is a
   # file, not a directory) are still recognized as git repos.
   git -C "$1" rev-parse --git-dir >/dev/null 2>&1
+}
+
+# read_only / writable -> the sandbox recorded in meta, so a job that wrote
+# nothing can be told apart from a job that was never allowed to write.
+sandbox_label() {
+  if [ "$1" = "true" ]; then echo "read-only"
+  elif [ "$2" = "true" ]; then echo "workspace-write"
+  else echo "codex-default"
+  fi
 }
 
 resolve_codex_bin() {
@@ -183,7 +199,7 @@ PY
 }
 
 cmd_submit() {
-  local PROMPT_FILE="" LABEL="task" EFFORT="high" MODEL="" ROLE="" CONFIG_HOST="codex" READ_ONLY="false" DRY_RUN="false"
+  local PROMPT_FILE="" LABEL="task" EFFORT="high" MODEL="" ROLE="" CONFIG_HOST="codex" READ_ONLY="false" WRITABLE="false" DRY_RUN="false"
   local EFFORT_EXPLICIT="false" MODEL_EXPLICIT="false"
   local EFFORT_SOURCE="default" MODEL_SOURCE="default"
   while [ "$#" -gt 0 ]; do
@@ -196,11 +212,13 @@ cmd_submit() {
       --role) ROLE="${2:-}"; shift 2 ;;
       --host) CONFIG_HOST="${2:-}"; shift 2 ;;
       --read-only) READ_ONLY="true"; shift ;;
+      --writable) WRITABLE="true"; shift ;;
       --dry-run) DRY_RUN="true"; shift ;;
       *) die "unknown submit argument: $1" ;;
     esac
   done
   require_repo
+  [ "$READ_ONLY" = "true" ] && [ "$WRITABLE" = "true" ] && die "--read-only and --writable are mutually exclusive"
   [ -n "$PROMPT_FILE" ] && [ -f "$PROMPT_FILE" ] || die "--prompt-file is required and must exist"
   case "$ROLE" in ""|deep_reasoner|fast_worker|arbiter) ;; *) die "invalid --role: $ROLE" ;; esac
   case "$CONFIG_HOST" in claude_code|codex) ;; *) die "invalid --host: $CONFIG_HOST" ;; esac
@@ -238,9 +256,9 @@ cmd_submit() {
   if [ "$DRY_RUN" = "true" ]; then
     local SKIP_GIT_REPO_CHECK=""
     is_git_repo "$REPO" || SKIP_GIT_REPO_CHECK="--skip-git-repo-check"
-    printf 'role=%s\nbackend=codex\nconfig_host=%s\nmodel=%s\neffort=%s\nmodel_source=%s\neffort_source=%s\ncodex_bin=%s\ncodex_bin_source=%s\ncodex_version=%s\nskip_git_repo_check=%s\n' \
+    printf 'role=%s\nbackend=codex\nconfig_host=%s\nmodel=%s\neffort=%s\nmodel_source=%s\neffort_source=%s\ncodex_bin=%s\ncodex_bin_source=%s\ncodex_version=%s\nsandbox=%s\nskip_git_repo_check=%s\n' \
       "${ROLE:-none}" "$CONFIG_HOST" "${MODEL:-default}" "$EFFORT" "$MODEL_SOURCE" "$EFFORT_SOURCE" \
-      "$CODEX_BIN" "$CODEX_BIN_SOURCE" "$CODEX_VERSION" "$SKIP_GIT_REPO_CHECK"
+      "$CODEX_BIN" "$CODEX_BIN_SOURCE" "$CODEX_VERSION" "$(sandbox_label "$READ_ONLY" "$WRITABLE")" "$SKIP_GIT_REPO_CHECK"
     return 0
   fi
   local JOB_ID
@@ -251,28 +269,30 @@ cmd_submit() {
   cp "$PROMPT_FILE" "$JOB/prompt.md"
 
   {
-    printf 'label=%s\neffort=%s\nmodel=%s\nrole=%s\nbackend=codex\nconfig_host=%s\nmodel_source=%s\neffort_source=%s\ncodex_bin=%s\ncodex_bin_source=%s\ncodex_version=%s\nread_only=%s\nsubmitted_at=%s\nmode=fresh\n' \
+    printf 'label=%s\neffort=%s\nmodel=%s\nrole=%s\nbackend=codex\nconfig_host=%s\nmodel_source=%s\neffort_source=%s\ncodex_bin=%s\ncodex_bin_source=%s\ncodex_version=%s\nread_only=%s\nsandbox=%s\nsubmitted_at=%s\nmode=fresh\n' \
       "$LABEL" "$EFFORT" "${MODEL:-default}" "${ROLE:-none}" "$CONFIG_HOST" "$MODEL_SOURCE" "$EFFORT_SOURCE" \
-      "$CODEX_BIN" "$CODEX_BIN_SOURCE" "$CODEX_VERSION" "$READ_ONLY" "$(now_utc)"
+      "$CODEX_BIN" "$CODEX_BIN_SOURCE" "$CODEX_VERSION" "$READ_ONLY" "$(sandbox_label "$READ_ONLY" "$WRITABLE")" "$(now_utc)"
   } >"$JOB/meta"
 
-  write_run_script "$JOB" "$EFFORT" "$MODEL" "$READ_ONLY" ""
+  write_run_script "$JOB" "$EFFORT" "$MODEL" "$READ_ONLY" "" "$WRITABLE"
   launch_job "$JOB"
   echo "$JOB_ID"
 }
 
 cmd_resume() {
   local PARENT_ID="$1"; shift
-  local PROMPT_FILE="" READ_ONLY="false"
+  local PROMPT_FILE="" READ_ONLY="false" WRITABLE="false"
   while [ "$#" -gt 0 ]; do
     case "$1" in
       --repo) REPO="${2:-}"; shift 2 ;;
       --prompt-file) PROMPT_FILE="${2:-}"; shift 2 ;;
       --read-only) READ_ONLY="true"; shift ;;
+      --writable) WRITABLE="true"; shift ;;
       *) die "unknown resume argument: $1" ;;
     esac
   done
   require_repo
+  [ "$READ_ONLY" = "true" ] && [ "$WRITABLE" = "true" ] && die "--read-only and --writable are mutually exclusive"
   require_job "$PARENT_ID"
   [ -n "$PROMPT_FILE" ] && [ -f "$PROMPT_FILE" ] || die "--prompt-file is required and must exist"
   [ "$(job_state)" = "RUNNING" ] && die "parent job still running; wait or cancel first"
@@ -284,8 +304,11 @@ cmd_resume() {
 
   local EFFORT
   EFFORT="$(sed -n 's/^effort=//p' "$PARENT_JOB/meta")"
+  # An explicit PARTNER_CODEX_BIN wins over the parent job's binary: inheriting
+  # it unconditionally makes the env var silently inert on resume, so a caller
+  # swapping in a wrapper CLI gets a full round that ran the wrong binary.
   CODEX_BIN="$(sed -n 's/^codex_bin=//p' "$PARENT_JOB/meta")"
-  if [ -n "$CODEX_BIN" ] && [ -x "$CODEX_BIN" ]; then
+  if [ -z "${PARTNER_CODEX_BIN:-}" ] && [ -n "$CODEX_BIN" ] && [ -x "$CODEX_BIN" ]; then
     CODEX_BIN_SOURCE="parent"
     CODEX_VERSION="$("$CODEX_BIN" --version 2>/dev/null | head -1 || true)"
     CODEX_VERSION="${CODEX_VERSION:-unknown}"
@@ -302,17 +325,18 @@ cmd_resume() {
   printf '%s' "$SESSION_ID" >"$JOB/session_id"
 
   {
-    printf 'label=resume\neffort=%s\nmodel=inherit\ncodex_bin=%s\ncodex_bin_source=%s\ncodex_version=%s\nread_only=%s\nsubmitted_at=%s\nmode=resume\nparent=%s\n' \
-      "${EFFORT:-high}" "$CODEX_BIN" "$CODEX_BIN_SOURCE" "$CODEX_VERSION" "$READ_ONLY" "$(now_utc)" "$PARENT_ID"
+    printf 'label=resume\neffort=%s\nmodel=inherit\ncodex_bin=%s\ncodex_bin_source=%s\ncodex_version=%s\nread_only=%s\nsandbox=%s\nsubmitted_at=%s\nmode=resume\nparent=%s\n' \
+      "${EFFORT:-high}" "$CODEX_BIN" "$CODEX_BIN_SOURCE" "$CODEX_VERSION" "$READ_ONLY" \
+      "$(sandbox_label "$READ_ONLY" "$WRITABLE")" "$(now_utc)" "$PARENT_ID"
   } >"$JOB/meta"
 
-  write_run_script "$JOB" "${EFFORT:-high}" "" "$READ_ONLY" "$SESSION_ID"
+  write_run_script "$JOB" "${EFFORT:-high}" "" "$READ_ONLY" "$SESSION_ID" "$WRITABLE"
   launch_job "$JOB"
   echo "$JOB_ID"
 }
 
 write_run_script() {
-  local job="$1" effort="$2" model="$3" read_only="$4" session_id="$5"
+  local job="$1" effort="$2" model="$3" read_only="$4" session_id="$5" writable="${6:-false}"
   {
     echo '#!/usr/bin/env bash'
     echo 'set -uo pipefail'
@@ -329,6 +353,9 @@ write_run_script() {
       # sandbox and effort go through -c config overrides.
       local args="--json -c 'model_reasoning_effort=\"$effort\"'"
       [ "$read_only" = "true" ] && args="$args -c 'sandbox_mode=\"read-only\"'"
+      # Verified against codex-cli 0.146.1: a resumed session re-reads the
+      # sandbox policy, so -c widens it, it is not pinned to the parent run.
+      [ "$writable" = "true" ] && args="$args -c 'sandbox_mode=\"workspace-write\"'"
       echo 'cd "$REPO"'
       printf '"$CODEX_BIN" exec resume %q "$PROMPT" %s >"$JOB/log.jsonl" 2>"$JOB/stderr.log" </dev/null\n' "$session_id" "$args"
     else
@@ -338,6 +365,7 @@ write_run_script() {
       is_git_repo "$REPO" || args="$args --skip-git-repo-check"
       [ -n "$model" ] && args="$args -m \"$model\""
       [ "$read_only" = "true" ] && args="$args -s read-only"
+      [ "$writable" = "true" ] && args="$args -s workspace-write"
       printf '"$CODEX_BIN" exec "$PROMPT" %s >"$JOB/log.jsonl" 2>"$JOB/stderr.log" </dev/null\n' "$args"
     fi
     echo 'echo $? >"$JOB/exit_code"'
